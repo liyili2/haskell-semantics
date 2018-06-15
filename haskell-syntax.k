@@ -9,23 +9,27 @@ module HASKELL-SYNTAX
     syntax Integer ::= Token{[0-9]*}   [onlyLabel]
 
     syntax APat ::= Literal
-    //syntax Exp ::= InfixExp
+    syntax Exp ::= InfixExp
     syntax InfixExp ::= LExp QOp InfixExp
                       | LExp
 
-    syntax LExp ::= "\" Apt_list "->" Exp
-                  | "let" Decls "in" Exp
+    syntax LExp ::= "\\" Apats "->" Exp
+//                  | "let" Decls "in" Exp
                   | "if" Exp OptComma "then" Exp OptComma "else" Exp
-                  | "case" Exp "of" "{" Alts "}"
-                  | "do" "{" Stmts "}"
-                  | Fexp
+//                  | "case" Exp "of" "{" Alts "}"
+//                  | "do" "{" Stmts "}"
+//                  | Fexp
     syntax Fexp ::= AExp | Fexp AExp
 
     syntax OptComma ::= ";" | "" [onlyLabel, klabel('emptyComma)]
 
-    syntax Apt_list ::= List{Apt, ""}
+    syntax Apats ::= List{Apat, ""}
 
     syntax AExp ::= Literal
-                  | "(" InfixExp Qop ")"
-                  | "(" Qop InfixExp ")"
+                  | "(" InfixExp QOp ")"
+                  | "(" QOp InfixExp ")"
+
+    syntax Apat ::= Literal
+
+    syntax QOp ::= QVarOp | QConOp
 endmodule
