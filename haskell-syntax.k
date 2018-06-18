@@ -8,7 +8,6 @@ module HASKELL-SYNTAX
     syntax AscSymbol ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]}   [onlyLabel]
     syntax Integer ::= Token{[0-9]*}   [onlyLabel]
 
-    syntax APat ::= Literal
     syntax Exp ::= InfixExp
     syntax InfixExp ::= LExp QOp InfixExp
                       | LExp
@@ -19,7 +18,7 @@ module HASKELL-SYNTAX
 //                  | "case" Exp "of" "{" Alts "}"
 //                  | "do" "{" Stmts "}"
 //                  | Fexp
-    syntax Fexp ::= AExp | Fexp AExp
+//    syntax Fexp ::= AExp | Fexp AExp
 
     syntax OptComma ::= ";" | "" [onlyLabel, klabel('emptyComma)]
 
@@ -31,5 +30,8 @@ module HASKELL-SYNTAX
 
     syntax Apat ::= Literal
 
+    syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
+    syntax QVarOp ::= OpId
+    syntax QConOp ::= OpId
     syntax QOp ::= QVarOp | QConOp
 endmodule
