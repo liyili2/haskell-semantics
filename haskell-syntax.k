@@ -8,6 +8,14 @@ module HASKELL-SYNTAX
     syntax AscSymbol ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]}   [onlyLabel]
     syntax Integer ::= Token{[0-9]*}   [onlyLabel]
 
+//    syntax VarSym ::= Symbols //not true to haskell
+
+    syntax ConSym ::= Token{"([;::)(]~)"}
+
+//    syntax Symbols ::= List{Symbol, ""}
+
+    syntax ReservedOp ::= ".." | ":" | "::" | "=" | "\\" | "|" | "<-" | "->" | "@" | "~" | "=>"
+
     syntax Exp ::= InfixExp
     syntax InfixExp ::= LExp QOp InfixExp
                       | LExp
