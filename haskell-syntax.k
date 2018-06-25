@@ -20,19 +20,23 @@ module HASKELL-SYNTAX
 //    syntax VarSym ::= Token{~[\:] (~[\ ])*} [onlyLabel]
 //    syntax ConSym ::= Token{[\:] (~[\ ])*} [onlyLabel]
 
-    syntax VarId ::= Token{[a-z][0-9 a-z A-Z \']*}   [onlyLabel]
-    syntax ConId ::= Token{[A-Z][0-9 a-z A-Z \']*}   [onlyLabel]
-
 //    syntax VarId ::= Token{[:]([\ ]~)*} [onlyLabel]
 //    syntax ReservedId ::= "case" | "class" | "data" | "default" | "deriving" | "do" | "else" | "->" | "@" | "~" | "=>"
 
 //    syntax ConSym ::= Token{"([;::)(]~)"} [onlyLabel]
     syntax ReservedOp ::= ".." | ":" | "::" | "=" | "\\" | "|" | "<-" | "->" | "@" | "~" | "=>"
 
+    syntax VarId ::= Token{[a-z][0-9 a-z A-Z \']*}   [onlyLabel]
+    syntax ConId ::= Token{[A-Z][0-9 a-z A-Z \']*}   [onlyLabel]
+
+    syntax TyVars ::= List{TyVar, ""} //used in SimpleType syntax
+    syntax TyVar ::= VarId
     syntax TyCon ::= ConId
+    syntax TyCls ::= ConId
     syntax ModId ::= ConId
 
     syntax QTyCon ::= TyCon
+    syntax QTyCls ::= TyCls
 
 //  Section 10.5
 
@@ -52,16 +56,16 @@ module HASKELL-SYNTAX
 
     syntax TopDecls ::= List{TopDecl, ";"}
 
-    syntax TopDecl ::= Decl // TEMPORARY
+//    syntax TopDecl ::= Decl // TEMPORARY
 
-//    syntax TopDecl ::= "type" SimpleType "=" Type
-//                     | "data" SimpleType
+    syntax TopDecl ::= "type" SimpleType "=" Type
+                     | "data" SimpleType
 //                     | "newtype" SimpleType "=" NewConstr
-//                     | "class" Tycls Tyvar
+                     | "class" TyCls TyVar
 //                     | "instance" QTycls Inst
 //                     | "default" Types
 //                     | "foreign" FDecl
-//                     | Decl
+                     | Decl
 
     syntax Decl ::= GenDecl
 //                  | FunLhs Rhs
@@ -84,6 +88,16 @@ module HASKELL-SYNTAX
     syntax AType ::= GTyCon
 
     syntax GTyCon ::= QTyCon
+
+    syntax Context ::= Class
+                     | Classes
+
+    syntax Classes ::= List{Class, ","}
+
+    syntax Class ::= QTyCls TyVar
+//                   | QTyCls Tyvar ATypes
+
+    syntax SimpleType ::= TyCon TyVars
 
     syntax Exp ::= InfixExp
     syntax InfixExp ::= LExp QOp InfixExp
