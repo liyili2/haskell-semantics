@@ -1,4 +1,8 @@
+// Syntax from haskell 2010 Report
+// https://www.haskell.org/onlinereport/haskell2010/haskellch10.html#x17-17500010
+
 module HASKELL-SYNTAX
+// Section 10.2
     //syntax Digit ::= AscDigit
     //syntax AscDigit ::= Token{[0-9]}   [onlyLabel]
     syntax Literal ::= Integer
@@ -25,7 +29,12 @@ module HASKELL-SYNTAX
 //    syntax ConSym ::= Token{"([;::)(]~)"} [onlyLabel]
     syntax ReservedOp ::= ".." | ":" | "::" | "=" | "\\" | "|" | "<-" | "->" | "@" | "~" | "=>"
 
+    syntax TyCon ::= ConId
     syntax ModId ::= ConId
+
+    syntax QTyCon ::= TyCon
+
+//  Section 10.5
 
     syntax Module ::= "module" ModId "where" Body
 //                    | "module" ModId Exports "where" Body
@@ -55,13 +64,26 @@ module HASKELL-SYNTAX
 //                     | Decl
 
     syntax Decl ::= GenDecl
-                  | FunLhs Rhs
-                  | Pat Rhs
+//                  | FunLhs Rhs
+//                  | Pat Rhs
 
     syntax GenDecl ::= Vars "::" Type
-                     | Vars "::" Context "=>" Type
-                     | Fixity Ops
-                     | Fixity Integer Ops
+//                     | Vars "::" Context "=>" Type
+//                     | Fixity Ops
+//                     | Fixity Integer Ops
+
+//    syntax Ops ::= List{Op, ","}
+    syntax Vars ::= List{Var, ","}
+
+    syntax Type ::= BType
+                  | BType "->" Type
+
+    syntax BType ::= AType
+                   | BType AType
+
+    syntax AType ::= GTyCon
+
+    syntax GTyCon ::= QTyCon
 
     syntax Exp ::= InfixExp
     syntax InfixExp ::= LExp QOp InfixExp
@@ -86,6 +108,8 @@ module HASKELL-SYNTAX
     syntax Apat ::= Literal
 
     syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
+
+    syntax Var ::= VarId
     syntax QVarOp ::= OpId
     syntax QConOp ::= OpId
     syntax QOp ::= QVarOp | QConOp
