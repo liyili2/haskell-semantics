@@ -60,6 +60,7 @@ module HASKELL-SYNTAX
 
     syntax TopDecl ::= "type" SimpleType "=" Type
                      | "data" SimpleType
+                     | "data" SimpleType "=" Constrs
 //                     | "newtype" SimpleType "=" NewConstr
                      | "class" TyCls TyVar
 //                     | "instance" QTycls Inst
@@ -85,6 +86,9 @@ module HASKELL-SYNTAX
     syntax BType ::= AType
                    | BType AType
 
+    syntax OptBangATypes ::= List{OptBangAType, ""}
+    syntax OptBangAType ::= OptBang AType
+    syntax OptBang ::= "!" | "" [onlyLabel, klabel('emptyBang)]
     syntax AType ::= GTyCon
 
     syntax GTyCon ::= QTyCon
@@ -98,6 +102,8 @@ module HASKELL-SYNTAX
 //                   | QTyCls Tyvar ATypes
 
     syntax SimpleType ::= TyCon TyVars
+    syntax Constrs ::= List{Constr, "|"}
+    syntax Constr ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) 
 
     syntax Exp ::= InfixExp
     syntax InfixExp ::= LExp QOp InfixExp
@@ -105,13 +111,13 @@ module HASKELL-SYNTAX
 
     syntax LExp ::= "\\" Apats "->" Exp
 //                  | "let" Decls "in" Exp
-                  | "if" Exp OptComma "then" Exp OptComma "else" Exp
+                  | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp
 //                  | "case" Exp "of" "{" Alts "}"
 //                  | "do" "{" Stmts "}"
 //                  | Fexp
 //    syntax Fexp ::= AExp | Fexp AExp
 
-    syntax OptComma ::= ";" | "" [onlyLabel, klabel('emptyComma)]
+    syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
 
     syntax Apats ::= List{Apat, ""}
 
@@ -124,6 +130,7 @@ module HASKELL-SYNTAX
     syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
 
     syntax Var ::= VarId
+    syntax Con ::= ConId
     syntax QVarOp ::= OpId
     syntax QConOp ::= OpId
     syntax QOp ::= QVarOp | QConOp
