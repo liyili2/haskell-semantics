@@ -13,8 +13,8 @@ module HASKELL-SYNTAX
 
 //    syntax Symbols ::= List{Symbol, ""}
 
-    syntax VarSym ::= Token{[:]~ ([\ ]~)*} [onlyLabel]
-//    syntax ConSym ::= Token{[:] ([\ ]~)*} [onlyLabel]
+//    syntax VarSym ::= Token{~[\:] (~[\ ])*} [onlyLabel]
+    syntax ConSym ::= Token{[\:] (~[\ ])*} [onlyLabel]
 
     syntax VarId ::= Token{[a-z][0-9 a-z A-Z \']*}   [onlyLabel]
     syntax ConId ::= Token{[A-Z][0-9 a-z A-Z \']*}   [onlyLabel]
@@ -24,6 +24,10 @@ module HASKELL-SYNTAX
 
 //    syntax ConSym ::= Token{"([;::)(]~)"} [onlyLabel]
     syntax ReservedOp ::= ".." | ":" | "::" | "=" | "\\" | "|" | "<-" | "->" | "@" | "~" | "=>"
+
+    syntax Module ::= "module" ModId "where" Body
+                    | "module" ModId Exports "where" Body
+                    | Body
 
     syntax Exp ::= InfixExp
     syntax InfixExp ::= LExp QOp InfixExp
