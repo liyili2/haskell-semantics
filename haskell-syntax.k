@@ -31,9 +31,37 @@ module HASKELL-SYNTAX
 //                    | "module" ModId Exports "where" Body
                     | Body
 
-//    syntax Body ::= 
+    syntax Body ::= Body1
+                  | ImpDecls
+                  | TopDecls
 
-    syntax Body ::= Token{"+++"} [onlyLabel] // TEMPORARY
+    syntax Body1 ::= ImpDecls ";" TopDecls
+
+    syntax ImpDecls ::= List{ImpDecl, ";"}
+
+    syntax ImpDecl ::= "import" ModId
+
+    syntax TopDecls ::= List{TopDecl, ";"}
+
+    syntax TopDecl ::= Decl // TEMPORARY
+
+//    syntax TopDecl ::= "type" SimpleType "=" Type
+//                     | "data" SimpleType
+//                     | "newtype" SimpleType "=" NewConstr
+//                     | "class" Tycls Tyvar
+//                     | "instance" QTycls Inst
+//                     | "default" Types
+//                     | "foreign" FDecl
+//                     | Decl
+
+    syntax Decl ::= GenDecl
+                  | FunLhs Rhs
+                  | Pat Rhs
+
+    syntax GenDecl ::= Vars "::" Type
+                     | Vars "::" Context "=>" Type
+                     | Fixity Ops
+                     | Fixity Integer Ops
 
     syntax Exp ::= InfixExp
     syntax InfixExp ::= LExp QOp InfixExp
