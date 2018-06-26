@@ -68,9 +68,12 @@ module HASKELL-SYNTAX
 //                     | "foreign" FDecl
                      | Decl
 
+    syntax Decls ::= "{" DeclsList "}"
+    syntax DeclsList ::= List{Decl, ";"}
+
     syntax Decl ::= GenDecl
 //                  | FunLhs Rhs
-//                  | Pat Rhs
+                  | Pat Rhs
 
     syntax GenDecl ::= Vars "::" Type
 //                     | Vars "::" Context "=>" Type
@@ -105,8 +108,15 @@ module HASKELL-SYNTAX
     syntax Constrs ::= List{Constr, "|"}
     syntax Constr ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) 
 
-    syntax Exp ::= InfixExp
+    syntax Rhs ::= "=" Exp
+                 | "=" Exp "where" Decls
+
+    syntax Exp ::= InfixExp "::" Type
+                 | InfixExp "::" Context "=>" Type
+                 | InfixExp
+
     syntax InfixExp ::= LExp QOp InfixExp
+                      | "-" InfixExp
                       | LExp
 
     syntax LExp ::= "\\" APats "->" Exp
