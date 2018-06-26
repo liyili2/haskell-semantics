@@ -6,8 +6,8 @@ module HASKELL-SYNTAX
     //syntax Digit ::= AscDigit
     //syntax AscDigit ::= Token{[0-9]}   [onlyLabel]
     syntax Literal ::= Integer
-//    syntax VarSym ::= Symbol
-//    syntax ConSym ::= Symbol
+    syntax VarSym ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
+    syntax ConSym ::= Token{[\:][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 //    syntax Symbol ::= AscSymbol
 //    syntax AscSymbol ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]}   [onlyLabel]
     syntax Integer ::= Token{[0-9]*}   [onlyLabel]
@@ -35,8 +35,8 @@ module HASKELL-SYNTAX
     syntax TyCls ::= ConId
     syntax ModId ::= ConId
 
-    syntax QTyCon ::= TyCon
-    syntax QTyCls ::= TyCls
+    syntax QTyCon ::= TyCon | ModId "." TyCon
+    syntax QTyCls ::= TyCls | ModId "." TyCls
 
 //  Section 10.5
 
@@ -44,11 +44,11 @@ module HASKELL-SYNTAX
 //                    | "module" ModId Exports "where" Body
                     | Body
 
-    syntax Body ::= Body1
-                  | ImpDecls
-                  | TopDecls
+    syntax Body ::= "{" ImpDecls ";" TopDecls "}"
+                  | "{" ImpDecls "}"
+                  | "{" TopDecls "}"
 
-    syntax Body1 ::= ImpDecls ";" TopDecls
+//    syntax Body1 ::= ImpDecls ";" TopDecls
 
     syntax ImpDecls ::= List{ImpDecl, ";"}
 
@@ -109,7 +109,7 @@ module HASKELL-SYNTAX
     syntax InfixExp ::= LExp QOp InfixExp
                       | LExp
 
-    syntax LExp ::= "\\" Apats "->" Exp
+    syntax LExp ::= "\\" APats "->" Exp
 //                  | "let" Decls "in" Exp
                   | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp
 //                  | "case" Exp "of" "{" Alts "}"
@@ -119,18 +119,41 @@ module HASKELL-SYNTAX
 
     syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
 
-    syntax Apats ::= List{Apat, ""}
-
     syntax AExp ::= Literal
                   | "(" InfixExp QOp ")"
                   | "(" QOp InfixExp ")"
 
-    syntax Apat ::= Literal
+    syntax Pats ::= List{APat, ","}
+
+    syntax Pat ::= LPat QConOp Pat
+                 | LPat
+
+    syntax LPat ::= APat
+                  | "-" Integer
+//                  | "-" Float
+                  | GCon APats
+
+    syntax APats ::= List{APat, ""}
+
+    syntax APat ::= Var
+                  | Var "@" APat
+//                  | QCon FPats
+                  | Literal
+//                  _
+                  | "(" Pat ")"
+                  | "(" Pats ")"
+                  | "[" Pats "]"
+                  | "~" APat
+
+    syntax GCon ::= "()"
+                  | "[]"
+                  | "(,{,})"
+//                  | QCon
 
     syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
 
-    syntax Var ::= VarId
-    syntax Con ::= ConId
+    syntax Var ::= VarId | "(" VarSym ")"
+    syntax Con ::= ConId | "(" ConSym ")"
     syntax QVarOp ::= OpId
     syntax QConOp ::= OpId
     syntax QOp ::= QVarOp | QConOp

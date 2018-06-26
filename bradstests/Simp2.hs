@@ -1,5 +1,6 @@
 module Simp2 where
+{import Test1
+;import Test2
 
-import Test1 ;
-import Test2 ;
-testVariable :: Testtype
+;testVariable :: Testtype
+}

@@ -1,6 +1,6 @@
-module Simp4 where
+module Simp5 where
 
-type Name = String
+{ type Name = String
 
 ; data Anniversary = 
    Birthday Name Date
@@ -10,3 +10,4 @@ type Name = String
 
 ; johnSmith :: Anniversary
 ; johnSmith = Birthday "John Smith" (Date 1968 7 3)
+}
