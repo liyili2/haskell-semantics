@@ -123,7 +123,7 @@ module HASKELL-SYNTAX
                   | "(" InfixExp QOp ")"
                   | "(" QOp InfixExp ")"
 
-    syntax Pats ::= List{APat, ","}
+    syntax Pats ::= List{Pat, ","}
 
     syntax Pat ::= LPat QConOp Pat
                  | LPat
