@@ -37,6 +37,7 @@ module HASKELL-SYNTAX
     syntax QConId ::= ConId | ModId "." ConId
     syntax QTyCon ::= TyCon | ModId "." TyCon
     syntax QTyCls ::= TyCls | ModId "." TyCls
+    syntax QVarSym ::= VarSym | ModId "." VarSym
     syntax QConSym ::= ConSym | ModId "." ConSym
 
     syntax Integer ::= Token{[0-9]*}   [onlyLabel]
@@ -167,13 +168,15 @@ module HASKELL-SYNTAX
                   | "(,{,})"
                   | QCon
 
-    syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
+    //syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
 
     syntax Var ::= VarId //| "(" VarSym ")"
     syntax Con ::= ConId //| "(" ConSym ")"
     syntax QCon ::= QConId //| "(" GConSym ")"
-    syntax QVarOp ::= OpId
-    syntax QConOp ::= OpId
+    syntax QVarOp ::= QVarSym
+    syntax QConOp ::= GConSym
     syntax QOp ::= QVarOp | QConOp
     syntax GConSym ::= ":" | QConSym
+
+configuration <k> $PGM:Module </k>
 endmodule
