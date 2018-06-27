@@ -5,12 +5,11 @@ module HASKELL-SYNTAX
 // Section 10.2
     //syntax Digit ::= AscDigit
     //syntax AscDigit ::= Token{[0-9]}   [onlyLabel]
-    syntax Literal ::= Integer
+    syntax Literal ::= Integer | String
     syntax VarSym ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
     syntax ConSym ::= Token{[\:][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 //    syntax Symbol ::= AscSymbol
 //    syntax AscSymbol ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]}   [onlyLabel]
-    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
 
 //    syntax VarSym ::= Symbols //not true to haskell
 
@@ -35,8 +34,15 @@ module HASKELL-SYNTAX
     syntax TyCls ::= ConId
     syntax ModId ::= ConId
 
+    syntax QConId ::= ConId | ModId "." ConId
     syntax QTyCon ::= TyCon | ModId "." TyCon
     syntax QTyCls ::= TyCls | ModId "." TyCls
+    syntax QConSym ::= ConSym | ModId "." ConSym
+
+    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
+
+    syntax StringInside ::= Token{[0-9 a-z A-Z \']*}   [onlyLabel]
+    syntax String ::= "\"" StringInside "\""
 
 //  Section 10.5
 
@@ -120,16 +126,17 @@ module HASKELL-SYNTAX
                       | LExp
 
     syntax LExp ::= "\\" APats "->" Exp
-//                  | "let" Decls "in" Exp
+                  | "let" Decls "in" Exp
                   | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp
 //                  | "case" Exp "of" "{" Alts "}"
 //                  | "do" "{" Stmts "}"
-//                  | Fexp
-//    syntax Fexp ::= AExp | Fexp AExp
+                  | Fexp
+    syntax Fexp ::= AExp | Fexp AExp
 
     syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
 
-    syntax AExp ::= Literal
+    syntax AExp ::= GCon
+                  | Literal
                   | "(" InfixExp QOp ")"
                   | "(" QOp InfixExp ")"
 
@@ -158,13 +165,15 @@ module HASKELL-SYNTAX
     syntax GCon ::= "()"
                   | "[]"
                   | "(,{,})"
-//                  | QCon
+                  | QCon
 
     syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
 
     syntax Var ::= VarId | "(" VarSym ")"
     syntax Con ::= ConId | "(" ConSym ")"
+    syntax QCon ::= QConId | "(" GConSym ")"
     syntax QVarOp ::= OpId
     syntax QConOp ::= OpId
     syntax QOp ::= QVarOp | QConOp
+    syntax GConSym ::= ":" | QConSym
 endmodule
