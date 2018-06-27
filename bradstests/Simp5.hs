@@ -9,5 +9,4 @@ module Simp5 where
 ; data Date = Date Int Int Int
 
 ; johnSmith :: Anniversary
-; johnSmith = Birthday "John Smith" (Date 1968 7 3)
-}
+; johnSmith = Birthday "John Smith" (Date 1968 7 3) }

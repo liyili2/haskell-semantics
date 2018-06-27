@@ -41,7 +41,7 @@ module HASKELL-SYNTAX
 
     syntax Integer ::= Token{[0-9]*}   [onlyLabel]
 
-    syntax StringInside ::= Token{[0-9 a-z A-Z \']*}   [onlyLabel]
+    syntax StringInside ::= Token{[0-9 a-z A-Z]*}   [onlyLabel]
     syntax String ::= "\"" StringInside "\""
 
 //  Section 10.5
@@ -169,9 +169,9 @@ module HASKELL-SYNTAX
 
     syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
 
-    syntax Var ::= VarId | "(" VarSym ")"
-    syntax Con ::= ConId | "(" ConSym ")"
-    syntax QCon ::= QConId | "(" GConSym ")"
+    syntax Var ::= VarId //| "(" VarSym ")"
+    syntax Con ::= ConId //| "(" ConSym ")"
+    syntax QCon ::= QConId //| "(" GConSym ")"
     syntax QVarOp ::= OpId
     syntax QConOp ::= OpId
     syntax QOp ::= QVarOp | QConOp
