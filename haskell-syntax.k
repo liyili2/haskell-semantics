@@ -42,8 +42,9 @@ module HASKELL-SYNTAX
 
     syntax Integer ::= Token{[0-9]*}   [onlyLabel]
 
-    syntax StringInside ::= Token{[0-9 a-z A-Z]*}   [onlyLabel]
-    syntax String ::= "\"" StringInside "\""
+//    syntax StringInside ::= Token{[0-9 a-z A-Z]*}   [onlyLabel]
+//    syntax String ::= "\"" StringInside "\""
+    syntax String ::= Token{[\"][0-9 a-z A-Z]*[\"]}   [onlyLabel]
 
 //  Section 10.5
 
