@@ -34,6 +34,7 @@ module HASKELL-SYNTAX
     syntax TyCls ::= ConId
     syntax ModId ::= ConId
 
+    syntax QVarId ::= VarId | ModId "." VarId
     syntax QConId ::= ConId | ModId "." ConId
     syntax QTyCon ::= TyCon | ModId "." TyCon
     syntax QTyCls ::= TyCls | ModId "." TyCls
@@ -49,7 +50,7 @@ module HASKELL-SYNTAX
 //  Section 10.5
 
     syntax Module ::= "module" ModId "where" Body
-//                    | "module" ModId Exports "where" Body
+                    | "module" ModId Exports "where" Body
                     | Body
 
     syntax Body ::= "{" ImpDecls ";" TopDecls "}"
@@ -59,6 +60,12 @@ module HASKELL-SYNTAX
 //    syntax Body1 ::= ImpDecls ";" TopDecls
 
     syntax ImpDecls ::= List{ImpDecl, ";"}
+
+    syntax Exports ::= "(" ExportList ")" //| "(" ExportList ",)"
+
+    syntax ExportList ::= List{Export, ","}
+
+    syntax Export ::= QVar | QTyCon
 
     syntax ImpDecl ::= "import" ModId
 
@@ -91,6 +98,7 @@ module HASKELL-SYNTAX
 //    syntax Ops ::= List{Op, ","}
     syntax Vars ::= List{Var, ","}
 
+    syntax Types ::= List{Type, ","}
     syntax Type ::= BType
                   | BType "->" Type
 
@@ -101,6 +109,10 @@ module HASKELL-SYNTAX
     syntax OptBangAType ::= OptBang AType
     syntax OptBang ::= "!" | "" [onlyLabel, klabel('emptyBang)]
     syntax AType ::= GTyCon
+                   | TyVar
+                   | "(" Types ")"
+                   | "[" Type "]"
+                   | "(" Type ")"
 
     syntax GTyCon ::= QTyCon
 
@@ -172,6 +184,7 @@ module HASKELL-SYNTAX
     //syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
 
     syntax Var ::= VarId //| "(" VarSym ")"
+    syntax QVar ::= QVarId
     syntax Con ::= ConId //| "(" ConSym ")"
     syntax QCon ::= QConId //| "(" GConSym ")"
     syntax QVarOp ::= QVarSym
