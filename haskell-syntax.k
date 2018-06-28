@@ -23,9 +23,9 @@ module HASKELL-SYNTAX
 //    syntax ReservedId ::= "case" | "class" | "data" | "default" | "deriving" | "do" | "else" | "->" | "@" | "~" | "=>"
 
 //    syntax ConSym ::= Token{"([;::)(]~)"} [onlyLabel]
-    syntax ReservedOp ::= ".." | ":" | "::" | "=" | "\\" | "|" | "<-" | "->" | "@" | "~" | "=>"
+//    syntax ReservedOp ::= ".." | ":" | "::" | "=" | "\\" | "|" | "<-" | "->" | "@" | "~" | "=>"
 
-    syntax VarId ::= Token{[a-z][0-9 a-z A-Z \']*}   [onlyLabel]
+    syntax VarId ::= "size" [onlyLabel] | Token{[a-z][0-9 a-z A-Z \']*}   [onlyLabel]
     syntax ConId ::= Token{[A-Z][0-9 a-z A-Z \']*}   [onlyLabel]
 
     syntax TyVars ::= List{TyVar, ""} //used in SimpleType syntax
@@ -41,11 +41,13 @@ module HASKELL-SYNTAX
     syntax QVarSym ::= VarSym | ModId "." VarSym
     syntax QConSym ::= ConSym | ModId "." ConSym
 
-    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
+//    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
+
+    syntax Integer ::= Int
 
 //    syntax StringInside ::= Token{[0-9 a-z A-Z]*}   [onlyLabel]
 //    syntax String ::= "\"" StringInside "\""
-    syntax String ::= Token{[\"][0-9 a-z A-Z]*[\"]}   [onlyLabel]
+//    syntax String ::= Token{[\"][0-9 a-z A-Z]*[\"]}   [onlyLabel]
 
 //  Section 10.5
 
