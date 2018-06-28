@@ -5,12 +5,11 @@ module HASKELL-SYNTAX
 // Section 10.2
     //syntax Digit ::= AscDigit
     //syntax AscDigit ::= Token{[0-9]}   [onlyLabel]
-    syntax Literal ::= Integer
+    syntax Literal ::= Integer | String
     syntax VarSym ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
     syntax ConSym ::= Token{[\:][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 //    syntax Symbol ::= AscSymbol
 //    syntax AscSymbol ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]}   [onlyLabel]
-    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
 
 //    syntax VarSym ::= Symbols //not true to haskell
 
@@ -35,13 +34,23 @@ module HASKELL-SYNTAX
     syntax TyCls ::= ConId
     syntax ModId ::= ConId
 
+    syntax QVarId ::= VarId | ModId "." VarId
+    syntax QConId ::= ConId | ModId "." ConId
     syntax QTyCon ::= TyCon | ModId "." TyCon
     syntax QTyCls ::= TyCls | ModId "." TyCls
+    syntax QVarSym ::= VarSym | ModId "." VarSym
+    syntax QConSym ::= ConSym | ModId "." ConSym
+
+    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
+
+//    syntax StringInside ::= Token{[0-9 a-z A-Z]*}   [onlyLabel]
+//    syntax String ::= "\"" StringInside "\""
+    syntax String ::= Token{[\"][0-9 a-z A-Z]*[\"]}   [onlyLabel]
 
 //  Section 10.5
 
     syntax Module ::= "module" ModId "where" Body
-//                    | "module" ModId Exports "where" Body
+                    | "module" ModId Exports "where" Body
                     | Body
 
     syntax Body ::= "{" ImpDecls ";" TopDecls "}"
@@ -51,6 +60,12 @@ module HASKELL-SYNTAX
 //    syntax Body1 ::= ImpDecls ";" TopDecls
 
     syntax ImpDecls ::= List{ImpDecl, ";"}
+
+    syntax Exports ::= "(" ExportList ")" //| "(" ExportList ",)"
+
+    syntax ExportList ::= List{Export, ","}
+
+    syntax Export ::= QVar | QTyCon
 
     syntax ImpDecl ::= "import" ModId
 
@@ -83,6 +98,7 @@ module HASKELL-SYNTAX
 //    syntax Ops ::= List{Op, ","}
     syntax Vars ::= List{Var, ","}
 
+    syntax Types ::= List{Type, ","}
     syntax Type ::= BType
                   | BType "->" Type
 
@@ -93,6 +109,10 @@ module HASKELL-SYNTAX
     syntax OptBangAType ::= OptBang AType
     syntax OptBang ::= "!" | "" [onlyLabel, klabel('emptyBang)]
     syntax AType ::= GTyCon
+                   | TyVar
+                   | "(" Types ")"
+                   | "[" Type "]"
+                   | "(" Type ")"
 
     syntax GTyCon ::= QTyCon
 
@@ -120,16 +140,17 @@ module HASKELL-SYNTAX
                       | LExp
 
     syntax LExp ::= "\\" APats "->" Exp
-//                  | "let" Decls "in" Exp
+                  | "let" Decls "in" Exp
                   | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp
 //                  | "case" Exp "of" "{" Alts "}"
 //                  | "do" "{" Stmts "}"
-//                  | Fexp
-//    syntax Fexp ::= AExp | Fexp AExp
+                  | Fexp
+    syntax Fexp ::= AExp | Fexp AExp
 
     syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
 
-    syntax AExp ::= Literal
+    syntax AExp ::= GCon
+                  | Literal
                   | "(" InfixExp QOp ")"
                   | "(" QOp InfixExp ")"
 
@@ -158,13 +179,18 @@ module HASKELL-SYNTAX
     syntax GCon ::= "()"
                   | "[]"
                   | "(,{,})"
-//                  | QCon
+                  | QCon
 
-    syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
+    //syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
 
-    syntax Var ::= VarId | "(" VarSym ")"
-    syntax Con ::= ConId | "(" ConSym ")"
-    syntax QVarOp ::= OpId
-    syntax QConOp ::= OpId
+    syntax Var ::= VarId //| "(" VarSym ")"
+    syntax QVar ::= QVarId
+    syntax Con ::= ConId //| "(" ConSym ")"
+    syntax QCon ::= QConId //| "(" GConSym ")"
+    syntax QVarOp ::= QVarSym
+    syntax QConOp ::= GConSym
     syntax QOp ::= QVarOp | QConOp
+    syntax GConSym ::= ":" | QConSym
+
+configuration <k> $PGM:Module </k>
 endmodule
