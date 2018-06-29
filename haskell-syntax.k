@@ -137,6 +137,8 @@ module HASKELL-SYNTAX
     syntax Rhs ::= "=" Exp
                  | "=" Exp "where" Decls
 
+    syntax Exps ::= List{Exp, ","}
+
     syntax Exp ::= InfixExp "::" Type
                  | InfixExp "::" Context "=>" Type
                  | InfixExp
@@ -155,8 +157,14 @@ module HASKELL-SYNTAX
 
     syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
 
-    syntax AExp ::= GCon
+//    syntax OptWhereDecls ::= "where" Decls | ""
+
+    syntax AExp ::= QVar
+                  | GCon
                   | Literal
+                  | "(" Exp ")"
+                  | "(" Exps ")"
+                  | "[" Exps "]"
                   | "(" InfixExp QOp ")"
                   | "(" QOp InfixExp ")"
 
@@ -174,6 +182,7 @@ module HASKELL-SYNTAX
 
     syntax APat ::= Var
                   | Var "@" APat
+                  | GCon
 //                  | QCon FPats
                   | Literal
 //                  _
