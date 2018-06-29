@@ -89,7 +89,7 @@ module HASKELL-SYNTAX
     syntax DeclsList ::= List{Decl, ";"}
 
     syntax Decl ::= GenDecl
-//                  | FunLhs Rhs
+                  | FunLhs Rhs
                   | Pat Rhs
 
     syntax GenDecl ::= Vars "::" Type
@@ -129,6 +129,10 @@ module HASKELL-SYNTAX
     syntax SimpleType ::= TyCon TyVars
     syntax Constrs ::= List{Constr, "|"}
     syntax Constr ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) 
+
+    syntax FunLhs ::= Var APat APats
+//                    | Pat VarOp Pat
+                    | "(" FunLhs ")" APat APats
 
     syntax Rhs ::= "=" Exp
                  | "=" Exp "where" Decls
