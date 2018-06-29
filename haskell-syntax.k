@@ -112,8 +112,7 @@ module HASKELL-SYNTAX
     syntax OptBang ::= "!" | "" [onlyLabel, klabel('emptyBang)]
     syntax AType ::= GTyCon
                    | TyVar
-                   | "(" Type "," Type ")"
-                   | "(" Type "," Type "," Types ")"
+                   | "(" Type "," Types ")"
                    | "[" Type "]"
                    | "(" Type ")"
 
@@ -164,8 +163,9 @@ module HASKELL-SYNTAX
                   | GCon
                   | Literal
                   | "(" Exp ")"
-                  | "(" Exps ")"
-                  | "[" Exps "]"
+                  | "(" Exp "," Exps ")"
+                  | "[" Exp "]"
+                  | "[" Exp "," Exps "]"
                   | "(" InfixExp QOp ")"
                   | "(" QOp InfixExp ")"
 
@@ -194,8 +194,9 @@ module HASKELL-SYNTAX
                   | Literal
 //                  _
                   | "(" Pat ")"
-                  | "(" Pats ")"
-                  | "[" Pats "]"
+                  | "(" Pat "," Pats ")"
+                  | "[" Pat "]"
+                  | "[" Pat "," Pats "]"
                   | "~" APat
 
     syntax GCon ::= "()"
