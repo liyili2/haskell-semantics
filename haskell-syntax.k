@@ -112,6 +112,7 @@ module HASKELL-SYNTAX
     syntax OptBang ::= "!" | "" [onlyLabel, klabel('emptyBang)]
     syntax AType ::= GTyCon
                    | TyVar
+                   | "(" Type "," Type ")"
                    | "(" Type "," Type "," Types ")"
                    | "[" Type "]"
                    | "(" Type ")"
