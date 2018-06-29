@@ -112,7 +112,7 @@ module HASKELL-SYNTAX
     syntax OptBang ::= "!" | "" [onlyLabel, klabel('emptyBang)]
     syntax AType ::= GTyCon
                    | TyVar
-                   | "(" Types ")"
+                   | "(" Type "," Type "," Types ")"
                    | "[" Type "]"
                    | "(" Type ")"
 
@@ -150,7 +150,7 @@ module HASKELL-SYNTAX
     syntax LExp ::= "\\" APats "->" Exp
                   | "let" Decls "in" Exp
                   | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp
-//                  | "case" Exp "of" "{" Alts "}"
+                  | "case" Exp "of" "{" Alts "}"
 //                  | "do" "{" Stmts "}"
                   | Fexp
     syntax Fexp ::= AExp | Fexp AExp
@@ -167,6 +167,12 @@ module HASKELL-SYNTAX
                   | "[" Exps "]"
                   | "(" InfixExp QOp ")"
                   | "(" QOp InfixExp ")"
+
+    syntax AltList ::= List{Pat, ";"}
+    syntax Alts ::= Alt | Alt ";" AltList
+
+    syntax Alt ::= Pat "->" Exp
+                 | Pat "->" Exp "where" Decls
 
     syntax Pats ::= List{Pat, ","}
 
