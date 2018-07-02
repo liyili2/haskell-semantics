@@ -84,7 +84,7 @@ module HASKELL-SYNTAX
                      | "class" TyCls TyVar
 //                     | "instance" QTycls Inst
                      | "default" Types
-//                     | "foreign" FDecl
+                     | "foreign" FDecl
                      | Decl
 
     syntax Decls ::= "{" DeclsList "}"
@@ -116,6 +116,7 @@ module HASKELL-SYNTAX
     syntax OptBang ::= "!" | "" [onlyLabel, klabel('emptyBang)]
     
     syntax ATypes ::= AType | AType ATypes
+    syntax ATypeList ::= List{AType, ""}
     syntax AType ::= GTyCon
                    | TyVar
                    | "(" TypeTuple ")"
@@ -130,11 +131,30 @@ module HASKELL-SYNTAX
     syntax Classes ::= List{Class, ","}
 
     syntax Class ::= QTyCls TyVar
-//                   | QTyCls Tyvar ATypes
+                   | QTyCls "(" TyVar ATypes ")"
 
     syntax SimpleType ::= TyCon TyVars
     syntax Constrs ::= Constr | Constr "|" Constrs
     syntax Constr ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) 
+    
+    syntax FDecl ::= "import" CallConv Impent Var "::" FType
+                   | "import" CallConv Safety Impent Var "::" FType
+                   | "export" CallConv Safety Expent Var "::" FType
+                   
+    syntax CallConv ::= "ccall" | "stdcall" | "cplusplus" | "jvm" | "dotnet"
+    
+    syntax Impent ::= "IMPENT" // temporary
+    syntax Expent ::= "EXPENT" // temporary
+    
+    syntax Safety ::= "unsafe" | "safe"
+    
+    syntax FType ::= FrType
+                   | FaType "->" FType // unsure about this one syntax is ambiguous
+    
+    syntax FrType ::= FaType
+                    | "()"
+                    
+    syntax FaType ::= QTyCon ATypeList
 
     syntax FunLhs ::= Var APat APats
 //                    | Pat VarOp Pat
