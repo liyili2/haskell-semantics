@@ -22,8 +22,8 @@ module Euler1 where
     | otherwise = do          
         {x <- getLine         
         ;xs <- getMultipleLines (n-1)    
-        ;let ret = (x:xs)    
-        ;return ret
+        ;let {ret = (x:xs)    
+        };return ret
 
 };genNumber m n = (natSum (quot (m - 1) n)) * n
 

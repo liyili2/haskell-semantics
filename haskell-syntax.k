@@ -83,6 +83,7 @@ module HASKELL-SYNTAX
                      | "foreign" FDecl
                      | Decl
 
+    syntax OptDecls ::= "where" Decls | "" [onlyLabel, klabel('emptyDecls)]
     syntax Decls ::= "{" DeclsList "}"
     syntax DeclsList ::= List{Decl, ";"}
 
@@ -197,11 +198,20 @@ module HASKELL-SYNTAX
     syntax FaType ::= QTyCon ATypeList
 
     syntax FunLhs ::= Var APat APats
-//                    | Pat VarOp Pat
+                    | Pat VarOp Pat
                     | "(" FunLhs ")" APat APats
 
-    syntax Rhs ::= "=" Exp
-                 | "=" Exp "where" Decls
+    syntax Rhs ::= "=" Exp OptDecls
+                 | GdRhs OptDecls
+
+    syntax GdRhs ::= Guards "=" Exp
+                   | Guards "=" Exp GdRhs
+
+    syntax Guards ::= "|" GuardList
+    syntax GuardList ::= Guard | Guard "," GuardList
+    syntax Guard ::= Pat "<-" InfixExp
+                   | "let" Decls
+                   | InfixExp
 
     syntax ExpList ::= Exp | Exp "," ExpList
     syntax ExpTuple ::= Exp "," Exp | Exp "," ExpTuple
@@ -264,7 +274,7 @@ module HASKELL-SYNTAX
     syntax APat ::= Var
                   | Var "@" APat
                   | GCon
-//                  | QCon FPats
+                  | QCon "{" FPats "}"
                   | Literal
 //                  _
                   | "(" Pat ")"
