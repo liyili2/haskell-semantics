@@ -25,9 +25,9 @@ module HASKELL-SYNTAX
 //    syntax ConSym ::= Token{"([;::)(]~)"} [onlyLabel]
 //    syntax ReservedOp ::= ".." | ":" | "::" | "=" | "\\" | "|" | "<-" | "->" | "@" | "~" | "=>"
 
-    syntax VarId ::= "size" [onlyLabel] | Token{[a-z][0-9 a-z A-Z \']*}   [onlyLabel]
+    syntax VarId ::= "size" [onlyLabel] | Token{[a-z \_][0-9 a-z A-Z \' \_]*}   [onlyLabel]
     
-    syntax ConId ::= Token{[A-Z][0-9 a-z A-Z \']*}   [onlyLabel]
+    syntax ConId ::= Token{[A-Z][0-9 a-z A-Z \' \_]*}   [onlyLabel]
 
     syntax TyVarTuple ::= TyVar "," TyVar | TyVar "," TyVarTuple
     syntax TyVars ::= List{TyVar, ""} //used in SimpleType syntax
@@ -64,7 +64,7 @@ module HASKELL-SYNTAX
 
     syntax ImpDecls ::= List{ImpDecl, ";"}
 
-    syntax Exports ::= "(" ExportList ")" //| "(" ExportList ",)"
+    syntax Exports ::= "(" ExportList ")" | "(" ExportList ",)"
 
     syntax ExportList ::= List{Export, ","}
 
@@ -120,6 +120,10 @@ module HASKELL-SYNTAX
                    | "(" Type ")"
 
     syntax GTyCon ::= QTyCon
+                    | "()"
+                    | "[]"
+                    | "(->)"
+                    | "(,{,})"
 
     syntax Context ::= Class
                      | Classes
