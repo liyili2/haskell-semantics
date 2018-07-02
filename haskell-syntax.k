@@ -75,9 +75,9 @@ module HASKELL-SYNTAX
     syntax TopDecls ::= List{TopDecl, ";"}
 
     syntax TopDecl ::= "type" SimpleType "=" Type
-                     | "data" SimpleType
-                     | "data" SimpleType "=" Constrs
-                     | "newtype" SimpleType "=" NewConstr
+                     | "data" OptContext SimpleType OptConstrs
+//                     | "data" SimpleType "=" Constrs
+                     | "newtype" OptContext SimpleType "=" NewConstr
                      | "class" TyCls TyVar
                      | "instance" QTyCls Inst
                      | "default" Types
@@ -125,6 +125,7 @@ module HASKELL-SYNTAX
                     | "(->)"
                     | "(,{,})"
 
+    syntax OptContext ::= Context "=>" | "" [onlyLabel, klabel('emptyContext)]
     syntax Context ::= Class
                      | Classes
 
@@ -136,6 +137,7 @@ module HASKELL-SYNTAX
     syntax SimpleClass ::= QTyCls TyVar
 
     syntax SimpleType  ::= TyCon TyVars
+    syntax OptConstrs  ::= "=" Constrs | "" [onlyLabel, klabel('emptyConstrs)]
     syntax Constrs     ::= Constr | Constr "|" Constrs
     syntax Constr      ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) 
     
