@@ -83,7 +83,7 @@ module HASKELL-SYNTAX
 //                     | "newtype" SimpleType "=" NewConstr
                      | "class" TyCls TyVar
 //                     | "instance" QTycls Inst
-//                     | "default" Types
+                     | "default" Types
 //                     | "foreign" FDecl
                      | Decl
 
@@ -104,7 +104,7 @@ module HASKELL-SYNTAX
     syntax Vars ::= Var | Var "," Vars
 
     syntax TypeTuple ::= Type "," Type | Type "," TypeTuple
-//    syntax Types ::= List{Type, ","}
+    syntax Types ::= List{Type, ","}
     syntax Type ::= BType
                   | BType "->" Type
 
