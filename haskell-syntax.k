@@ -95,12 +95,13 @@ module HASKELL-SYNTAX
                   | Pat Rhs
 
     syntax GenDecl ::= Vars "::" Type
-//                     | Vars "::" Context "=>" Type
+                     | Vars "::" Context "=>" Type
 //                     | Fixity Ops
 //                     | Fixity Integer Ops
 
 //    syntax Ops ::= List{Op, ","}
-    syntax Vars ::= List{Var, ","}
+//    syntax Vars ::= List{Var, ","}
+    syntax Vars ::= Var | Var "," Vars
 
     syntax Types ::= List{Type, ","}
     syntax Type ::= BType
@@ -112,6 +113,8 @@ module HASKELL-SYNTAX
     syntax OptBangATypes ::= List{OptBangAType, ""}
     syntax OptBangAType ::= OptBang AType
     syntax OptBang ::= "!" | "" [onlyLabel, klabel('emptyBang)]
+    
+    syntax ATypes ::= AType | AType ATypes
     syntax AType ::= GTyCon
                    | TyVar
                    | "(" Type "," Types ")"
@@ -139,6 +142,8 @@ module HASKELL-SYNTAX
     syntax Rhs ::= "=" Exp
                  | "=" Exp "where" Decls
 
+    syntax ExpList ::= Exp | Exp "," ExpList
+    syntax ExpTuple ::= Exp "," Exp | Exp "," ExpTuple
     syntax Exps ::= List{Exp, ","}
 
     syntax Exp ::= InfixExp "::" Type
@@ -165,9 +170,8 @@ module HASKELL-SYNTAX
                   | GCon
                   | Literal
                   | "(" Exp ")"
-                  | "(" Exp "," Exps ")"
-                  | "[" Exp "]"
-                  | "[" Exp "," Exps "]"
+                  | "(" ExpTuple ")"
+                  | "[" ExpList "]"
                   | "(" InfixExp QOp ")"
                   | "(" QOp InfixExp ")"
 
@@ -184,6 +188,8 @@ module HASKELL-SYNTAX
                   | "let" Decls ";"
                   | ";"
 
+    syntax PatTuple ::= Pat "," Pat | Pat "," PatTuple
+    syntax PatList ::= Pat | Pat "," PatList
     syntax Pats ::= List{Pat, ","}
 
     syntax Pat ::= LPat QConOp Pat
@@ -192,8 +198,9 @@ module HASKELL-SYNTAX
     syntax LPat ::= APat
                   | "-" Integer
 //                  | "-" Float
-                  | GCon APats
+                  | GCon APatList
 
+    syntax APatList ::= APat | APat APatList
     syntax APats ::= List{APat, ""}
 
     syntax APat ::= Var
@@ -203,10 +210,13 @@ module HASKELL-SYNTAX
                   | Literal
 //                  _
                   | "(" Pat ")"
-                  | "(" Pat "," Pats ")"
+                  | "(" PatTuple ")"
                   | "[" Pat "]"
-                  | "[" Pat "," Pats "]"
+                  | "[" PatList "]"
                   | "~" APat
+    
+    syntax FPats ::= List{FPat, ","}
+    syntax FPat ::= QVar "=" Pat
 
     syntax GCon ::= "()"
                   | "[]"
