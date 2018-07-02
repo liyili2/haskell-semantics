@@ -12,8 +12,8 @@ module AStack( Stack, push, pop, top, size ) where
  
 }};pop :: Stack a -> (a, Stack a)  
 ;pop (MkStack x s)  
-  = (x, case s of {r -> i r where {i x = x}}) -- (pop Empty) is an error  
+  = (x, case s of {r -> i r where {i x = x}})
  
 ;top :: Stack a -> a  
-;top (MkStack x s) = x                        -- (top Empty) is an error  
+;top (MkStack x s) = x 
 } 
