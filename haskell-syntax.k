@@ -77,8 +77,8 @@ module HASKELL-SYNTAX
     syntax TopDecl ::= "type" SimpleType "=" Type
                      | "data" OptContext SimpleType OptConstrs OptDeriving
                      | "newtype" OptContext SimpleType "=" NewConstr OptDeriving
-                     | "class" TyCls TyVar
-                     | "instance" QTyCls Inst
+                     | "class" OptSContext TyCls TyVar OptCDecls
+                     | "instance" OptSContext QTyCls Inst
                      | "default" Types
                      | "foreign" FDecl
                      | Decl
@@ -89,6 +89,14 @@ module HASKELL-SYNTAX
     syntax Decl ::= GenDecl
                   | FunLhs Rhs
                   | Pat Rhs
+
+    syntax OptCDecls ::= "where" CDecls | "" [onlyLabel, klabel('emptyCDecls)]
+    syntax CDecls ::= "{" CDeclsList "}"
+    syntax CDeclsList ::= List{CDecl, ";"}
+
+    syntax CDecl ::= GenDecl
+                  | FunLhs Rhs
+                  | Var Rhs
 
     syntax GenDecl ::= Vars "::" Type
                      | Vars "::" Context "=>" Type
@@ -132,6 +140,12 @@ module HASKELL-SYNTAX
 
     syntax Class       ::= QTyCls TyVar
                          | QTyCls "(" TyVar ATypes ")"
+    
+    syntax OptSContext ::= SContext "=>" | "" [onlyLabel, klabel('emptySContext)]
+    syntax SContext ::= SimpleClass
+                      | SimpleClassList
+    
+    syntax SimpleClassList ::= List{SimpleClass, ","}
 
     syntax SimpleClass ::= QTyCls TyVar
 
@@ -142,7 +156,7 @@ module HASKELL-SYNTAX
     syntax Constr      ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) 
                          | SubConstr ConOp SubConstr
                          | Con "{" FieldDeclList "}"
-    
+
     syntax NewConstr   ::= Con AType
                          | Con "{" Var "::" Type "}"
                          
