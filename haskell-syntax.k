@@ -26,13 +26,15 @@ module HASKELL-SYNTAX
 //    syntax ReservedOp ::= ".." | ":" | "::" | "=" | "\\" | "|" | "<-" | "->" | "@" | "~" | "=>"
 
     syntax VarId ::= "size" [onlyLabel] | Token{[a-z][0-9 a-z A-Z \']*}   [onlyLabel]
+    
     syntax ConId ::= Token{[A-Z][0-9 a-z A-Z \']*}   [onlyLabel]
 
     syntax TyVars ::= List{TyVar, ""} //used in SimpleType syntax
     syntax TyVar ::= VarId
     syntax TyCon ::= ConId
     syntax TyCls ::= ConId
-    syntax ModId ::= ConId
+    
+    syntax ModId ::= ConId | ConId "." ModId
 
     syntax QVarId ::= VarId | ModId "." VarId
     syntax QConId ::= ConId | ModId "." ConId
@@ -151,7 +153,7 @@ module HASKELL-SYNTAX
                   | "let" Decls "in" Exp
                   | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp
                   | "case" Exp "of" "{" Alts "}"
-//                  | "do" "{" Stmts "}"
+                  | "do" "{" Stmts "}"
                   | Fexp
     syntax Fexp ::= AExp | Fexp AExp
 
@@ -174,6 +176,13 @@ module HASKELL-SYNTAX
 
     syntax Alt ::= Pat "->" Exp
                  | Pat "->" Exp "where" Decls
+                 
+    syntax Stmts ::= StmtList Exp OptSemicolon
+    syntax StmtList ::= List{Stmt, ""}
+    syntax Stmt ::= Exp ";"
+                  | Pat "<-" Exp ";"
+                  | "let" Decls ";"
+                  | ";"
 
     syntax Pats ::= List{Pat, ","}
 
