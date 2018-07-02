@@ -76,7 +76,6 @@ module HASKELL-SYNTAX
 
     syntax TopDecl ::= "type" SimpleType "=" Type
                      | "data" OptContext SimpleType OptConstrs
-//                     | "data" SimpleType "=" Constrs
                      | "newtype" OptContext SimpleType "=" NewConstr
                      | "class" TyCls TyVar
                      | "instance" QTyCls Inst
@@ -139,10 +138,23 @@ module HASKELL-SYNTAX
     syntax SimpleType  ::= TyCon TyVars
     syntax OptConstrs  ::= "=" Constrs | "" [onlyLabel, klabel('emptyConstrs)]
     syntax Constrs     ::= Constr | Constr "|" Constrs
+    syntax SubConstr   ::= BType | "!" AType
     syntax Constr      ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) 
+                         | SubConstr ConOp SubConstr
+                         | Con "{" FieldDeclList "}"
     
     syntax NewConstr   ::= Con AType
                          | Con "{" Var "::" Type "}"
+                         
+    syntax FieldDeclList ::= List{FieldDecl, ","}
+    
+    syntax FieldDecl ::= Vars "::" Type
+                       | Vars "::" "!" AType
+                       
+    syntax Deriving ::= "deriving" DClass
+                      | "deriving" DClassList
+    syntax DClassList ::= List{DClass, ","}
+    syntax DClass ::= QTyCls
                        
     syntax Inst        ::= GTyCon
                          | "(" GTyCon TyVars ")"
