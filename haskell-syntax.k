@@ -75,8 +75,8 @@ module HASKELL-SYNTAX
     syntax TopDecls ::= List{TopDecl, ";"}
 
     syntax TopDecl ::= "type" SimpleType "=" Type
-                     | "data" OptContext SimpleType OptConstrs
-                     | "newtype" OptContext SimpleType "=" NewConstr
+                     | "data" OptContext SimpleType OptConstrs OptDeriving
+                     | "newtype" OptContext SimpleType "=" NewConstr OptDeriving
                      | "class" TyCls TyVar
                      | "instance" QTyCls Inst
                      | "default" Types
@@ -150,7 +150,8 @@ module HASKELL-SYNTAX
     
     syntax FieldDecl ::= Vars "::" Type
                        | Vars "::" "!" AType
-                       
+
+    syntax OptDeriving ::= Deriving | "" [onlyLabel, klabel('emptyDeriving)]
     syntax Deriving ::= "deriving" DClass
                       | "deriving" DClassList
     syntax DClassList ::= List{DClass, ","}
