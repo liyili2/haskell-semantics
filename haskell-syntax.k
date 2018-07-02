@@ -29,6 +29,7 @@ module HASKELL-SYNTAX
     
     syntax ConId ::= Token{[A-Z][0-9 a-z A-Z \']*}   [onlyLabel]
 
+    syntax TyVarTuple ::= TyVar "," TyVar | TyVar "," TyVarTuple
     syntax TyVars ::= List{TyVar, ""} //used in SimpleType syntax
     syntax TyVar ::= VarId
     syntax TyCon ::= ConId
@@ -61,8 +62,6 @@ module HASKELL-SYNTAX
                   | "{" ImpDecls "}"
                   | "{" TopDecls "}"
 
-//    syntax Body1 ::= ImpDecls ";" TopDecls
-
     syntax ImpDecls ::= List{ImpDecl, ";"}
 
     syntax Exports ::= "(" ExportList ")" //| "(" ExportList ",)"
@@ -75,14 +74,12 @@ module HASKELL-SYNTAX
 
     syntax TopDecls ::= List{TopDecl, ";"}
 
-//    syntax TopDecl ::= Decl // TEMPORARY
-
     syntax TopDecl ::= "type" SimpleType "=" Type
                      | "data" SimpleType
                      | "data" SimpleType "=" Constrs
-//                     | "newtype" SimpleType "=" NewConstr
+                     | "newtype" SimpleType "=" NewConstr
                      | "class" TyCls TyVar
-//                     | "instance" QTycls Inst
+                     | "instance" QTyCls Inst
                      | "default" Types
                      | "foreign" FDecl
                      | Decl
@@ -99,8 +96,7 @@ module HASKELL-SYNTAX
 //                     | Fixity Ops
 //                     | Fixity Integer Ops
 
-//    syntax Ops ::= List{Op, ","}
-//    syntax Vars ::= List{Var, ","}
+    syntax Ops ::= Op | Op "," Ops
     syntax Vars ::= Var | Var "," Vars
 
     syntax TypeTuple ::= Type "," Type | Type "," TypeTuple
@@ -130,12 +126,23 @@ module HASKELL-SYNTAX
 
     syntax Classes ::= List{Class, ","}
 
-    syntax Class ::= QTyCls TyVar
-                   | QTyCls "(" TyVar ATypes ")"
+    syntax Class       ::= QTyCls TyVar
+                         | QTyCls "(" TyVar ATypes ")"
 
-    syntax SimpleType ::= TyCon TyVars
-    syntax Constrs ::= Constr | Constr "|" Constrs
-    syntax Constr ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) 
+    syntax SimpleClass ::= QTyCls TyVar
+
+    syntax SimpleType  ::= TyCon TyVars
+    syntax Constrs     ::= Constr | Constr "|" Constrs
+    syntax Constr      ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) 
+    
+    syntax NewConstr   ::= Con AType
+                         | Con "{" Var "::" Type "}"
+                       
+    syntax Inst        ::= GTyCon
+                         | "(" GTyCon TyVars ")"
+                         | "(" TyVarTuple ")"
+                         | "[" TyVar "]"
+                         | "(" TyVar "->" TyVar ")"
     
     syntax FDecl ::= "import" CallConv Impent Var "::" FType
                    | "import" CallConv Safety Impent Var "::" FType
@@ -243,12 +250,15 @@ module HASKELL-SYNTAX
 
     //syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
 
-    syntax Var ::= VarId //| "(" VarSym ")"
-    syntax QVar ::= QVarId
-    syntax Con ::= ConId //| "(" ConSym ")"
-    syntax QCon ::= QConId //| "(" GConSym ")"
-    syntax QVarOp ::= QVarSym
-    syntax QConOp ::= GConSym
+    syntax Var ::= VarId | "(" VarSym ")"
+    syntax QVar ::= QVarId | "(" QVarSym ")"
+    syntax Con ::= ConId | "(" ConSym ")"
+    syntax QCon ::= QConId | "(" GConSym ")"
+    syntax VarOp ::= VarSym | "`" VarId "`"
+    syntax QVarOp ::= QVarSym | "`" QVarId "`"
+    syntax ConOp ::= ConSym | "`" ConId "`"
+    syntax QConOp ::= GConSym | "`" QConId "`"
+    syntax Op ::= VarOp | ConOp
     syntax QOp ::= QVarOp | QConOp
     syntax GConSym ::= ":" | QConSym
 
