@@ -103,7 +103,8 @@ module HASKELL-SYNTAX
 //    syntax Vars ::= List{Var, ","}
     syntax Vars ::= Var | Var "," Vars
 
-    syntax Types ::= List{Type, ","}
+    syntax TypeTuple ::= Type "," Type | Type "," TypeTuple
+//    syntax Types ::= List{Type, ","}
     syntax Type ::= BType
                   | BType "->" Type
 
@@ -117,7 +118,7 @@ module HASKELL-SYNTAX
     syntax ATypes ::= AType | AType ATypes
     syntax AType ::= GTyCon
                    | TyVar
-                   | "(" Type "," Types ")"
+                   | "(" TypeTuple ")"
                    | "[" Type "]"
                    | "(" Type ")"
 
@@ -132,7 +133,7 @@ module HASKELL-SYNTAX
 //                   | QTyCls Tyvar ATypes
 
     syntax SimpleType ::= TyCon TyVars
-    syntax Constrs ::= List{Constr, "|"}
+    syntax Constrs ::= Constr | Constr "|" Constrs
     syntax Constr ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) 
 
     syntax FunLhs ::= Var APat APats
@@ -144,7 +145,6 @@ module HASKELL-SYNTAX
 
     syntax ExpList ::= Exp | Exp "," ExpList
     syntax ExpTuple ::= Exp "," Exp | Exp "," ExpTuple
-    syntax Exps ::= List{Exp, ","}
 
     syntax Exp ::= InfixExp "::" Type
                  | InfixExp "::" Context "=>" Type
@@ -175,8 +175,7 @@ module HASKELL-SYNTAX
                   | "(" InfixExp QOp ")"
                   | "(" QOp InfixExp ")"
 
-    syntax AltList ::= List{Pat, ";"}
-    syntax Alts ::= Alt | Alt ";" AltList
+    syntax Alts ::= Alt | Alt ";" Alts
 
     syntax Alt ::= Pat "->" Exp
                  | Pat "->" Exp "where" Decls
@@ -190,7 +189,6 @@ module HASKELL-SYNTAX
 
     syntax PatTuple ::= Pat "," Pat | Pat "," PatTuple
     syntax PatList ::= Pat | Pat "," PatList
-    syntax Pats ::= List{Pat, ","}
 
     syntax Pat ::= LPat QConOp Pat
                  | LPat
