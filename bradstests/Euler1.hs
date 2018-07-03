@@ -21,7 +21,7 @@ module Euler1 where
     | n <= 0 = return []
     | otherwise = do          
         {x <- getLine         
-        ;xs <- getMultipleLines (n-1)    
+        ;xs <- getMultipleLines (n - 1)    
         ;let {ret = (x:xs)    
         };return ret
 
