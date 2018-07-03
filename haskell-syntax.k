@@ -314,7 +314,7 @@ module HASKELL-SYNTAX
     syntax ConOp ::= ConSym | "`" ConId "`"
     syntax QConOp ::= GConSym | "`" QConId "`"
     syntax Op ::= VarOp | ConOp
-    syntax QOp ::= QVarOp | QConOp | VarSym
+    syntax QOp ::= QVarOp | QConOp
     syntax GConSym ::= ":" | QConSym
 
 configuration <k> $PGM:Module </k>
