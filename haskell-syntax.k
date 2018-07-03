@@ -6,7 +6,8 @@ module HASKELL-SYNTAX
     //syntax Digit ::= AscDigit
     //syntax AscDigit ::= Token{[0-9]}   [onlyLabel]
     syntax Literal ::= Integer | String
-    syntax VarSym ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
+//    syntax VarSym ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
+    syntax VarSym ::= Token{[\- \$ \<][\=]*}   [onlyLabel]
     syntax ConSym ::= Token{[\:][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 //    syntax Symbol ::= AscSymbol
 //    syntax AscSymbol ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]}   [onlyLabel]
@@ -23,16 +24,19 @@ module HASKELL-SYNTAX
 //    syntax ReservedId ::= "case" | "class" | "data" | "default" | "deriving" | "do" | "else" | "->" | "@" | "~" | "=>"
 
 //    syntax ConSym ::= Token{"([;::)(]~)"} [onlyLabel]
-    syntax ReservedOp ::= ".." | ":" | "::" | "=" | "\\" | "|" | "<-" | "->" | "@" | "~" | "=>"
+//    syntax ReservedOp ::= ".." | ":" | "::" | "=" | "\\" | "|" | "<-" | "->" | "@" | "~" | "=>"
 
-    syntax VarId ::= Token{[a-z][0-9 a-z A-Z \']*}   [onlyLabel]
-    syntax ConId ::= Token{[A-Z][0-9 a-z A-Z \']*}   [onlyLabel]
+    syntax VarId ::= "size" [onlyLabel] | Token{[a-z \_][0-9 a-z A-Z \' \_]*}   [onlyLabel]
+    
+    syntax ConId ::= Token{[A-Z][0-9 a-z A-Z \' \_]*}   [onlyLabel]
 
+    syntax TyVarTuple ::= TyVar "," TyVar | TyVar "," TyVarTuple
     syntax TyVars ::= List{TyVar, ""} //used in SimpleType syntax
     syntax TyVar ::= VarId
     syntax TyCon ::= ConId
     syntax TyCls ::= ConId
-    syntax ModId ::= ConId
+    
+    syntax ModId ::= ConId | ConId "." ModId
 
     syntax QVarId ::= VarId | ModId "." VarId
     syntax QConId ::= ConId | ModId "." ConId
@@ -41,11 +45,13 @@ module HASKELL-SYNTAX
     syntax QVarSym ::= VarSym | ModId "." VarSym
     syntax QConSym ::= ConSym | ModId "." ConSym
 
-    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
+//    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
+
+    syntax Integer ::= Int
 
 //    syntax StringInside ::= Token{[0-9 a-z A-Z]*}   [onlyLabel]
 //    syntax String ::= "\"" StringInside "\""
-    syntax String ::= Token{[\"][0-9 a-z A-Z]*[\"]}   [onlyLabel]
+//    syntax String ::= Token{[\"][0-9 a-z A-Z]*[\"]}   [onlyLabel]
 
 //  Section 10.5
 
@@ -57,47 +63,60 @@ module HASKELL-SYNTAX
                   | "{" ImpDecls "}"
                   | "{" TopDecls "}"
 
-//    syntax Body1 ::= ImpDecls ";" TopDecls
-
     syntax ImpDecls ::= List{ImpDecl, ";"}
 
-    syntax Exports ::= "(" ExportList ")" //| "(" ExportList ",)"
+    syntax Exports ::= "(" ExportList ")" | "(" ExportList ",)"
 
     syntax ExportList ::= List{Export, ","}
 
-    syntax Export ::= QVar | QTyCon
+    syntax Export ::= QVar 
+                    | QTyCon OptCNames
+                    | "module" ModId
 
     syntax ImpDecl ::= "import" ModId
+                     | "" [onlyLabel, klabel('emptyImpDecl)]
+
+    syntax OptCNames ::= "(..)" | "(" CNames ")" | "" [onlyLabel, klabel('emptyOptCNames)]
+    syntax CNames ::= List{CName, ","}
+
+    syntax CName ::= Var | Con
 
     syntax TopDecls ::= List{TopDecl, ";"}
 
-//    syntax TopDecl ::= Decl // TEMPORARY
-
     syntax TopDecl ::= "type" SimpleType "=" Type
-                     | "data" SimpleType
-                     | "data" SimpleType "=" Constrs
-//                     | "newtype" SimpleType "=" NewConstr
-                     | "class" TyCls TyVar
-//                     | "instance" QTycls Inst
-//                     | "default" Types
-//                     | "foreign" FDecl
+                     | "data" OptContext SimpleType OptConstrs OptDeriving
+                     | "newtype" OptContext SimpleType "=" NewConstr OptDeriving
+                     | "class" OptSContext TyCls TyVar OptCDecls
+                     | "instance" OptSContext QTyCls Inst
+                     | "default" Types
+                     | "foreign" FDecl
                      | Decl
 
+    syntax OptDecls ::= "where" Decls | "" [onlyLabel, klabel('emptyDecls)]
     syntax Decls ::= "{" DeclsList "}"
     syntax DeclsList ::= List{Decl, ";"}
 
     syntax Decl ::= GenDecl
-//                  | FunLhs Rhs
+                  | FunLhs Rhs
                   | Pat Rhs
 
+    syntax OptCDecls ::= "where" CDecls | "" [onlyLabel, klabel('emptyCDecls)]
+    syntax CDecls ::= "{" CDeclsList "}"
+    syntax CDeclsList ::= List{CDecl, ";"}
+
+    syntax CDecl ::= GenDecl
+                  | FunLhs Rhs
+                  | Var Rhs
+
     syntax GenDecl ::= Vars "::" Type
-//                     | Vars "::" Context "=>" Type
+                     | Vars "::" Context "=>" Type
 //                     | Fixity Ops
 //                     | Fixity Integer Ops
 
-//    syntax Ops ::= List{Op, ","}
-    syntax Vars ::= List{Var, ","}
+    syntax Ops ::= Op | Op "," Ops
+    syntax Vars ::= Var | Var "," Vars
 
+    syntax TypeTuple ::= Type "," Type | Type "," TypeTuple
     syntax Types ::= List{Type, ","}
     syntax Type ::= BType
                   | BType "->" Type
@@ -108,28 +127,106 @@ module HASKELL-SYNTAX
     syntax OptBangATypes ::= List{OptBangAType, ""}
     syntax OptBangAType ::= OptBang AType
     syntax OptBang ::= "!" | "" [onlyLabel, klabel('emptyBang)]
+    
+    syntax ATypes ::= AType | AType ATypes
+    syntax ATypeList ::= List{AType, ""}
     syntax AType ::= GTyCon
                    | TyVar
-                   | "(" Types ")"
+                   | "(" TypeTuple ")"
                    | "[" Type "]"
                    | "(" Type ")"
 
     syntax GTyCon ::= QTyCon
+                    | "()"
+                    | "[]"
+                    | "(->)"
+                    | "(,{,})"
 
+    syntax OptContext ::= Context "=>" | "" [onlyLabel, klabel('emptyContext)]
     syntax Context ::= Class
                      | Classes
 
     syntax Classes ::= List{Class, ","}
 
-    syntax Class ::= QTyCls TyVar
-//                   | QTyCls Tyvar ATypes
+    syntax Class       ::= QTyCls TyVar
+                         | QTyCls "(" TyVar ATypes ")"
+    
+    syntax OptSContext ::= SContext "=>" | "" [onlyLabel, klabel('emptySContext)]
+    syntax SContext ::= SimpleClass
+                      | SimpleClassList
+    
+    syntax SimpleClassList ::= List{SimpleClass, ","}
 
-    syntax SimpleType ::= TyCon TyVars
-    syntax Constrs ::= List{Constr, "|"}
-    syntax Constr ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) 
+    syntax SimpleClass ::= QTyCls TyVar
 
-    syntax Rhs ::= "=" Exp
-                 | "=" Exp "where" Decls
+    syntax SimpleType  ::= TyCon TyVars
+    syntax OptConstrs  ::= "=" Constrs | "" [onlyLabel, klabel('emptyConstrs)]
+    syntax Constrs     ::= Constr | Constr "|" Constrs
+    syntax SubConstr   ::= BType | "!" AType
+    syntax Constr      ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) 
+                         | SubConstr ConOp SubConstr
+                         | Con "{" FieldDeclList "}"
+
+    syntax NewConstr   ::= Con AType
+                         | Con "{" Var "::" Type "}"
+                         
+    syntax FieldDeclList ::= List{FieldDecl, ","}
+    
+    syntax FieldDecl ::= Vars "::" Type
+                       | Vars "::" "!" AType
+
+    syntax OptDeriving ::= Deriving | "" [onlyLabel, klabel('emptyDeriving)]
+    syntax Deriving ::= "deriving" DClass
+                      | "deriving" DClassList
+    syntax DClassList ::= List{DClass, ","}
+    syntax DClass ::= QTyCls
+                       
+    syntax Inst        ::= GTyCon
+                         | "(" GTyCon TyVars ")"
+                         | "(" TyVarTuple ")"
+                         | "[" TyVar "]"
+                         | "(" TyVar "->" TyVar ")"
+    
+    syntax FDecl ::= "import" CallConv Impent Var "::" FType
+                   | "import" CallConv Safety Impent Var "::" FType
+                   | "export" CallConv Safety Expent Var "::" FType
+                   
+    syntax CallConv ::= "ccall" | "stdcall" | "cplusplus" | "jvm" | "dotnet"
+    
+    syntax Impent ::= "IMPENT" // temporary
+    syntax Expent ::= "EXPENT" // temporary
+    
+    syntax Safety ::= "unsafe" | "safe"
+    
+    syntax FType ::= FrType
+                   | FaType "->" FType // unsure about this one syntax is ambiguous
+    
+    syntax FrType ::= FaType
+                    | "()"
+                    
+    syntax FaType ::= QTyCon ATypeList
+
+    syntax FunLhs ::= Var APat APats
+                    | Pat VarOp Pat
+                    | "(" FunLhs ")" APat APats
+
+    syntax Rhs ::= "=" Exp OptDecls
+                 | GdRhs OptDecls
+
+    syntax GdRhs ::= Guards "=" Exp
+                   | Guards "=" Exp GdRhs
+
+    syntax Guards ::= "|" GuardList
+    syntax GuardList ::= Guard | Guard "," GuardList
+    syntax Guard ::= Pat "<-" InfixExp
+                   | "let" Decls
+                   | InfixExp
+
+    syntax ExpList ::= Exp | Exp "," ExpList
+    syntax ExpTuple ::= Exp "," Exp | Exp "," ExpTuple
+
+    syntax OptExpComma ::= "," Exp | "" [onlyLabel, klabel('emptyExpComma)]
+    syntax OptExp ::= Exp | "" [onlyLabel, klabel('emptyExp)]
 
     syntax Exp ::= InfixExp "::" Type
                  | InfixExp "::" Context "=>" Type
@@ -142,19 +239,39 @@ module HASKELL-SYNTAX
     syntax LExp ::= "\\" APats "->" Exp
                   | "let" Decls "in" Exp
                   | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp
-//                  | "case" Exp "of" "{" Alts "}"
-//                  | "do" "{" Stmts "}"
+                  | "case" Exp "of" "{" Alts "}"
+                  | "do" "{" Stmts "}"
                   | Fexp
     syntax Fexp ::= AExp | Fexp AExp
 
     syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
 
-    syntax AExp ::= GCon
+//    syntax OptWhereDecls ::= "where" Decls | ""
+
+    syntax AExp ::= QVar
+                  | GCon
                   | Literal
+                  | "(" Exp ")"
+                  | "(" ExpTuple ")"
+                  | "[" ExpList "]"
+                  | "[" Exp OptExpComma ".." OptExp "]"
                   | "(" InfixExp QOp ")"
                   | "(" QOp InfixExp ")"
 
-    syntax Pats ::= List{Pat, ","}
+    syntax Alts ::= Alt | Alt ";" Alts
+
+    syntax Alt ::= Pat "->" Exp
+                 | Pat "->" Exp "where" Decls
+                 
+    syntax Stmts ::= StmtList Exp OptSemicolon
+    syntax StmtList ::= List{Stmt, ""}
+    syntax Stmt ::= Exp ";"
+                  | Pat "<-" Exp ";"
+                  | "let" Decls ";"
+                  | ";"
+
+    syntax PatTuple ::= Pat "," Pat | Pat "," PatTuple
+    syntax PatList ::= Pat | Pat "," PatList
 
     syntax Pat ::= LPat QConOp Pat
                  | LPat
@@ -162,19 +279,25 @@ module HASKELL-SYNTAX
     syntax LPat ::= APat
                   | "-" Integer
 //                  | "-" Float
-                  | GCon APats
+                  | GCon APatList
 
+    syntax APatList ::= APat | APat APatList
     syntax APats ::= List{APat, ""}
 
     syntax APat ::= Var
                   | Var "@" APat
-//                  | QCon FPats
+                  | GCon
+                  | QCon "{" FPats "}"
                   | Literal
 //                  _
                   | "(" Pat ")"
-                  | "(" Pats ")"
-                  | "[" Pats "]"
+                  | "(" PatTuple ")"
+                  | "[" Pat "]"
+                  | "[" PatList "]"
                   | "~" APat
+    
+    syntax FPats ::= List{FPat, ","}
+    syntax FPat ::= QVar "=" Pat
 
     syntax GCon ::= "()"
                   | "[]"
@@ -183,12 +306,15 @@ module HASKELL-SYNTAX
 
     //syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
 
-    syntax Var ::= VarId //| "(" VarSym ")"
-    syntax QVar ::= QVarId
-    syntax Con ::= ConId //| "(" ConSym ")"
-    syntax QCon ::= QConId //| "(" GConSym ")"
-    syntax QVarOp ::= QVarSym
-    syntax QConOp ::= GConSym
+    syntax Var ::= VarId | "(" VarSym ")"
+    syntax QVar ::= QVarId | "(" QVarSym ")"
+    syntax Con ::= ConId | "(" ConSym ")"
+    syntax QCon ::= QConId | "(" GConSym ")"
+    syntax VarOp ::= VarSym | "`" VarId "`"
+    syntax QVarOp ::= QVarSym | "`" QVarId "`"
+    syntax ConOp ::= ConSym | "`" ConId "`"
+    syntax QConOp ::= GConSym | "`" QConId "`"
+    syntax Op ::= VarOp | ConOp
     syntax QOp ::= QVarOp | QConOp
     syntax GConSym ::= ":" | QConSym
 
