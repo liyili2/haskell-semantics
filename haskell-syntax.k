@@ -6,7 +6,8 @@ module HASKELL-SYNTAX
     //syntax Digit ::= AscDigit
     //syntax AscDigit ::= Token{[0-9]}   [onlyLabel]
     syntax Literal ::= Integer | String
-    syntax VarSym ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
+//    syntax VarSym ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
+    syntax VarSym ::= Token{[\- \$ \<][\=]*}   [onlyLabel]
     syntax ConSym ::= Token{[\:][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 //    syntax Symbol ::= AscSymbol
 //    syntax AscSymbol ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]}   [onlyLabel]
@@ -68,9 +69,17 @@ module HASKELL-SYNTAX
 
     syntax ExportList ::= List{Export, ","}
 
-    syntax Export ::= QVar | QTyCon
+    syntax Export ::= QVar 
+                    | QTyCon OptCNames
+                    | "module" ModId
 
     syntax ImpDecl ::= "import" ModId
+                     | "" [onlyLabel, klabel('emptyImpDecl)]
+
+    syntax OptCNames ::= "(..)" | "(" CNames ")" | "" [onlyLabel, klabel('emptyOptCNames)]
+    syntax CNames ::= List{CName, ","}
+
+    syntax CName ::= Var | Con
 
     syntax TopDecls ::= List{TopDecl, ";"}
 
@@ -216,6 +225,9 @@ module HASKELL-SYNTAX
     syntax ExpList ::= Exp | Exp "," ExpList
     syntax ExpTuple ::= Exp "," Exp | Exp "," ExpTuple
 
+    syntax OptExpComma ::= "," Exp | "" [onlyLabel, klabel('emptyExpComma)]
+    syntax OptExp ::= Exp | "" [onlyLabel, klabel('emptyExp)]
+
     syntax Exp ::= InfixExp "::" Type
                  | InfixExp "::" Context "=>" Type
                  | InfixExp
@@ -242,6 +254,7 @@ module HASKELL-SYNTAX
                   | "(" Exp ")"
                   | "(" ExpTuple ")"
                   | "[" ExpList "]"
+                  | "[" Exp OptExpComma ".." OptExp "]"
                   | "(" InfixExp QOp ")"
                   | "(" QOp InfixExp ")"
 
