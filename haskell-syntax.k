@@ -6,8 +6,7 @@ module HASKELL-SYNTAX
     //syntax Digit ::= AscDigit
     //syntax AscDigit ::= Token{[0-9]}   [onlyLabel]
     syntax Literal ::= Integer | String
-//    syntax VarSym ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
-    syntax VarSym ::= Token{[\- \$ \<][\=]*}   [onlyLabel]
+    syntax VarSym ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
     syntax ConSym ::= Token{[\:][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 //    syntax Symbol ::= AscSymbol
 //    syntax AscSymbol ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]}   [onlyLabel]
@@ -45,9 +44,9 @@ module HASKELL-SYNTAX
     syntax QVarSym ::= VarSym | ModId "." VarSym
     syntax QConSym ::= ConSym | ModId "." ConSym
 
-//    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
+    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
 
-    syntax Integer ::= Int
+//    syntax Integer ::= Int
 
 //    syntax StringInside ::= Token{[0-9 a-z A-Z]*}   [onlyLabel]
 //    syntax String ::= "\"" StringInside "\""
@@ -315,7 +314,7 @@ module HASKELL-SYNTAX
     syntax ConOp ::= ConSym | "`" ConId "`"
     syntax QConOp ::= GConSym | "`" QConId "`"
     syntax Op ::= VarOp | ConOp
-    syntax QOp ::= QVarOp | QConOp
+    syntax QOp ::= QVarOp | QConOp | VarSym
     syntax GConSym ::= ":" | QConSym
 
 configuration <k> $PGM:Module </k>
