@@ -308,17 +308,19 @@ module HASKELL-SYNTAX
     syntax Pat ::= LPat QConOp Pat
                  | LPat
 
-    syntax LPat ::= APat
+    syntax LPat ::= AAPat
                   | "-" Integer
                   | "-" CusFloat
                   | GCon APatList
 
 //    syntax APatList ::= APat | APat APatList
-    syntax APatList ::= APat APats
-    syntax APats ::= List{APat, ""}
+    syntax APatList ::= AAPat APats
+    syntax APats ::= List{AAPat, ""}
+
+    syntax AAPat ::= "(" APat ")" [bracket]
 
     syntax APat ::= Var
-                  | Var "@" APat
+                  | Var "@" AAPat
                   | GCon
                   | QCon "{" FPats "}"
                   | Literal
@@ -327,7 +329,7 @@ module HASKELL-SYNTAX
                   | "(" PatTuple ")"
                   | "[" Pat "]"
                   | "[" PatList "]"
-                  | "~" APat
+                  | "~" AAPat
     
     syntax FPats ::= List{FPat, ","}
     syntax FPat ::= QVar "=" Pat
