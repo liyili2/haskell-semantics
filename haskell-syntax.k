@@ -100,12 +100,12 @@ module HASKELL-SYNTAX
                      | "data" OptContext SimpleType OptConstrs OptDeriving
                      | "newtype" OptContext SimpleType "=" NewConstr OptDeriving
                      | "class" OptSContext TyCls TyVar OptCDecls
-                     | "instance" OptSContext QTyCls Inst
+                     | "instance" OptSContext QTyCls Inst OptIDecls
                      | "default" Types
                      | "foreign" FDecl
                      | Decl
 
-    syntax OptDecls ::= "where" Decls | "" [onlyLabel, klabel('emptyDecls)]
+    syntax OptDecls ::= "where" Decls | "" [onlyLabel, klabel('emptyOptDecls)]
     syntax Decls ::= "{" DeclsList "}"
     syntax DeclsList ::= List{Decl, ";"}
 
@@ -113,13 +113,21 @@ module HASKELL-SYNTAX
                   | FunLhs Rhs
                   | Pat Rhs
 
-    syntax OptCDecls ::= "where" CDecls | "" [onlyLabel, klabel('emptyCDecls)]
+    syntax OptCDecls ::= "where" CDecls | "" [onlyLabel, klabel('emptyOptCDecls)]
     syntax CDecls ::= "{" CDeclsList "}"
     syntax CDeclsList ::= List{CDecl, ";"}
 
     syntax CDecl ::= GenDecl
-                  | FunLhs Rhs
-                  | Var Rhs
+                   | FunLhs Rhs
+                   | Var Rhs
+
+    syntax OptIDecls ::= "where" IDecls | "" [onlyLabel, klabel('emptyOptIDecls)]
+    syntax IDecls ::= "{" IDeclsList "}"
+    syntax IDeclsList ::= List{IDecl, ";"}
+
+    syntax IDecl ::= FunLhs Rhs
+                   | Var Rhs
+                   | "" [onlyLabel, klabel('emptyIDecl)]
 
     syntax GenDecl ::= Vars "::" Type
                      | Vars "::" Context "=>" Type
