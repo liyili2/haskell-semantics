@@ -6,7 +6,7 @@ module HASKELL-SYNTAX
     //syntax Digit ::= AscDigit
     //syntax AscDigit ::= Token{[0-9]}   [onlyLabel]
     syntax Literal ::= Integer | String
-    syntax VarSym ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
+    syntax VarSym ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel] | "-"
     syntax ConSym ::= Token{[\:][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 //    syntax Symbol ::= AscSymbol
 //    syntax AscSymbol ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]}   [onlyLabel]
@@ -69,15 +69,28 @@ module HASKELL-SYNTAX
     syntax ExportList ::= List{Export, ","}
 
     syntax Export ::= QVar 
-                    | QTyCon OptCNames
-		    | QTyCls OptQVars
+                    | QTyCon OptCNameList
+		                | QTyCls OptQVarList
                     | "module" ModId
 
     syntax ImpDecl ::= "import" OptQualified ModId OptAsModId OptImpSpec
                      | "" [onlyLabel, klabel('emptyImpDecl)]
+    syntax OptQualified ::= "qualified" | "" [onlyLabel, klabel('emptyQualified)]
+    syntax OptAsModId ::= "as" ModId | "" [onlyLabel, klabel('emptyOptAsModId)]
 
-    syntax OptCNames ::= "(..)" | "(" CNames ")" | "" [onlyLabel, klabel('emptyOptCNames)]
-    syntax CNames ::= List{CName, ","}
+    syntax OptImpSpec ::= ImpSpec | "" [onlyLabel, klabel('emptyOptImpSpec)]
+
+    syntax ImpSpec ::= "(" ImportList OptComma ")"
+                     | "hiding" "(" ImportList OptComma ")"
+
+    syntax ImportList ::= List{Import, ","}
+
+    syntax Import ::= Var
+                    | TyCon OptCNameList
+		                | TyCls OptVarList
+
+    syntax OptCNameList ::= "(..)" | "(" CNameList ")" | "" [onlyLabel, klabel('emptyOptCNameList)]
+    syntax CNameList ::= List{CName, ","}
 
     syntax CName ::= Var | Con
 
@@ -245,6 +258,7 @@ module HASKELL-SYNTAX
     syntax Fexp ::= AExp | Fexp AExp
 
     syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
+    syntax OptComma ::= "," | "" [onlyLabel, klabel('emptyComma)]
 
 //    syntax OptWhereDecls ::= "where" Decls | ""
 
@@ -305,9 +319,10 @@ module HASKELL-SYNTAX
                   | QCon
 
     //syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
-
-    syntax OptQVars ::= "(..)" | "(" QVars ")"
-    syntax QVars ::= List{QVar, ","}
+    syntax OptVarList ::= "(..)" | "(" VarList ")"
+    syntax VarList ::= List{Var, ","}
+    syntax OptQVarList ::= "(..)" | "(" QVarList ")"
+    syntax QVarList ::= List{QVar, ","}
 
     syntax Var ::= VarId | "(" VarSym ")"
     syntax QVar ::= QVarId | "(" QVarSym ")"
