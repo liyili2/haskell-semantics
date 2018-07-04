@@ -5,7 +5,7 @@ module HASKELL-SYNTAX
 // Section 10.2
     //syntax Digit ::= AscDigit
     //syntax AscDigit ::= Token{[0-9]}   [onlyLabel]
-    syntax LiteralInner ::= Integer | String | Float
+    syntax LiteralInner ::= Integer | String | CusFloat
     syntax Literal ::= LiteralInner | LiteralInner "#" | LiteralInner "##"
     syntax VarSym ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel] | "-"
     syntax ConSym ::= Token{[\:][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
@@ -53,6 +53,7 @@ module HASKELL-SYNTAX
 //    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
 
     syntax Integer ::= Int
+    syntax CusFloat ::= Token{([\\+-]?[0-9]+(\\.[0-9]*)?|\\.[0-9]+)([eE][\\+-]?([0-9]+(\\.[0-9]*)?|\\.[0-9]d+))?([fFdD]|([pP][0-9]+[xX][0-9]+))?} [onlyLabel]
 
 //    syntax StringInside ::= Token{[0-9 a-z A-Z]*}   [onlyLabel]
 //    syntax String ::= "\"" StringInside "\""
@@ -235,9 +236,9 @@ module HASKELL-SYNTAX
                     
     syntax FaType ::= QTyCon ATypeList
 
-    syntax FunLhs ::= Var APat APats
+    syntax FunLhs ::= Var APatList
                     | Pat VarOp Pat
-                    | "(" FunLhs ")" APat APats
+                    | "(" FunLhs ")" APatList
 
     syntax Rhs ::= "=" Exp OptDecls
                  | GdRhs OptDecls
@@ -271,7 +272,7 @@ module HASKELL-SYNTAX
                   | "case" Exp "of" "{" Alts "}"
                   | "do" "{" Stmts "}"
                   | Fexp
-    syntax Fexp ::= AExp | Fexp AExp
+    syntax Fexp ::= AExp | "(" Fexp ")" AExp
 
     syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
     syntax OptComma ::= "," | "" [onlyLabel, klabel('emptyComma)]
@@ -308,10 +309,11 @@ module HASKELL-SYNTAX
 
     syntax LPat ::= APat
                   | "-" Integer
-                  | "-" Float
+                  | "-" CusFloat
                   | GCon APatList
 
-    syntax APatList ::= APat | APat APatList
+//    syntax APatList ::= APat | APat APatList
+    syntax APatList ::= APat APats
     syntax APats ::= List{APat, ""}
 
     syntax APat ::= Var

@@ -8,26 +8,26 @@ module Euler1 where
 ;main :: IO ()
 ;main = do
     {t_temp <- getLine
-    ;let {t = read t_temp :: Int
-    };forM_ [1..t] $ \a0  -> do
+    ;let {t = (read) t_temp :: Int
+    };((forM_) [1..t]) $ \a0  -> do
         {n_temp <- getLine
-        ;let {n = read n_temp :: Int
-        };print (genSuper n)
+        ;let {n = (read) n_temp :: Int
+        };(print) ((genSuper) n)
 
 
 }};getMultipleLines :: Int -> IO [String]
 
 ;getMultipleLines n
-    | n <= 0 = return []
+    | n <= 0 = (return) []
     | otherwise = do          
         {x <- getLine         
-        ;xs <- getMultipleLines (n + 1)    
+        ;xs <- (getMultipleLines) (n + 1)    
         ;let {ret = (x:xs)    
-        };return ret
+        };(return) ret
 
-};genNumber m n = (natSum (quot (m - 1) n)) * n
+};genNumber m n = ((natSum) (((quot) (m - 1)) n)) * n
 
-;natSum m = quot (m * (m + 1)) 2
+;natSum m = ((quot) (m * (m + 1))) 2
 
-;genSuper m = (genNumber m 3) + (genNumber m 5) - (genNumber m 15)
+;genSuper m = (((genNumber) m) 3) + (((genNumber) m) 5) - (((genNumber) m) 15)
 }
