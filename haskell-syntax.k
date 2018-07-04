@@ -131,11 +131,13 @@ module HASKELL-SYNTAX
 
     syntax GenDecl ::= Vars "::" Type
                      | Vars "::" Context "=>" Type
-//                     | Fixity Ops
-//                     | Fixity Integer Ops
+                     | Fixity Ops
+                     | Fixity Integer Ops
+                     | "" [onlyLabel, klabel('emptyGenDecl)]
 
     syntax Ops ::= Op | Op "," Ops
     syntax Vars ::= Var | Var "," Vars
+    syntax Fixity ::= "infixl" | "infixr" | "infix"
 
     syntax TypeTuple ::= Type "," Type | Type "," TypeTuple
     syntax Types ::= List{Type, ","}
