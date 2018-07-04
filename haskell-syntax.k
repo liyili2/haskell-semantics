@@ -5,7 +5,8 @@ module HASKELL-SYNTAX
 // Section 10.2
     //syntax Digit ::= AscDigit
     //syntax AscDigit ::= Token{[0-9]}   [onlyLabel]
-    syntax Literal ::= Integer | String
+    syntax LiteralInner ::= Integer | String | Float
+    syntax Literal ::= LiteralInner | LiteralInner "#" | LiteralInner "##"
     syntax VarSym ::= Token{[\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel] | "-"
     syntax ConSym ::= Token{[\:][\! \# \$ \% \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 //    syntax Symbol ::= AscSymbol
@@ -25,9 +26,14 @@ module HASKELL-SYNTAX
 //    syntax ConSym ::= Token{"([;::)(]~)"} [onlyLabel]
 //    syntax ReservedOp ::= ".." | ":" | "::" | "=" | "\\" | "|" | "<-" | "->" | "@" | "~" | "=>"
 
-    syntax VarId ::= "size" [onlyLabel] | Token{[a-z \_][0-9 a-z A-Z \' \_]*}   [onlyLabel]
+    syntax VarIdInner ::= "size" [onlyLabel]
+                        | Token{[a-z \_][0-9 a-z A-Z \' \_]*}   [onlyLabel]
+
+    syntax VarId ::= VarIdInner | VarIdInner "#" | VarIdInner "##"
     
-    syntax ConId ::= Token{[A-Z][0-9 a-z A-Z \' \_]*}   [onlyLabel]
+    syntax ConIdInner ::= Token{[A-Z][0-9 a-z A-Z \' \_]*}   [onlyLabel]
+
+    syntax ConId ::= ConIdInner | ConIdInner "#" | ConIdInner "##"
 
     syntax TyVarTuple ::= TyVar "," TyVar | TyVar "," TyVarTuple
     syntax TyVars ::= List{TyVar, ""} //used in SimpleType syntax
@@ -302,7 +308,7 @@ module HASKELL-SYNTAX
 
     syntax LPat ::= APat
                   | "-" Integer
-//                  | "-" Float
+                  | "-" Float
                   | GCon APatList
 
     syntax APatList ::= APat | APat APatList
