@@ -44,9 +44,9 @@ module HASKELL-SYNTAX
     syntax QVarSym ::= VarSym | ModId "." VarSym
     syntax QConSym ::= ConSym | ModId "." ConSym
 
-    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
+//    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
 
-//    syntax Integer ::= Int
+    syntax Integer ::= Int
 
 //    syntax StringInside ::= Token{[0-9 a-z A-Z]*}   [onlyLabel]
 //    syntax String ::= "\"" StringInside "\""
@@ -70,9 +70,10 @@ module HASKELL-SYNTAX
 
     syntax Export ::= QVar 
                     | QTyCon OptCNames
+		    | QTyCls OptQVars
                     | "module" ModId
 
-    syntax ImpDecl ::= "import" ModId
+    syntax ImpDecl ::= "import" OptQualified ModId OptAsModId OptImpSpec
                      | "" [onlyLabel, klabel('emptyImpDecl)]
 
     syntax OptCNames ::= "(..)" | "(" CNames ")" | "" [onlyLabel, klabel('emptyOptCNames)]
@@ -304,6 +305,9 @@ module HASKELL-SYNTAX
                   | QCon
 
     //syntax OpId ::= Token{[\'][0-9 a-z A-Z \_]*[\']}   [onlyLabel]
+
+    syntax OptQVars ::= "(..)" | "(" QVars ")"
+    syntax QVars ::= List{QVar, ","}
 
     syntax Var ::= VarId | "(" VarSym ")"
     syntax QVar ::= QVarId | "(" QVarSym ")"
