@@ -53,7 +53,8 @@ module HASKELL-SYNTAX
 //    syntax Integer ::= Token{[0-9]*}   [onlyLabel]
 
     syntax Integer ::= Int
-    syntax CusFloat ::= Token{([\\+-]?[0-9]+(\\.[0-9]*)?|\\.[0-9]+)([eE][\\+-]?([0-9]+(\\.[0-9]*)?|\\.[0-9]d+))?([fFdD]|([pP][0-9]+[xX][0-9]+))?} [onlyLabel]
+    syntax CusFloat ::= Token{([0-9]+[\.][0-9]+([e E][\+ \-]?[0-9]+)?)|([0-9]+[e E][\+ \-]?[0-9]+)} [onlyLabel]
+//    syntax CusFloat ::= Float
 
 //    syntax StringInside ::= Token{[0-9 a-z A-Z]*}   [onlyLabel]
 //    syntax String ::= "\"" StringInside "\""
