@@ -175,7 +175,7 @@ module HASKELL-SYNTAX
 
     syntax OptContext ::= Context "=>" | "" [onlyLabel, klabel('emptyContext)]
     syntax Context ::= Class
-                     | Classes
+                     | "(" Classes ")"
 
     syntax Classes ::= List{Class, ","}
 
@@ -184,7 +184,7 @@ module HASKELL-SYNTAX
     
     syntax OptSContext ::= SContext "=>" | "" [onlyLabel, klabel('emptySContext)]
     syntax SContext ::= SimpleClass
-                      | SimpleClassList
+                      | "(" SimpleClassList ")"
     
     syntax SimpleClassList ::= List{SimpleClass, ","}
 
@@ -194,7 +194,7 @@ module HASKELL-SYNTAX
     syntax OptConstrs  ::= "=" Constrs | "" [onlyLabel, klabel('emptyConstrs)]
     syntax Constrs     ::= Constr | Constr "|" Constrs
     syntax SubConstr   ::= BType | "!" AType
-    syntax Constr      ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) 
+    syntax Constr      ::= Con OptBangATypes // (arity con  =  k, k ≥ 0) UNFINISHED
                          | SubConstr ConOp SubConstr
                          | Con "{" FieldDeclList "}"
 
@@ -213,10 +213,10 @@ module HASKELL-SYNTAX
     syntax DClass ::= QTyCls
                        
     syntax Inst        ::= GTyCon
-                         | "(" GTyCon TyVars ")"
-                         | "(" TyVarTuple ")"
+                         | "(" GTyCon TyVars ")" //TyVars must be distinct UNFINISHED
+                         | "(" TyVarTuple ")" //TyVars must be distinct
                          | "[" TyVar "]"
-                         | "(" TyVar "->" TyVar ")"
+                         | "(" TyVar "->" TyVar ")" //TyVars must be distinct
     
     syntax FDecl ::= "import" CallConv Impent Var "::" FType
                    | "import" CallConv Safety Impent Var "::" FType
@@ -224,13 +224,13 @@ module HASKELL-SYNTAX
                    
     syntax CallConv ::= "ccall" | "stdcall" | "cplusplus" | "jvm" | "dotnet"
     
-    syntax Impent ::= "IMPENT" // temporary
+    syntax Impent ::= "IMPENT" // temporary UNFINISHED
     syntax Expent ::= "EXPENT" // temporary
     
     syntax Safety ::= "unsafe" | "safe"
     
     syntax FType ::= FrType
-                   | FaType "->" FType // unsure about this one syntax is ambiguous
+                   | FaType "->" FType // unsure about this one syntax is ambiguous UNFINISHED
     
     syntax FrType ::= FaType
                     | "()"
@@ -287,13 +287,23 @@ module HASKELL-SYNTAX
                   | "(" ExpTuple ")"
                   | "[" ExpList "]"
                   | "[" Exp OptExpComma ".." OptExp "]"
+                  | "[" Exp "|" Quals "]"
                   | "(" InfixExp QOp ")"
-                  | "(" QOp InfixExp ")"
+                  | "(" QOp InfixExp ")" //qop cannot be - (minus) UNFINISHED
+                  | QCon "{" FBindList "}"
+                  | AExp "{" FBinds "}" //aexp cannot be qcon UNFINISHED
+
+    syntax Quals ::= Qual | Qual "," Quals
+
+    syntax Qual ::= Pat "<-" Exp
+                  | "let" Decls
+                  | Exp
 
     syntax Alts ::= Alt | Alt ";" Alts
 
     syntax Alt ::= Pat "->" Exp
                  | Pat "->" Exp "where" Decls
+                 | "" [onlyLabel, klabel('emptyAlt)]
                  
     syntax Stmts ::= StmtList Exp OptSemicolon
     syntax StmtList ::= List{Stmt, ""}
@@ -301,6 +311,10 @@ module HASKELL-SYNTAX
                   | Pat "<-" Exp ";"
                   | "let" Decls ";"
                   | ";"
+
+    syntax FBinds ::= FBind | FBind "," FBinds
+    syntax FBindList ::= List{FBind, ","}
+    syntax FBind ::= QVar "=" Exp
 
     syntax PatTuple ::= Pat "," Pat | Pat "," PatTuple
     syntax PatList ::= Pat | Pat "," PatList
@@ -311,7 +325,7 @@ module HASKELL-SYNTAX
     syntax LPat ::= AAPat
                   | "-" Integer
                   | "-" CusFloat
-                  | GCon APatList
+                  | GCon APatList //arity gcon = k UNFINISHED
 
 //    syntax APatList ::= APat | APat APatList
     syntax APatList ::= AAPat APats
@@ -324,7 +338,7 @@ module HASKELL-SYNTAX
                   | GCon
                   | QCon "{" FPats "}"
                   | Literal
-//                  _
+                  | "_"
                   | "(" Pat ")"
                   | "(" PatTuple ")"
                   | "[" Pat "]"
