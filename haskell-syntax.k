@@ -370,6 +370,4 @@ module HASKELL-SYNTAX
     syntax Op ::= VarOp | ConOp
     syntax QOp ::= QVarOp | QConOp
     syntax GConSym ::= ":" | QConSym
-
-configuration <k> $PGM:Module </k>
 endmodule
