@@ -6,7 +6,9 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= preModule(K)
     syntax KItem ::= Module(K, K)
     syntax KItem ::= getPreModule (K) [function]
-    rule getPreModule((I:Body):Module) => preModule(I)
+    rule getPreModule(module I:ModId where J:Body) => preModule(J)
+    //rule getPreModule({I:TopDecls}) => getPreModule(I)
+    //rule getPreModule(data I:OptContext J K L) => preModule(I)
 
 configuration <k> getPreModule($PGM:Module) </k>
 endmodule
