@@ -6,10 +6,10 @@ module Euler1 where
 
 
 ;main :: IO ()
-;main = do
-    {t_temp <- getLine
-    ;let {t = (read) t_temp :: Int
-    };((forM_) [1..t]) $ \a0  -> do
+;(main) = do
+    {(t_temp) <- (getLine)
+    ;let {(t) = (read) t_temp :: Int
+    };((forM_) [1..t]) ($ \a0)  -> do
         {n_temp <- getLine
         ;let {n = (read) n_temp :: Int
         };(print) ((genSuper) n)
