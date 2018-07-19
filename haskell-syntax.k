@@ -301,7 +301,8 @@ module HASKELL-SYNTAX
                        | Type "," TypeTuple [klabel('typeTupleCon)]
     syntax Types ::= List{Type, ","}
 
-    syntax GConCommon ::= "()" | "[]" | "(,{,})"
+    syntax GConCommas ::= "," | "," GConCommas
+    syntax GConCommon ::= "()" | "[]" | "(" GConCommas ")" //was incorrect syntax
     syntax GTyCon ::= QTyCon
                     | GConCommon
                     | "(->)"
