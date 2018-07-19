@@ -370,10 +370,4 @@ module HASKELL-SYNTAX
      //definition of fbind
     syntax FBindList ::= List{FBind, ","}
     syntax FBind ::= QVar "=" Exp
-
-configuration <k> getPreModule($PGM:Module) </k>
-    syntax KItem ::= getPreModule (K) [function]
-    syntax KItem ::= preModule(K)
-    rule getPreModule('module(I:ModId,, J:Body)) => preModule(J)
-
 endmodule
