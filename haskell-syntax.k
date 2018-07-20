@@ -10,7 +10,7 @@ module HASKELL-SYNTAX
     syntax CusFloat ::= Token{([0-9]+[\.][0-9]+([e E][\+ \-]?[0-9]+)?)
                                  |([0-9]+[e E][\+ \-]?[0-9]+)} [onlyLabel]
     syntax CusChar ::= Token{[\'](~[\' \\ \&])[\']} [onlyLabel]
-    syntax CusString ::= Token{[\'](~[\" \\]*)[\']} [onlyLabel]
+    syntax CusString ::= Token{[\"](~[\" \\]*)[\"]} [onlyLabel]
 
     syntax VarId ::= Token{[a-z \_][a-z A-Z \_ 0-9 \']*} [onlyLabel]
     syntax ConId ::= Token{[A-Z][a-z A-Z \_ 0-9 \']*} [onlyLabel]
@@ -28,7 +28,7 @@ module HASKELL-SYNTAX
   | ([\=][\! \# \$ \% \& \* \+ \. \/ \< \= \? \@ \\ \^ \| \~ \:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)} [onlyLabel]
     syntax ConSym ::= Token{[\:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 
-    syntax IntFloat ::= Integer | CusFloat
+    syntax IntFloat ::= Integer | "(" CusFloat ")" [bracket]
 
     syntax Literal ::= IntFloat | CusChar | CusString
     syntax TyCon ::= ConId
@@ -220,8 +220,10 @@ module HASKELL-SYNTAX
                   | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp
                   | "case" Exp "of" "{" Alts "}"
                   | "do" "{" Stmts "}"
-                  | Fexp
-    syntax Fexp ::= AExp | "(" Fexp ")" AExp
+                  | FExp
+
+    syntax FExp ::= AExp
+                  > FExp AExp  [left, klabel('funApp)]
 
     syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
     syntax OptComma ::= "," | ""     [onlyLabel, klabel('emptyComma)]
@@ -231,7 +233,7 @@ module HASKELL-SYNTAX
     syntax AExp ::= QVar [klabel('aexpQVar)]
                   | GCon
                   | Literal
-                  | "(" Exp ")"
+                  | "(" Exp ")"             [bracket]
                   | "(" ExpTuple ")"
                   | "[" ExpList "]"
                   | "[" Exp OptExpComma ".." OptExp "]"
@@ -248,9 +250,9 @@ module HASKELL-SYNTAX
     syntax OptExpComma ::= "," Exp | "" [onlyLabel, klabel('emptyExpComma)]
     syntax OptExp ::= Exp | "" [onlyLabel, klabel('emptyExp)]
 
-    syntax ExpList ::= Exp | Exp "," ExpList
-    syntax ExpTuple ::= Exp "," Exp [klabel('twoExpTuple)]
-                      | Exp "," ExpTuple  [klabel('expTupleCon)]
+    syntax ExpList ::= Exp | Exp "," ExpList  [right]
+    syntax ExpTuple ::= Exp "," Exp           [right, klabel('twoExpTuple)]
+                      | Exp "," ExpTuple      [right, klabel('expTupleCon)]
 
     //constr datatypes
     syntax OptConstrs  ::= "=" Constrs | "" [onlyLabel, klabel('emptyConstrs)]
@@ -297,10 +299,10 @@ module HASKELL-SYNTAX
     syntax AType ::= GTyCon
                    | TyVar
                    | "(" TypeTuple ")"
-                   | "[" Type "]" [klabel('tyList)]
-                   | "(" Type ")"
-    syntax TypeTuple ::= Type "," Type [right,klabel('twoTypeTuple)]
-                       | Type "," TypeTuple [klabel('typeTupleCon)]
+                   | "[" Type "]"               [klabel('tyList)]
+                   | "(" Type ")"               [bracket]
+    syntax TypeTuple ::= Type "," Type          [right,klabel('twoTypeTuple)]
+                       | Type "," TypeTuple     [klabel('typeTupleCon)]
     syntax Types ::= List{Type, ","}
 
     syntax GConCommas ::= "," | "," GConCommas
@@ -334,7 +336,7 @@ module HASKELL-SYNTAX
                   | QCon "{" FPats "}"
                   | Literal [klabel('apatLiteral)]
                   | "_"
-                  | "(" Pat ")"
+                  | "(" Pat ")"   [bracket]
                   | "(" PatTuple ")"
                   | "[" PatList "]"
                   | "~" APat
