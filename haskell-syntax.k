@@ -303,7 +303,8 @@ module HASKELL-SYNTAX
                        | Type "," TypeTuple [klabel('typeTupleCon)]
     syntax Types ::= List{Type, ","}
 
-    syntax GConCommon ::= "()" | "[]" | "(,{,})"
+    syntax GConCommas ::= "," | "," GConCommas
+    syntax GConCommon ::= "()" | "[]" | "(" GConCommas ")" //was incorrect syntax
     syntax GTyCon ::= QTyCon
                     | GConCommon
                     | "(->)"
@@ -371,10 +372,4 @@ module HASKELL-SYNTAX
      //definition of fbind
     syntax FBindList ::= List{FBind, ","}
     syntax FBind ::= QVar "=" Exp
-
-    configuration <k> getPreModule($PGM:Module) </k>
-    syntax KItem ::= getPreModule (K) [function]
-    syntax KItem ::= preModule(K)
-    rule getPreModule('module(I:ModId,, J:Body)) => preModule(J)
-
 endmodule
