@@ -28,7 +28,9 @@ module HASKELL-SYNTAX
   | ([\=][\! \# \$ \% \& \* \+ \. \/ \< \= \? \@ \\ \^ \| \~ \:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)} [onlyLabel]
     syntax ConSym ::= Token{[\:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 
-    syntax Literal ::= Integer | CusFloat | CusChar | CusString
+    syntax IntFloat ::= Integer | CusFloat
+
+    syntax Literal ::= IntFloat | CusChar | CusString
     syntax TyCon ::= ConId
     syntax ModId ::= ConId | ConId "." ModId  [klabel('conModId)]
     syntax QTyCon ::= TyCon | ModId "." TyCon [klabel('conTyCon)]
@@ -56,7 +58,7 @@ module HASKELL-SYNTAX
     syntax GConSym ::= ":" | QConSym
     syntax Vars ::= Var
                   | Var "," Vars  [klabel('varCon)]
-    syntax VarsType ::= Vars "::" Type
+    syntax VarsType ::= Vars "::" Type  [klabel('varAssign)]
     syntax Ops ::= Op
                  | Op "," Ops  [klabel('opCon)]
     syntax Fixity ::= "infixl" | "infixr" | "infix"
@@ -176,7 +178,7 @@ module HASKELL-SYNTAX
                    | "" [onlyLabel, klabel('emptyIDecl)]
 
     syntax GenDecl ::= VarsType
-                     | Vars "::" Context "=>" Type
+                     | Vars "::" Context "=>" Type   [klabel('genAssignContext)]
                      | Fixity Ops
                      | Fixity Integer Ops
                      | "" [onlyLabel, klabel('emptyGenDecl)]
@@ -205,8 +207,8 @@ module HASKELL-SYNTAX
                    | InfixExp
 
     //definition of exp
-    syntax Exp ::= InfixExp "::" Type
-                 | InfixExp "::" Context "=>" Type
+    syntax Exp ::= InfixExp "::" Type  [klabel('expAssign)]
+                 | InfixExp "::" Context "=>" Type  [klabel('expAssignContext)]
                  | InfixExp
 
     syntax InfixExp ::= LExp QOp InfixExp
@@ -321,8 +323,7 @@ module HASKELL-SYNTAX
                  | LPat
 
     syntax LPat ::= APat
-                  | "-" Integer    [klabel('minusInt)]
-                  | "-" CusFloat   [klabel('minusFloat)]
+                  | "-" IntFloat    [klabel('minusPat)]
                   | GCon APatList  [klabel('lpatCon)]//arity gcon = k UNFINISHED
 
     syntax APatList ::= APat | APat APatList [klabel('apatCon)]
