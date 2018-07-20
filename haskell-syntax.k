@@ -28,7 +28,8 @@ module HASKELL-SYNTAX
   | ([\=][\! \# \$ \% \& \* \+ \. \/ \< \= \? \@ \\ \^ \| \~ \:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)} [onlyLabel]
     syntax ConSym ::= Token{[\:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 
-    syntax IntFloat ::= Integer | "(" CusFloat ")" [bracket]
+    syntax IntFloat ::= "(" Integer ")"  [bracket]
+                      | "(" CusFloat ")" [bracket]
 
     syntax Literal ::= IntFloat | CusChar | CusString
     syntax TyCon ::= ConId
