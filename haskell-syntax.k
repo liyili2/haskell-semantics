@@ -158,8 +158,8 @@ module HASKELL-SYNTAX
     syntax DeclsList ::= List{Decl, ";"}
 
     syntax Decl ::= GenDecl
-                  | FunLhs Rhs
-                  | Pat Rhs
+                  | FunLhs Rhs [klabel('declFunLhsRhs)]
+                  | Pat Rhs [klabel('declPatRhs)]
 
     syntax OptCDecls ::= "where" CDecls | "" [onlyLabel, klabel('emptyOptCDecls)]
     syntax CDecls ::= "{" CDeclsList "}"
@@ -173,8 +173,8 @@ module HASKELL-SYNTAX
     syntax IDecls ::= "{" IDeclsList "}"
     syntax IDeclsList ::= List{IDecl, ";"}
 
-    syntax IDecl ::= FunLhs Rhs
-                   | Var Rhs
+    syntax IDecl ::= FunLhs Rhs [klabel('cdeclFunLhsRhs)]
+                   | Var Rhs [klabel('cdeclVarRhs)]
                    | "" [onlyLabel, klabel('emptyIDecl)]
 
     syntax GenDecl ::= VarsType
@@ -228,7 +228,7 @@ module HASKELL-SYNTAX
 
 //    syntax OptWhereDecls ::= "where" Decls | ""
 
-    syntax AExp ::= QVar
+    syntax AExp ::= QVar [klabel('aexpQVar)]
                   | GCon
                   | Literal
                   | "(" Exp ")"
@@ -328,11 +328,11 @@ module HASKELL-SYNTAX
 
     syntax APatList ::= APat | APat APatList [klabel('apatCon)]
 
-    syntax APat ::= Var
+    syntax APat ::= Var [klabel('apatVar)]
                   | Var "@" APat
                   | GCon
                   | QCon "{" FPats "}"
-                  | Literal
+                  | Literal [klabel('apatLiteral)]
                   | "_"
                   | "(" Pat ")"
                   | "(" PatTuple ")"
