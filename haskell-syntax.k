@@ -77,9 +77,9 @@ module HASKELL-SYNTAX
                     | ModuleName Exports "where" Body  [klabel('moduleExp)]
                     | Body
 
-    syntax Body ::= "{" ImpDecls ";" TopDecls "}"
-                  | "{" ImpDecls "}"
-                  | "{" TopDecls "}"
+    syntax Body ::= "{" ImpDecls ";" TopDecls "}" [klabel('bodyimpandtop)]
+                  | "{" ImpDecls "}" [klabel('bodyimpdecls)]
+                  | "{" TopDecls "}" [klabel('bodytopdecls)]
 
     syntax ImpDecls ::= List{ImpDecl, ";"}
 
@@ -154,7 +154,7 @@ module HASKELL-SYNTAX
 
     //define declaration.
     syntax OptDecls ::= "where" Decls | "" [onlyLabel, klabel('emptyOptDecls)]
-    syntax Decls ::= "{" DeclsList "}"
+    syntax Decls ::= "{" DeclsList "}" [klabel('decls)]
     syntax DeclsList ::= List{Decl, ";"}
 
     syntax Decl ::= GenDecl
