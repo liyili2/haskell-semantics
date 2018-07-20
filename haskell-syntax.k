@@ -5,15 +5,15 @@ module HASKELL-SYNTAX
 
     syntax Integer ::= Token{([0-9]+)
                 | (([0][o]|[0][O])[0-7]+) 
-                | (([0][x] | [0][X])[0-9 a-f A-F]+)}   [onlyLabel]
+                | (([0][x] | [0][X])[0-9a-fA-F]+)}   [onlyLabel]
 
-    syntax CusFloat ::= Token{([0-9]+[\.][0-9]+([e E][\+ \-]?[0-9]+)?)
-                                 |([0-9]+[e E][\+ \-]?[0-9]+)} [onlyLabel]
-    syntax CusChar ::= Token{[\'](~[\' \\ \&])[\']} [onlyLabel]
-    syntax CusString ::= Token{[\"](~[\" \\]*)[\"]} [onlyLabel]
+    syntax CusFloat ::= Token{([0-9]+[\.][0-9]+([e E][\+\-]?[0-9]+)?)
+                                 |([0-9]+[e E][\+\-]?[0-9]+)} [onlyLabel]
+    syntax CusChar ::= Token{[\'](~[\'\\\&])[\']} [onlyLabel]
+    syntax CusString ::= Token{[\"](~[\"\\]*)[\"]} [onlyLabel]
 
-    syntax VarId ::= Token{[a-z \_][a-z A-Z \_ 0-9 \']*} [onlyLabel]
-    syntax ConId ::= Token{[A-Z][a-z A-Z \_ 0-9 \']*} [onlyLabel]
+    syntax VarId ::= Token{[a-z\_][a-z A-Z\_0-9\']*} [onlyLabel]
+    syntax ConId ::= Token{[A-Z][a-zA-Z \_0-9\']*} [onlyLabel]
     syntax VarSym ::= Token{
    ([\! \# \$ \% \& \* \+ \/ \> \? \^][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)
   |[\-] | [\.]
@@ -28,7 +28,8 @@ module HASKELL-SYNTAX
   | ([\=][\! \# \$ \% \& \* \+ \. \/ \< \= \? \@ \\ \^ \| \~ \:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)} [onlyLabel]
     syntax ConSym ::= Token{[\:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 
-    syntax IntFloat ::= "(" Integer ")" [bracket] | "(" CusFloat ")" [bracket]
+    syntax IntFloat ::= "(" Integer ")"  [bracket]
+                      | "(" CusFloat ")" [bracket]
 
     syntax Literal ::= IntFloat | CusChar | CusString
     syntax TyCon ::= ConId
@@ -122,7 +123,8 @@ module HASKELL-SYNTAX
     //definition of top decls
     syntax TopDecls ::= List{TopDecl, ";"}
 
-    syntax TopDecl ::= "type" SimpleType "=" Type
+    syntax TopDecl ::= Decl
+                     > "type" SimpleType "=" Type
                      | "data" OptContext SimpleType OptConstrs OptDeriving
                      | "newtype" OptContext SimpleType "=" NewConstr OptDeriving
                      | "class" OptContext ConId TyVar OptCDecls
@@ -131,7 +133,6 @@ module HASKELL-SYNTAX
                               //Liyi: place a check on this to check if the optContext is a SContext
                      | "default" Types
                      | "foreign" FDecl
-                     | Decl
 
     //optional decls
     syntax FDecl ::= "import" CallConv CusString Var "::" FType
@@ -207,23 +208,20 @@ module HASKELL-SYNTAX
                    | InfixExp
 
     //definition of exp
-    syntax Exp ::= InfixExp "::" Type  [klabel('expAssign)]
+    syntax Exp ::= InfixExp
+                 > InfixExp "::" Type  [klabel('expAssign)]
                  | InfixExp "::" Context "=>" Type  [klabel('expAssignContext)]
-                 | InfixExp
 
-    syntax InfixExp ::= LExp QOp InfixExp
-                      | "-" InfixExp   [klabel('minusInfix)]
-                      | LExp
+    syntax InfixExp ::= LExp
+                      > "-" InfixExp   [klabel('minusInfix)]
+                      > LExp QOp InfixExp
 
-    syntax LExp ::= "\\" APatList "->" Exp
+    syntax LExp ::= AExp
+                  > "\\" APatList "->" Exp
                   | "let" Decls "in" Exp
                   | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp
                   | "case" Exp "of" "{" Alts "}"
                   | "do" "{" Stmts "}"
-                  | FExp
-
-    syntax FExp ::= AExp
-                  > FExp AExp  [left, klabel('funApp)]
 
     syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
     syntax OptComma ::= "," | ""     [onlyLabel, klabel('emptyComma)]
@@ -233,7 +231,13 @@ module HASKELL-SYNTAX
     syntax AExp ::= QVar [klabel('aexpQVar)]
                   | GCon
                   | Literal
-                  | "(" Exp ")"             [bracket]
+                  > AExp AExp [left, klabel('funApp)]
+                  > QCon "{" FBindList "}"
+                  | AExp "{" FBindList "}" //aexp cannot be qcon UNFINISHED
+                          //Liyi: first, does not understand the syntax, it is the Qcon {FBindlist}
+                          //or QCon? Second, place a check in preprosssing.
+                          //and also check the Fbindlist here must be at least one argument
+                  > "(" Exp ")"             [bracket]
                   | "(" ExpTuple ")"
                   | "[" ExpList "]"
                   | "[" Exp OptExpComma ".." OptExp "]"
@@ -241,11 +245,6 @@ module HASKELL-SYNTAX
                   | "(" InfixExp QOp ")"
                   | "(" QOp InfixExp ")" //qop cannot be - (minus) UNFINISHED
                            //Liyi: place a check here to check if QOp is a minus
-                  | QCon "{" FBindList "}"
-                  | AExp "{" FBindList "}" //aexp cannot be qcon UNFINISHED
-                          //Liyi: first, does not understand the syntax, it is the Qcon {FBindlist}
-                          //or QCon? Second, place a check in preprosssing.
-                          //and also check the Fbindlist here must be at least one argument
 
     syntax OptExpComma ::= "," Exp | "" [onlyLabel, klabel('emptyExpComma)]
     syntax OptExp ::= Exp | "" [onlyLabel, klabel('emptyExp)]
