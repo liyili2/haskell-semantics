@@ -125,7 +125,7 @@ module HASKELL-SYNTAX
 
     syntax TopDecl ::= Decl
                      > "type" SimpleType "=" Type
-                     | "data" OptContext SimpleType OptConstrs OptDeriving
+                     | "data" OptContext SimpleType OptConstrs OptDeriving  [klabel('data)]
                      | "newtype" OptContext SimpleType "=" NewConstr OptDeriving
                      | "class" OptContext ConId TyVar OptCDecls
                               //Liyi: place a check on this to check if the optContext is a SContext
