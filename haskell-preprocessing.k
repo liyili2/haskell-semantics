@@ -17,8 +17,8 @@ module HASKELL-PREPROCESSING
     rule getPreModule('module(I:ModuleName,, J:K)) => getPreModule(J) ~> preModule(.K,J)
     rule getPreModule('bodytopdecls(I:TopDecls)) => getPreModule(I)
     rule getPreModule('data(A:K,, B:K,, C:K,, D:K) ; Rest:TopDecls)
-             => fetchTypes(B) ~> getPreModule(Rest)
+             => fetchTypes(B)// ~> getPreModule(Rest)
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
-    //rule fetchTypes(I:TyCon _) ~> preModule(L:K, J:K) => preModule((I,L),J)
+    rule fetchTypes('simpleTypeCon(I:TyCon H:TyVars)) ~> preModule(L:K, J:K) => preModule(I,J)
 endmodule
