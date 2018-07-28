@@ -254,7 +254,7 @@ module HASKELL-SYNTAX
                       | Exp "," ExpTuple      [right, klabel('expTupleCon)]
 
     //constr datatypes
-    syntax OptConstrs  ::= "=" Constrs | "" [onlyLabel, klabel('emptyConstrs)]
+    syntax OptConstrs  ::= "=" Constrs [klabel('nonemptyConstrs)] | "" [onlyLabel, klabel('emptyConstrs)]
     syntax Constrs     ::= Constr | Constr "|" Constrs
     syntax Constr      ::= Con OptBangATypes [klabel('constrCon)] // (arity con  =  k, k ≥ 0) UNFINISHED
                          | SubConstr ConOp SubConstr
