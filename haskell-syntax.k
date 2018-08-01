@@ -121,12 +121,12 @@ module HASKELL-SYNTAX
                      //or are within vars. in the preprossing.
 
     //definition of top decls
-    syntax TopDecls ::= List{TopDecl, ";"}
+    syntax TopDecls ::= List{TopDecl, ";"} [klabel('topdeclslist)]
 
-    syntax TopDecl ::= Decl
-                     > "type" SimpleType "=" Type
+    syntax TopDecl ::= Decl [klabel('topdecldecl)]
+                     > "type" SimpleType "=" Type [klabel('type)]
                      | "data" OptContext SimpleType OptConstrs OptDeriving  [klabel('data)]
-                     | "newtype" OptContext SimpleType "=" NewConstr OptDeriving
+                     | "newtype" OptContext SimpleType "=" NewConstr OptDeriving [klabel('newtype)]
                      | "class" OptContext ConId TyVar OptCDecls
                               //Liyi: place a check on this to check if the optContext is a SContext
                      | "instance" OptContext QTyCon Inst OptIDecls
@@ -172,7 +172,7 @@ module HASKELL-SYNTAX
 
     syntax OptIDecls ::= "where" IDecls | "" [onlyLabel, klabel('emptyOptIDecls)]
     syntax IDecls ::= "{" IDeclsList "}"
-    syntax IDeclsList ::= List{IDecl, ";"}
+    syntax IDeclsList ::= List{IDecl, ";"} [klabel('ideclslist)]
 
     syntax IDecl ::= FunLhs Rhs [klabel('cdeclFunLhsRhs)]
                    | Var Rhs [klabel('cdeclVarRhs)]

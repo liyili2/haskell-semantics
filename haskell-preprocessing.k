@@ -18,7 +18,11 @@ module HASKELL-PREPROCESSING
     rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(.Map,J))
     rule getPreModule('bodytopdecls(I:TopDecls), J:K) => getPreModule(I,J)
     rule getPreModule('_;_('data(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
+    rule getPreModule('_;_('type(A:K,, B:K),, Rest:K),J:K) => fetchTypes(A,B,Rest,J)
+    rule getPreModule('_;_('newtype(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
+    rule getPreModule('_;_('topdecldecl(A:K),, Rest:K),J:K) => getPreModule(Rest,J)
+    //rule getPreModule('_;_('class(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
-    rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), C:K, Rest:K, preModule(M:Map, J:K)) => getPreModule(Rest,preModule(M[C <- I],J))
+    rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), C:K, Rest:K, preModule(M:Map, J:K)) => getPreModule(Rest,preModule(M[I <- C],J))
 endmodule
