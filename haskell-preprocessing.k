@@ -21,6 +21,7 @@ module HASKELL-PREPROCESSING
     rule getPreModule('_;_('type(A:K,, B:K),, Rest:K),J:K) => fetchTypes(A,B,Rest,J)
     rule getPreModule('_;_('newtype(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
     rule getPreModule('_;_('topdecldecl(A:K),, Rest:K),J:K) => getPreModule(Rest,J)
+    rule getPreModule(.TopDecls,J:K) => J
     //rule getPreModule('_;_('class(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
