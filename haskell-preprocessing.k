@@ -15,14 +15,24 @@ module HASKELL-PREPROCESSING
     syntax K ::= getPreModule (K,K) [function]
     syntax K ::= initPreModule (K) [function]
     syntax KItem ::= preModule(Map,K)
+
+
     rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(.Map,J))
+    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(.Map,J))
+    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(.Map,J))
+
     rule getPreModule('bodytopdecls(I:K), J:K) => getPreModule(I,J)
+
     rule getPreModule('topdeclslist('data(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
     rule getPreModule('topdeclslist('type(A:K,, B:K),, Rest:K),J:K) => fetchTypes(A,B,Rest,J)
     rule getPreModule('topdeclslist('newtype(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
     rule getPreModule('topdeclslist('topdecldecl(A:K),, Rest:K),J:K) => getPreModule(Rest,J)
-    rule getPreModule(.TopDecls,J:K) => J
     rule getPreModule('topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
+    rule getPreModule('topdeclslist('instance(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
+    rule getPreModule('topdeclslist('default(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
+    rule getPreModule('topdeclslist('foreign(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
+    rule getPreModule(.TopDecls,J:K) => J
+
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
     rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), C:K, Rest:K, preModule(M:Map, J:K)) => getPreModule(Rest,preModule(M[I <- C],J))

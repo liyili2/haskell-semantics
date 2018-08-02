@@ -76,7 +76,7 @@ module HASKELL-SYNTAX
 
     syntax Module ::= ModuleName "where" Body          [klabel('module)]
                     | ModuleName Exports "where" Body  [klabel('moduleExp)]
-                    | Body
+                    | Body                             [klabel('moduleBody)]
 
     syntax Body ::= "{" ImpDecls ";" TopDecls "}" [klabel('bodyimpandtop)]
                   | "{" ImpDecls "}" [klabel('bodyimpdecls)]
@@ -127,12 +127,12 @@ module HASKELL-SYNTAX
                      > "type" SimpleType "=" Type [klabel('type)]
                      | "data" OptContext SimpleType OptConstrs OptDeriving  [klabel('data)]
                      | "newtype" OptContext SimpleType "=" NewConstr OptDeriving [klabel('newtype)]
-                     | "class" OptContext ConId TyVar OptCDecls
+                     | "class" OptContext ConId TyVar OptCDecls [klabel('class)]
                               //Liyi: place a check on this to check if the optContext is a SContext
-                     | "instance" OptContext QTyCon Inst OptIDecls
+                     | "instance" OptContext QTyCon Inst OptIDecls [klabel('instance)]
                               //Liyi: place a check on this to check if the optContext is a SContext
-                     | "default" Types
-                     | "foreign" FDecl
+                     | "default" Types [klabel('default)]
+                     | "foreign" FDecl [klabel('foreign)]
 
     //optional decls
     syntax FDecl ::= "import" CallConv CusString Var "::" FType
