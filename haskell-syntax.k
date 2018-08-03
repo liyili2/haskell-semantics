@@ -76,7 +76,7 @@ module HASKELL-SYNTAX
 
     syntax Module ::= ModuleName "where" Body          [klabel('module)]
                     | ModuleName Exports "where" Body  [klabel('moduleExp)]
-                    | Body
+                    | Body                             [klabel('moduleBody)]
 
     syntax Body ::= "{" ImpDecls ";" TopDecls "}" [klabel('bodyimpandtop)]
                   | "{" ImpDecls "}" [klabel('bodyimpdecls)]
@@ -121,18 +121,18 @@ module HASKELL-SYNTAX
                      //or are within vars. in the preprossing.
 
     //definition of top decls
-    syntax TopDecls ::= List{TopDecl, ";"}
+    syntax TopDecls ::= List{TopDecl, ";"} [klabel('topdeclslist)]
 
-    syntax TopDecl ::= Decl
-                     > "type" SimpleType "=" Type
+    syntax TopDecl ::= Decl [klabel('topdecldecl)]
+                     > "type" SimpleType "=" Type [klabel('type)]
                      | "data" OptContext SimpleType OptConstrs OptDeriving  [klabel('data)]
-                     | "newtype" OptContext SimpleType "=" NewConstr OptDeriving
-                     | "class" OptContext ConId TyVar OptCDecls
+                     | "newtype" OptContext SimpleType "=" NewConstr OptDeriving [klabel('newtype)]
+                     | "class" OptContext ConId TyVar OptCDecls [klabel('class)]
                               //Liyi: place a check on this to check if the optContext is a SContext
-                     | "instance" OptContext QTyCon Inst OptIDecls
+                     | "instance" OptContext QTyCon Inst OptIDecls [klabel('instance)]
                               //Liyi: place a check on this to check if the optContext is a SContext
-                     | "default" Types
-                     | "foreign" FDecl
+                     | "default" Types [klabel('default)]
+                     | "foreign" FDecl [klabel('foreign)]
 
     //optional decls
     syntax FDecl ::= "import" CallConv CusString Var "::" FType
@@ -172,7 +172,7 @@ module HASKELL-SYNTAX
 
     syntax OptIDecls ::= "where" IDecls | "" [onlyLabel, klabel('emptyOptIDecls)]
     syntax IDecls ::= "{" IDeclsList "}"
-    syntax IDeclsList ::= List{IDecl, ";"}
+    syntax IDeclsList ::= List{IDecl, ";"} [klabel('ideclslist)]
 
     syntax IDecl ::= FunLhs Rhs [klabel('cdeclFunLhsRhs)]
                    | Var Rhs [klabel('cdeclVarRhs)]
@@ -254,7 +254,7 @@ module HASKELL-SYNTAX
                       | Exp "," ExpTuple      [right, klabel('expTupleCon)]
 
     //constr datatypes
-    syntax OptConstrs  ::= "=" Constrs | "" [onlyLabel, klabel('emptyConstrs)]
+    syntax OptConstrs  ::= "=" Constrs [klabel('nonemptyConstrs)] | "" [onlyLabel, klabel('emptyConstrs)]
     syntax Constrs     ::= Constr | Constr "|" Constrs
     syntax Constr      ::= Con OptBangATypes [klabel('constrCon)] // (arity con  =  k, k ≥ 0) UNFINISHED
                          | SubConstr ConOp SubConstr

@@ -3,7 +3,7 @@ requires "haskell-syntax.k"
 module HASKELL-PREPROCESSING
     imports HASKELL-SYNTAX
 
-    configuration <k> getPreModule($PGM:Module) </k>
+    configuration <k> initPreModule($PGM:Module) </k>
 
     syntax KItem ::= Module(K, K)
 
@@ -11,14 +11,29 @@ module HASKELL-PREPROCESSING
     //rule getPreModule({I:TopDecls}) => getPreModule(I)
     //rule getPreModule(data I:OptContext J K L) => preModule(I)
 
-    syntax KItem ::= fetchTypes (K) [function]
-    syntax K ::= getPreModule (K) [function]
-    syntax KItem ::= preModule(K, K)
-    rule getPreModule('module(I:ModuleName,, J:K)) => getPreModule(J) ~> preModule(.K,J)
-    rule getPreModule('bodytopdecls(I:TopDecls)) => getPreModule(I)
-    rule getPreModule('data(A:K,, B:K,, C:K,, D:K) ; Rest:TopDecls)
-             => fetchTypes(B)// ~> getPreModule(Rest)
+    syntax KItem ::= fetchTypes (K,K,K,K) [function]
+    syntax K ::= getPreModule (K,K) [function]
+    syntax K ::= initPreModule (K) [function]
+    syntax KItem ::= preModule(Map,K)
+
+
+    rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(.Map,J))
+    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(.Map,J))
+    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(.Map,J))
+
+    rule getPreModule('bodytopdecls(I:K), J:K) => getPreModule(I,J)
+
+    rule getPreModule('topdeclslist('data(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
+    rule getPreModule('topdeclslist('type(A:K,, B:K),, Rest:K),J:K) => fetchTypes(A,B,Rest,J)
+    rule getPreModule('topdeclslist('newtype(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
+    rule getPreModule('topdeclslist('topdecldecl(A:K),, Rest:K),J:K) => getPreModule(Rest,J)
+    rule getPreModule('topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
+    rule getPreModule('topdeclslist('instance(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
+    rule getPreModule('topdeclslist('default(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
+    rule getPreModule('topdeclslist('foreign(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
+    rule getPreModule(.TopDecls,J:K) => J
+
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
-    rule fetchTypes('simpleTypeCon(I:TyCon H:TyVars)) ~> preModule(L:K, J:K) => preModule(I,J)
+    rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), C:K, Rest:K, preModule(M:Map, J:K)) => getPreModule(Rest,preModule(M[I <- C],J))
 endmodule
