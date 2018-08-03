@@ -1,0 +1,37 @@
+Make alpha = type
+Make beta = newtype and data, 
+
+1. alpha check for no loops
+2. Construct T: data x = A U | B W V => [(X , [(A, [U], X),(B,[W,V],X)]),(Y,[(S,[X],Y)])] prelist T
+3. Make sure typeconstructors do not collide in T
+4. Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
+5. Keys of alpha and keys of T should be unique
+6. Transform T into beta
+
+beta = map(Typeconstructors |-> funtype(parameter,target), typecon |-> funtype(parameter,funtype(parameter,target)))
+7. replace param/target in beta with keys in alpha until they dont match keys of alpha anymore
+
+
+For inference algorithm
+
+______________________________________________________
+(B,Gamma) Op:T (if op in keys of Beta) => (B(Op) = T,V)
+
+if op is not in keys of beta then treat as variable
+
+_________________________________________________________________________________
+(B,Gamma) V:Var : T (guessed type) => if V in Gamma, return (T = Gamma(V), Gamma)
+
+__________________________________________________________________________________
+(B,Gamma) V:Var : T (guessed type) => if V in Gamma, return (T = T, Gamma Union V)
+
+
+(B,G + (x mapsto T') E : T'') => (unifications (prev T = T), modified gamma)
+_____________________________________________________________________________________________________________________________
+(B,Gamma) lamda x. E : T => (unifications U (T = T' mapsto T''), modified gamma \ (set subtract) x because x is out of scope)
+
+
+
+(B,Gamma) E1: T' -> T => (Us, Gamma')         (B,G') E2 : T' => (Us', Gamma'')
+_____________________________________________________________
+(B,Gamma) E1 E2 : T => (Us U Us', Gamma'')
