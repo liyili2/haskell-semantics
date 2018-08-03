@@ -4,7 +4,6 @@ Make beta = newtype and data,
 1. alpha check for no loops
 2. Construct T: data x = A U | B W V => [(X , [] , [(A, [U], X),(B,[W,V],X)]),(Y,[(S,[X],Y)])] prelist T
 
-
 data H a b c d = A a c | B b d
 
 T = [(H,[a,b,c,d],List)]
@@ -17,6 +16,19 @@ NEED TO CHECK all the polymorphic parameters are used in left side and right sid
 6. Transform T into beta
 
 beta = map(Typeconstructors |-> funtype(parameter,target), typecon |-> funtype(parameter,funtype(parameter,target)))
+
+keys are only typeconstructors
+
+but entries can be either: target, funtype(), or a poly
+
+poly(list of type parameters, entry)
+
+-----------------------------------------------------------------------------
+syntax Tau = Target | funtype(Tau, Tau) | poly(list of type parameters, Tau)
+-----------------------------------------------------------------------------
+beta = map(typecon |-> Tau)
+-----------------------------------------------------------------------------
+
 7. replace param/target in beta with keys in alpha until they dont match keys of alpha anymore
 
 8.
