@@ -23,9 +23,9 @@ module HASKELL-PREPROCESSING
     syntax K ::= initPreModule (K) [function]
     syntax KItem ::= preModule(Map,K,K)
 
-    syntax KItem ::= TList(KList)
-    syntax KItem ::= TObject(KList,KList,KList)
-    syntax KItem ::= InnerTPiece(K,KList,KList,K) //(type constructor, poly type vars, argument sorts, type name)
+    syntax KItem ::= TList(KList) //list of T objects for every new type introduced by data and newtype
+    syntax KItem ::= TObject(KList,KList,KList) //(type name, entire list of poly type vars, list of inner T pieces)
+    syntax KItem ::= InnerTPiece(K,KList,KList,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
 
     rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(.Map,TList(.K),J))
     rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(.Map,TList(.K),J))
@@ -52,15 +52,22 @@ module HASKELL-PREPROCESSING
 
     rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), C:K, Rest:K, preModule(M:Map, L:K, J:K)) => getPreModule(Rest,preModule(M[I <- C],L,J))
 
-    rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(M:Map, TList(ListInside:K), J:K)) => getPreModule(Rest,preModule(M,TList( TObject(I,getTypeVars(H),makeInnerT(I,H,D)) ~> ListInside),J))
+    rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(M:Map, TList(ListInside:K), J:K)) => getPreModule(Rest,preModule(M,TList( TObject(I,H,makeInnerT(I,H,D)) ~> ListInside),J))
 
     rule makeInnerT(A:K,B:K,'nonemptyConstrs(C:K)) => makeInnerT(A,B,C)
-    rule makeInnerT(A:K,B:K,'singleConstr(C:K)) => InnerTPiece(getCon(C),getTypeVars(B),getArgSorts(C),A)
-    rule makeInnerT(A:K,B:K,'multConstr(C:K,, D:K)) => InnerTPiece(getCon(C),getTypeVars(B),getArgSorts(C),A) ~> makeInnerT(A,B,D)
+    rule makeInnerT(A:K,B:K,'singleConstr(C:K)) => InnerTPiece(getCon(C),getTypeVars(C),getArgSorts(C),C,A)
+    rule makeInnerT(A:K,B:K,'multConstr(C:K,, D:K)) => InnerTPiece(getCon(C),getTypeVars(C),getArgSorts(C),C,A) ~> makeInnerT(A,B,D)
 
-    rule getTypeVars(.TyVars) => .K
+    rule getTypeVars('constrCon(A:K,, B:K)) => getTypeVars(B)
+    rule getTypeVars('optBangATypes(A:K,, Rest:K)) => getTypeVars(A) ~> getTypeVars(Rest)
+    rule getTypeVars(.OptBangATypes) => .OptBangATypes
 
     //rule getCon('emptyConstrs()) => .K
     //rule getCon('nonemptyConstrs(A:K)) => getCon(A)
     rule getCon('constrCon(A:K,, B:K)) => A
+
+    //rule getArgSorts('constrCon(A:K,, B:K)) => B
+    rule getArgSorts('constrCon(A:K,, B:K)) => getArgSorts(B)
+    rule getArgSorts('optBangATypes(A:K,, Rest:K)) => getArgSorts(A) ~> getArgSorts(Rest)
+    rule getArgSorts(.OptBangATypes) => .OptBangATypes
 endmodule

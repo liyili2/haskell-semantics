@@ -269,7 +269,7 @@ module HASKELL-SYNTAX
                        | Vars "::" "!" AType
 
 
-    syntax OptBangATypes ::= List{OptBangAType, " "}
+    syntax OptBangATypes ::= List{OptBangAType, " "} [klabel('optBangATypes)]
     syntax OptBangAType ::= OptBang AType
     syntax OptBang ::= "!" | "" [onlyLabel, klabel('emptyBang)]
 
@@ -295,8 +295,8 @@ module HASKELL-SYNTAX
 
     syntax ATypeList ::= List{AType, ""}
 
-    syntax AType ::= GTyCon
-                   | TyVar
+    syntax AType ::= GTyCon                     [klabel('atypeGTyCon)]
+                   | TyVar                      [klabel('atypeTyVar)]
                    | "(" TypeTuple ")"
                    | "[" Type "]"               [klabel('tyList)]
                    | "(" Type ")"               [bracket]
