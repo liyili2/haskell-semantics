@@ -13,7 +13,7 @@ module HASKELL-PREPROCESSING
 
     syntax KItem ::= fetchTypes (K,K,K,K) [function]
     syntax KItem ::= makeT (K,K,K,K) [function]
-    syntax KItem ::= makeInnerT (K,K,K) [function]
+    syntax K ::= makeInnerT (K,K,K) [function]
     syntax KItem ::= getTypeVars (K) [function]
 
     syntax KItem ::= getCon(K) [function]
@@ -23,6 +23,7 @@ module HASKELL-PREPROCESSING
     syntax K ::= initPreModule (K) [function]
     syntax KItem ::= preModule(Map,K,K)
 
+    syntax KItem ::= TList(KList)
     syntax KItem ::= TObject(KList,KList,KList)
     syntax KItem ::= InnerTPiece(K,KList,KList,K) //(type constructor, poly type vars, argument sorts, type name)
 
@@ -53,11 +54,13 @@ module HASKELL-PREPROCESSING
 
     rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(M:Map, TObject(A:K,B:K,C:K), J:K)) => getPreModule(Rest,preModule(M,TObject(I ~> A,getTypeVars(H) ~> B,makeInnerT(I,H,D) ~> C),J))
 
-    rule makeInnerT(A:K,B:K,C:K) => InnerTPiece(getCon(C),getTypeVars(B),getArgSorts(C),A)
+    rule makeInnerT(A:K,B:K,'nonemptyConstrs(C:K)) => makeInnerT(A,B,C)
+    rule makeInnerT(A:K,B:K,'singleConstr(C:K)) => InnerTPiece(getCon(C),getTypeVars(B),getArgSorts(C),A)
+    rule makeInnerT(A:K,B:K,'multConstr(C:K,, D:K)) => InnerTPiece(getCon(C),getTypeVars(B),getArgSorts(C),A) ~> makeInnerT(A,B,D)
 
     rule getTypeVars(.TyVars) => .K
 
     //rule getCon('emptyConstrs()) => .K
-    rule getCon('nonemptyConstrs(A:K)) => getCon(A)
+    //rule getCon('nonemptyConstrs(A:K)) => getCon(A)
     rule getCon('constrCon(A:K,, B:K)) => A
 endmodule

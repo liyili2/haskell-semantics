@@ -255,7 +255,7 @@ module HASKELL-SYNTAX
 
     //constr datatypes
     syntax OptConstrs  ::= "=" Constrs [klabel('nonemptyConstrs)] | "" [onlyLabel, klabel('emptyConstrs)]
-    syntax Constrs     ::= Constr | Constr "|" Constrs
+    syntax Constrs     ::= Constr [klabel('singleConstr)] | Constr "|" Constrs [klabel('multConstr)]
     syntax Constr      ::= Con OptBangATypes [klabel('constrCon)] // (arity con  =  k, k ≥ 0) UNFINISHED
                          | SubConstr ConOp SubConstr
                          | Con "{" FieldDeclList "}"
