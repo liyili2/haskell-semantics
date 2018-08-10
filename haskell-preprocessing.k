@@ -56,4 +56,8 @@ module HASKELL-PREPROCESSING
     rule makeInnerT(A:K,B:K,C:K) => InnerTPiece(getCon(C),getTypeVars(B),getArgSorts(C),A)
 
     rule getTypeVars(.TyVars) => .K
+
+    //rule getCon('emptyConstrs()) => .K
+    rule getCon('nonemptyConstrs(A:K)) => getCon(A)
+    rule getCon('constrCon(A:K,, B:K)) => A
 endmodule
