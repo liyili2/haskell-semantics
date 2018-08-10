@@ -2,7 +2,7 @@ Make alpha = type
 Make beta = newtype and data, 
 
 1. alpha check for no loops
-2. Construct T: data x = A U | B W V => [(X , [] , [(A, [U], X),(B,[W,V],X)]),(Y,[(S,[X],Y)])] prelist T
+2. Construct T: data x = A U | B W V => [(X , [] , [(A, [U], X),(B,[W,V],X)]),(Y,[],[(S,[X],Y)])] prelist T
 
 data H a b c d = A a c | B b d
 

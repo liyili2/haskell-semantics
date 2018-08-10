@@ -41,7 +41,7 @@ module HASKELL-SYNTAX
 /*    syntax QTyCls ::= QTyCon
     syntax TyCls ::= ConId
 */
-    syntax TyVars ::= List{TyVar, ""} //used in SimpleType syntax
+    syntax TyVars ::= List{TyVar, ""} [klabel('typeVars)] //used in SimpleType syntax
     syntax TyVar ::= VarId
     syntax TyVarTuple ::= TyVar "," TyVar      [klabel('twoTypeVarTuple)]
                         | TyVar "," TyVarTuple [klabel('typeVarTupleCon)]
