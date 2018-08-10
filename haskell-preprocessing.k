@@ -13,13 +13,18 @@ module HASKELL-PREPROCESSING
 
     syntax KItem ::= fetchTypes (K,K,K,K) [function]
     syntax KItem ::= makeT (K,K,K,K) [function]
+    syntax KItem ::= makeInnerT (K,K,K) [function]
     syntax KItem ::= getTypeVars (K) [function]
+
+    syntax KItem ::= getCon(K) [function]
+    syntax KItem ::= getArgSorts(K) [function]
+
     syntax K ::= getPreModule (K,K) [function]
     syntax K ::= initPreModule (K) [function]
     syntax KItem ::= preModule(Map,K,K)
 
     syntax KItem ::= TObject(KList,KList,KList)
-    syntax KItem ::= InnerTPiece(K,KList,K)
+    syntax KItem ::= InnerTPiece(K,KList,KList,K) //(type constructor, poly type vars, argument sorts, type name)
 
     rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(.Map,TObject(.K,.K,.K),J))
     rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(.Map,TObject(.K,.K,.K),J))
@@ -46,7 +51,9 @@ module HASKELL-PREPROCESSING
 
     rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), C:K, Rest:K, preModule(M:Map, L:K, J:K)) => getPreModule(Rest,preModule(M[I <- C],L,J))
 
-    rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(M:Map, TObject(A:K,B:K,C:K), J:K)) => getPreModule(Rest,preModule(M,TObject(I ~> A,getTypeVars(H) ~> B,C),J))
+    rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(M:Map, TObject(A:K,B:K,C:K), J:K)) => getPreModule(Rest,preModule(M,TObject(I ~> A,getTypeVars(H) ~> B,makeInnerT(I,H,D) ~> C),J))
+
+    rule makeInnerT(A:K,B:K,C:K) => InnerTPiece(getCon(C),getTypeVars(B),getArgSorts(C),A)
 
     rule getTypeVars(.TyVars) => .K
 endmodule
