@@ -12,9 +12,15 @@ module HASKELL-PREPROCESSING
     //rule getPreModule(data I:OptContext J K L) => preModule(I)
 
     // t Checker
-    syntax KItem ::= tChecker(K) [function]
+    syntax K ::= tChecker(K) [function]
+    syntax K ::= tyConCollCheck(K,K) [function]
+    syntax K ::= innerCollCheck(K) [function]
 
-    rule tChecker(preModule(Alpha:K,T:K,Module:K)) //
+    rule tChecker(preModule(Alpha:K,T:K,Mod:K)) => tyConCollCheck(T,preModule(Alpha,T,Mod))
+
+    //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheck(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
+
+    //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheckPasser(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
 
     // First pass
     syntax KItem ::= fetchTypes (K,K,K,K) [function]
