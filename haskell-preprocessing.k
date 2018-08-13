@@ -3,7 +3,7 @@ requires "haskell-syntax.k"
 module HASKELL-PREPROCESSING
     imports HASKELL-SYNTAX
 
-    configuration <k> initPreModule($PGM:Module) </k>
+    configuration <k> tChecker(initPreModule($PGM:Module)) </k>
 
     syntax KItem ::= Module(K, K)
 
@@ -11,6 +11,12 @@ module HASKELL-PREPROCESSING
     //rule getPreModule({I:TopDecls}) => getPreModule(I)
     //rule getPreModule(data I:OptContext J K L) => preModule(I)
 
+    // t Checker
+    syntax KItem ::= tChecker(K) [function]
+
+    rule tChecker(preModule(Alpha:K,T:K,Module:K)) //
+
+    // First pass
     syntax KItem ::= fetchTypes (K,K,K,K) [function]
     syntax KItem ::= makeT (K,K,K,K) [function]
     syntax K ::= makeInnerT (K,K,K) [function]
@@ -21,7 +27,7 @@ module HASKELL-PREPROCESSING
 
     syntax K ::= getPreModule (K,K) [function]
     syntax K ::= initPreModule (K) [function]
-    syntax KItem ::= preModule(Map,K,K)
+    syntax KItem ::= preModule(Map,K,K) //(alpha, T, Source Code)
 
     syntax KItem ::= TList(KList) //list of T objects for every new type introduced by data and newtype
     syntax KItem ::= TObject(KList,KList,KList) //(type name, entire list of poly type vars, list of inner T pieces)
@@ -60,6 +66,9 @@ module HASKELL-PREPROCESSING
 
     rule getTypeVars('constrCon(A:K,, B:K)) => getTypeVars(B)
     rule getTypeVars('optBangATypes(A:K,, Rest:K)) => getTypeVars(A) ~> getTypeVars(Rest)
+    rule getTypeVars('optBangAType('emptyBang(.KList),, Rest:K)) => getTypeVars(Rest)
+    rule getTypeVars('atypeGTyCon(A:K)) => .K
+    rule getTypeVars('atypeTyVar(A:K)) => A
     rule getTypeVars(.OptBangATypes) => .OptBangATypes
 
     //rule getCon('emptyConstrs()) => .K
@@ -69,5 +78,8 @@ module HASKELL-PREPROCESSING
     //rule getArgSorts('constrCon(A:K,, B:K)) => B
     rule getArgSorts('constrCon(A:K,, B:K)) => getArgSorts(B)
     rule getArgSorts('optBangATypes(A:K,, Rest:K)) => getArgSorts(A) ~> getArgSorts(Rest)
+    rule getArgSorts('optBangAType('emptyBang(.KList),, Rest:K)) => getArgSorts(Rest)
+    rule getArgSorts('atypeGTyCon(A:K)) => A
+    rule getArgSorts('atypeTyVar(A:K)) => .K
     rule getArgSorts(.OptBangATypes) => .OptBangATypes
 endmodule

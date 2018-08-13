@@ -270,7 +270,7 @@ module HASKELL-SYNTAX
 
 
     syntax OptBangATypes ::= List{OptBangAType, " "} [klabel('optBangATypes)]
-    syntax OptBangAType ::= OptBang AType
+    syntax OptBangAType ::= OptBang AType [klabel('optBangAType)]
     syntax OptBang ::= "!" | "" [onlyLabel, klabel('emptyBang)]
 
     syntax OptContext ::= Context "=>" | "" [onlyLabel, klabel('emptyContext)]
@@ -293,7 +293,7 @@ module HASKELL-SYNTAX
     syntax BType ::= AType
                    | BType AType [klabel('baTypeCon)]
 
-    syntax ATypeList ::= List{AType, ""}
+    syntax ATypeList ::= List{AType, ""} [klabel('atypeList)]
 
     syntax AType ::= GTyCon                     [klabel('atypeGTyCon)]
                    | TyVar                      [klabel('atypeTyVar)]
