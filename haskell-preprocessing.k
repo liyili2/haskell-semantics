@@ -37,9 +37,12 @@ module HASKELL-PREPROCESSING
     syntax K ::= initPreModule (K) [function]
     syntax KItem ::= preModule(Map,K,K) //(alpha, T, Source Code)
 
-    syntax KItem ::= TList(KList) //list of T objects for every new type introduced by data and newtype
-    syntax KItem ::= TObject(KList,KList,KList) //(type name, entire list of poly type vars, list of inner T pieces)
-    syntax KItem ::= InnerTPiece(K,KList,KList,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
+    syntax KItem ::= TList(K) //list of T objects for every new type introduced by data and newtype
+    //syntax KItem ::= TList(KList) //list of T objects for every new type introduced by data and newtype
+    syntax KItem ::= TObject(K,K,K) //(type name, entire list of poly type vars, list of inner T pieces)
+    //syntax KItem ::= TObject(K,K,KList) //(type name, entire list of poly type vars, list of inner T pieces)
+    syntax KItem ::= InnerTPiece(K,K,K,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
+    //syntax KItem ::= InnerTPiece(K,KList,KList,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
 
     rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(.Map,TList(.K),J))
     rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(.Map,TList(.K),J))
