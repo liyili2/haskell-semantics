@@ -1,0 +1,105 @@
+Make alpha = type
+Make beta = newtype and data, 
+
+1. alpha check for no loops
+2. Construct T: data x = A U | B W V => [(X , [] , [(A, [U], X),(B,[W,V],X)]),(Y,[],[(S,[X],Y)])] prelist T
+
+data H a b c d = A a c | B b d
+
+T = [(H,[a,b,c,d],List)]
+
+NEED TO CHECK all the polymorphic parameters are used in left side and right side (1 to 1)
+
+3. Make sure typeconstructors do not collide in T
+4. Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
+5. Keys of alpha and keys of T should be unique
+6. Transform T into beta
+
+beta = map(Typeconstructors |-> funtype(parameter,target), typecon |-> funtype(parameter,funtype(parameter,target)))
+
+keys are only typeconstructors
+
+but entries can be either: target, funtype(), or a poly
+
+poly(list of type parameters, entry)
+
+-----------------------------------------------------------------------------
+syntax Tau = Target | funtype(Tau, Tau) | poly(list of type parameters, Tau)
+-----------------------------------------------------------------------------
+beta = map(typecon |-> Tau)
+-----------------------------------------------------------------------------
+
+7. replace param/target in beta with keys in alpha until they dont match keys of alpha anymore
+
+8.
+
+For inference algorithm
+
+______________________________________________________
+(B,Gamma) Op:T (if op in keys of Beta) => (B(Op) = T,V)
+
+if op is not in keys of beta then treat as variable
+
+_________________________________________________________________________________
+(B,Gamma) V:Var : T (guessed type) => if V in Gamma, return (T = Gamma(V), Gamma)
+
+______________________________________________________________________________________
+(B,Gamma) V:Var : T (guessed type) => if V not in Gamma, return (T = T, Gamma Union V)
+
+
+(B,G + (x mapsto T') E : T'') => (unifications (prev T = T), modified gamma)
+_____________________________________________________________________________________________________________________________
+(B,Gamma) lamda x. E : T => (unifications U (T = T' mapsto T''), modified gamma \ (set subtract) x (because x is out of scope)
+
+
+
+(B,Gamma) E1: T' -> T => (Us, Gamma')         (B,G') E2 : T' => (Us', Gamma'')
+______________________________________________________________________________
+(B,Gamma) E1 E2 : T => (Us U Us', Gamma'')
+
+
+
+(B,G) lambda X . E : T' => (Us, Gamma')       (B + {f -> T'}, G') E2 : T => (Us' Gamma'')
+_________________________________________________________________________________________
+(B,G) let f x = E1 in E2 : T (Us U Us', G'')
+
+----------------------------------------------------------------------------------------------------
+
+polymorphism
+
+if op \in dom(Beta) , B(op) = \forall (a.b.c...).T'
+______________________________________________
+(B,G) : op : T => (T = T', G)
+
+if op \Not in dom(Beta), v \in dom(G), G(op) = T'
+______________________________________________
+(B,G) : Var : T => (T = T', G)
+
+if op \Not in dom(Beta), v \Not in dom(G)
+______________________________________________
+(B,G) : Var : T => (T = T, G U (Var -> T))
+
+
+
+(B,G U (X : T')) E : T'' => (Us, G')
+____________________________________
+(B,G) lambda x E : T => (Us U (T = T' -> T''), G' \ {X})
+
+
+
+(B, G) |- e1 : T' => (Us, G') (B U (f : Gen(f,B,T')), G' |- E2 : T => (Us', G''))
+___________________________________________________________________________________
+let f = e1 in e2 : T => (Us U Us', G'')
+
+
+(B, G + {f : T'}) |- e1 : T' => (Us, G') (B U (f : Gen(f,B,T')), G' \ {f} |- E2 : T => (Us', G''))
+___________________________________________________________________________________
+let rec f = e1 in e2 : T => (Us U Us', G'')
+
+
+
+MORE for polymorphism...
+
+put each function name from decl into beta with a fresh variable
+
+(Gen(f,Beta,Gamma) => forall (a b c), Gamma

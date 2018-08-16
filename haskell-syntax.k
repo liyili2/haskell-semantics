@@ -41,7 +41,7 @@ module HASKELL-SYNTAX
 /*    syntax QTyCls ::= QTyCon
     syntax TyCls ::= ConId
 */
-    syntax TyVars ::= List{TyVar, ""} //used in SimpleType syntax
+    syntax TyVars ::= List{TyVar, ""} [klabel('typeVars)] //used in SimpleType syntax
     syntax TyVar ::= VarId
     syntax TyVarTuple ::= TyVar "," TyVar      [klabel('twoTypeVarTuple)]
                         | TyVar "," TyVarTuple [klabel('typeVarTupleCon)]
@@ -255,7 +255,7 @@ module HASKELL-SYNTAX
 
     //constr datatypes
     syntax OptConstrs  ::= "=" Constrs [klabel('nonemptyConstrs)] | "" [onlyLabel, klabel('emptyConstrs)]
-    syntax Constrs     ::= Constr | Constr "|" Constrs
+    syntax Constrs     ::= Constr [klabel('singleConstr)] | Constr "|" Constrs [klabel('multConstr)]
     syntax Constr      ::= Con OptBangATypes [klabel('constrCon)] // (arity con  =  k, k ≥ 0) UNFINISHED
                          | SubConstr ConOp SubConstr
                          | Con "{" FieldDeclList "}"
@@ -269,8 +269,8 @@ module HASKELL-SYNTAX
                        | Vars "::" "!" AType
 
 
-    syntax OptBangATypes ::= List{OptBangAType, " "}
-    syntax OptBangAType ::= OptBang AType
+    syntax OptBangATypes ::= List{OptBangAType, " "} [klabel('optBangATypes)]
+    syntax OptBangAType ::= OptBang AType [klabel('optBangAType)]
     syntax OptBang ::= "!" | "" [onlyLabel, klabel('emptyBang)]
 
     syntax OptContext ::= Context "=>" | "" [onlyLabel, klabel('emptyContext)]
@@ -293,10 +293,10 @@ module HASKELL-SYNTAX
     syntax BType ::= AType
                    | BType AType [klabel('baTypeCon)]
 
-    syntax ATypeList ::= List{AType, ""}
+    syntax ATypeList ::= List{AType, ""} [klabel('atypeList)]
 
-    syntax AType ::= GTyCon
-                   | TyVar
+    syntax AType ::= GTyCon                     [klabel('atypeGTyCon)]
+                   | TyVar                      [klabel('atypeTyVar)]
                    | "(" TypeTuple ")"
                    | "[" Type "]"               [klabel('tyList)]
                    | "(" Type ")"               [bracket]
