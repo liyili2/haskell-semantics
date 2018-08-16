@@ -16,9 +16,9 @@ module HASKELL-PREPROCESSING
     syntax K ::= tyConCollCheck(K,K) [function]
     syntax K ::= innerCollCheck(K) [function]
 
-    rule tChecker(preModule(Alpha:K,T:K,Mod:K)) => tyConCollCheck(.K,preModule(Alpha,T,Mod))
+    rule tChecker(preModule(Alpha:Map,T:K,Mod:K)) => tyConCollCheck(.K,preModule(Alpha,T,Mod))
 
-    rule tyConCollCheck(.K,preModule(Alpha:K,H:K,Mod:K)) => tyConCollCheck(innerCollCheck(H),preModule(Alpha,H,Mod))
+    rule tyConCollCheck(.K,preModule(Alpha:Map,H:K,Mod:K)) => tyConCollCheck(innerCollCheck(H),preModule(Alpha,H,Mod))
 
     //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheck(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
 
