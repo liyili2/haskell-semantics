@@ -18,7 +18,7 @@ module HASKELL-PREPROCESSING
 
     rule tChecker(preModule(Alpha:Map,T:K,Mod:K)) => tyConCollCheck(.K,preModule(Alpha,T,Mod))
 
-    rule tyConCollCheck(.K,preModule(Alpha:Map,H:K,Mod:K)) => tyConCollCheck(innerCollCheck(H),preModule(Alpha,H,Mod))
+    rule tyConCollCheck(.K,preModule(Alpha:Map,H:K,Mod:K)) => tyConCollCheck(innerCollCheck(H),preModule(Alpha,H,Mod)) //BROKEN RULE
 
     //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheck(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
 
@@ -37,9 +37,17 @@ module HASKELL-PREPROCESSING
     syntax K ::= initPreModule (K) [function]
     syntax KItem ::= preModule(Map,K,K) //(alpha, T, Source Code)
 
-    syntax KItem ::= TList(KList) //list of T objects for every new type introduced by data and newtype
-    syntax KItem ::= TObject(KList,KList,KList) //(type name, entire list of poly type vars, list of inner T pieces)
-    syntax KItem ::= InnerTPiece(K,KList,KList,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
+    syntax KItem ::= TList(K) //list of T objects for every new type introduced by data and newtype
+    //syntax KItem ::= TList(KList) //list of T objects for every new type introduced by data and newtype
+    syntax KItem ::= TObject(K,K,K) //(type name, entire list of poly type vars, list of inner T pieces)
+    //syntax KItem ::= TObject(K,K,KList) //(type name, entire list of poly type vars, list of inner T pieces)
+    syntax KItem ::= InnerTPiece(K,K,K,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
+    //syntax KItem ::= InnerTPiece(K,KList,KList,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
+
+    //list convert
+    syntax List ::= convertToList(K)
+    rule convertToList(.K) => .List
+    rule convertToList(A:KItem ~> B:K) => ListItem(A) ~> convertToList(B)
 
     rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(.Map,TList(.K),J))
     rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(.Map,TList(.K),J))
