@@ -1,3 +1,43 @@
+Make a set vs make a list and check to see if the sizes are the same to check for collisions
+
+seperated by whitespace
+use ListItem(A) or .List
+
+syntax List ::= funreturnList(K) [function]
+
+syntax KItem ::= error (String)
+
+
+make configuration
+
+<T>
+
+</T>
+
+syntax KItem ::= toTemp(K)
+rule <k> toTemp(T:K) => .K ...</k>
+<tempT> old:T => T </tempT>
+
+k tempT tempmodule tempalpha tempoutput
+
+
+    rule <k> performNextChecks
+             => checkUseVars
+                ~> (checkLabelUses
+                ~> (checkBlockAddress(.K)
+                ~> (checkNoNormalBlocksHavingLandingpad(.K, TNS -Set TES)
+                ~> (checkAllExpBlocksHavingLandingpad(.K, TES)
+                ~> (checkAllExpInFromInvoke(.K, TES)
+                ~> (checkLandingpad
+                ~> checkLandingDomResumes)))))) ...</k>
+          <tempLabelUses> TNS:Set </tempLabelUses>
+          <tempExceptionUses> TES:Set </tempExceptionUses>
+
+syntax KItem ::= "keyword"
+
+rule <k> keyword => checker(T) ...</k>
+<tempT> T </tempT>
+
 Make alpha = type
 Make beta = newtype and data, 
 
