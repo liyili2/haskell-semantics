@@ -6,6 +6,7 @@ module HASKELL-PREPROCESSING
     imports HASKELL-SYNTAX
     imports HASKELL-CONFIGURATION
 
+/*
     //definition of ElemList
 
     //syntax KItem ::= ElemList
@@ -22,10 +23,14 @@ module HASKELL-PREPROCESSING
     syntax KResult ::= ElementResult
     rule val(K:KResult) => valValue(K) [structural]
 
-
     //form ElemList
     syntax ElemList ::= formElemList(K) [function]
 
+    //list convert
+    syntax List ::= convertToList(K)  [function]
+    rule convertToList(.K) => .List
+    rule convertToList(A:KItem ~> B:K) => ListItem(A) convertToList(B)
+*/
 
     //call before Checker Code
     rule <k> callInit(S:K) => initPreModule(S) ...</k>
@@ -33,16 +38,14 @@ module HASKELL-PREPROCESSING
 
     //start of Checker Code
     syntax KItem ::= Module(K, K)
-    syntax KItem ::= preModule(Map,K) //(alpha, T, Source Code)
+    syntax KItem ::= preModule(Map,K) //(alpha, T)
 
-    //rule getPreModule(module I:ModId where J:Body) => preModule(J)
-    //rule getPreModule({I:TopDecls}) => getPreModule(I)
-    //rule getPreModule(data I:OptContext J K L) => preModule(I)
-
-    // First pass
+    // STEP 1 CONSTRUCT T AND ALPHA
+    // alpha = type
+    // T = newtype and data, temporary data structure
 
     syntax KItem ::= initPreModule(K) [function]
-    syntax KItem ::= getPreModule(K, K) [function]
+    syntax KItem ::= getPreModule(K, K) [function] //(Current term, premodule)
     syntax KItem ::= makeT (K,K,K,K) [function]
 
     syntax KItem ::= fetchTypes (K,K,K,K) [function]
@@ -54,11 +57,8 @@ module HASKELL-PREPROCESSING
     syntax List ::= getArgSorts(K) [function] //LIST
 
     syntax KItem ::= TList(K) //list of T objects for every new type introduced by data and newtype
-    //syntax KItem ::= TList(KList) //list of T objects for every new type introduced by data and newtype
     syntax KItem ::= TObject(K,K,K) //(type name, entire list of poly type vars, list of inner T pieces)
-    //syntax KItem ::= TObject(K,K,KList) //(type name, entire list of poly type vars, list of inner T pieces)
     syntax KItem ::= InnerTPiece(K,K,K,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
-    //syntax KItem ::= InnerTPiece(K,KList,KList,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
 
     rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(.Map,TList(.List)))
     rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(.Map,TList(.List)))
@@ -108,7 +108,24 @@ module HASKELL-PREPROCESSING
     rule getArgSorts('atypeTyVar(A:K)) => .List
     rule getArgSorts(.OptBangATypes) => .List
 
-    // t Checker
+    // STEP 2 PERFORM CHECKS
+
+    syntax KItem ::= "startChecks"
+    syntax KItem ::= "checkAlphaNoLoops"
+        //alpha check for no loops
+    syntax KItem ::= "checkTypeConsDontCollide"
+        //Make sure typeconstructors do not collide in T
+    syntax KItem ::= "checkArgSortsAreTargets"
+           //Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
+//NEED TO CHECK all the polymorphic parameters are used in left side and right side (1 to 1)
+//Keys of alpha and keys of T should be unique
+
+    rule <k> preModule(A:K,T:K) => startChecks ...</k>
+         <tempAlpha> OldAlpha:K => A </tempAlpha>
+         <tempT> OldT:K => T </tempT>
+
+    rule <k> startChecks
+             => checkUseVars ...</k>
 
     //syntax KItem ::= tChecker(K) [function]
     syntax KItem ::= tyConCollCheck(K,K) [function]
@@ -123,9 +140,6 @@ module HASKELL-PREPROCESSING
 
     //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheckPasser(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
 
+    // STEP 3 Transform T into beta
 
-    //list convert
-    syntax List ::= convertToList(K)  [function]
-    rule convertToList(.K) => .List
-    rule convertToList(A:KItem ~> B:K) => ListItem(A) convertToList(B)
 endmodule
