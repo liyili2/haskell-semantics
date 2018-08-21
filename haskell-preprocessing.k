@@ -27,9 +27,13 @@ module HASKELL-PREPROCESSING
     syntax ElemList ::= formElemList(K) [function]
 
 
+    //call before Checker Code
+    rule <k> callInit(S:K) => initPreModule(S) ...</k>
+         <tempModule> A:K => S </tempModule>
+
     //start of Checker Code
     syntax KItem ::= Module(K, K)
-    syntax KItem ::= preModule(Map,K,K) //(alpha, T, Source Code)
+    syntax KItem ::= preModule(Map,K) //(alpha, T, Source Code)
 
     //rule getPreModule(module I:ModId where J:Body) => preModule(J)
     //rule getPreModule({I:TopDecls}) => getPreModule(I)
@@ -37,7 +41,7 @@ module HASKELL-PREPROCESSING
 
     // First pass
 
-    //syntax KItem ::= initPreModule(K) [function]
+    syntax KItem ::= initPreModule(K) [function]
     syntax KItem ::= getPreModule(K, K) [function]
     syntax KItem ::= makeT (K,K,K,K) [function]
 
@@ -56,9 +60,9 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= InnerTPiece(K,K,K,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
     //syntax KItem ::= InnerTPiece(K,KList,KList,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
 
-    rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(.Map,TList(.List),J))
-    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(.Map,TList(.List),J))
-    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(.Map,TList(.List),J))
+    rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(.Map,TList(.List)))
+    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(.Map,TList(.List)))
+    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(.Map,TList(.List)))
 
     rule getPreModule('bodytopdecls(I:K), J:K) => getPreModule(I,J)
     rule getPreModule('topdeclslist('type(A:K,, B:K),, Rest:K),J:K) => fetchTypes(A,B,Rest,J) //constructalpha
@@ -77,9 +81,9 @@ module HASKELL-PREPROCESSING
 
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
-    rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), C:K, Rest:K, preModule(M:Map, L:K, J:K)) => getPreModule(Rest,preModule(M[I <- C],L,J))
+    rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), C:K, Rest:K, preModule(M:Map, L:K)) => getPreModule(Rest,preModule(M[I <- C],L))
 
-    rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(M:Map, TList(ListInside:List), J:K)) => getPreModule(Rest,preModule(M,TList( ListItem(TObject(I,H,makeInnerT(I,H,D))) ListInside),J))
+    rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(M:Map, TList(ListInside:List))) => getPreModule(Rest,preModule(M,TList(ListItem(TObject(I,H,makeInnerT(I,H,D))) ListInside)))
 
     rule makeInnerT(A:K,B:K,'nonemptyConstrs(C:K)) => makeInnerT(A,B,C)
     rule makeInnerT(A:K,B:K,'singleConstr(C:K)) => ListItem(InnerTPiece(getCon(C),getTypeVars(C),getArgSorts(C),C,A))
