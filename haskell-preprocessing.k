@@ -112,6 +112,8 @@ module HASKELL-PREPROCESSING
 
     // STEP 2 PERFORM CHECKS
 
+    syntax KItem ::= "error"
+
     syntax KItem ::= "startChecks"
     syntax KItem ::= "checkAlphaNoLoops"
         //alpha check for no loops
@@ -138,7 +140,7 @@ module HASKELL-PREPROCESSING
                 ~> checkLandingDomResumes)))))) ...</k> */
 
     rule <k> startChecks
-             => checkTypeConsDontCollide ...</k>
+             => checkTypeConsDontCollide ~> (checkAlphaNoLoops)...</k>
 
     rule <k> checkTypeConsDontCollide
              => tyConCollCheck(T,.List,.Set) ...</k>
@@ -146,6 +148,7 @@ module HASKELL-PREPROCESSING
 
     //syntax KItem ::= tChecker(K) [function]
     syntax KItem ::= tyConCollCheck(K,K,K) [function] //(TList,List of Tycons,Set of Tycons) 
+    syntax KItem ::= lengthCheck(K,K) [function]
     //syntax KItem ::= tyConCollCheck(K,K,K) [function]
     //syntax K ::= innerCollCheck(K) [function]
     //syntax K ::= tyConCollCheckPasser(K, K) [function]
@@ -158,8 +161,14 @@ module HASKELL-PREPROCESSING
                     tyConCollCheck(TList(ListItem(TObject(A,B,Inners)) Rest),ListItem(Ty) J, SetItem(Ty) D)
     rule tyConCollCheck(TList(ListItem(TObject(A:K,B:K,.List)) Rest:List),J:List,D:Set) => 
                     tyConCollCheck(TList(Rest),J,D)
-    //rule tyConCollCheck(TList(.List),J:List,D:Set) => 
-                    //tyConCollCheck(TList(Rest),J,D)
+    rule tyConCollCheck(TList(.List),J:List,D:Set) => 
+                    lengthCheck(size(J),size(D))
+
+    rule lengthCheck(A:Int, B:Int) => .K
+                    requires A ==Int B
+
+    rule lengthCheck(A:Int, B:Int) => error
+                    requires A =/=Int B
 
     //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheckPasser(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
 
