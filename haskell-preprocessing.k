@@ -7,6 +7,7 @@ module HASKELL-PREPROCESSING
     imports HASKELL-CONFIGURATION
 
 /*
+    //USER DEFINED LIST
     //definition of ElemList
 
     //syntax KItem ::= ElemList
@@ -26,6 +27,7 @@ module HASKELL-PREPROCESSING
     //form ElemList
     syntax ElemList ::= formElemList(K) [function]
 
+    //CONVERT ~> TO List
     //list convert
     syntax List ::= convertToList(K)  [function]
     rule convertToList(.K) => .List
@@ -124,11 +126,27 @@ module HASKELL-PREPROCESSING
          <tempAlpha> OldAlpha:K => A </tempAlpha>
          <tempT> OldT:K => T </tempT>
 
+
+/*    rule <k> performNextChecks
+             => checkUseVars
+                ~> (checkLabelUses
+                ~> (checkBlockAddress(.K)
+                ~> (checkNoNormalBlocksHavingLandingpad(.K, TNS -Set TES)
+                ~> (checkAllExpBlocksHavingLandingpad(.K, TES)
+                ~> (checkAllExpInFromInvoke(.K, TES)
+                ~> (checkLandingpad
+                ~> checkLandingDomResumes)))))) ...</k> */
+
     rule <k> startChecks
-             => checkUseVars ...</k>
+             => checkTypeConsDontCollide ...</k>
+
+    rule <k> checkTypeConsDontCollide
+             => tyConCollCheck(T,.List,.Set) ...</k>
+         <tempT> T </tempT>
 
     //syntax KItem ::= tChecker(K) [function]
-    syntax KItem ::= tyConCollCheck(K,K) [function]
+    syntax KItem ::= tyConCollCheck(K,K,K) [function] //(TList,List of Tycons,Set of Tycons) 
+    //syntax KItem ::= tyConCollCheck(K,K,K) [function]
     //syntax K ::= innerCollCheck(K) [function]
     //syntax K ::= tyConCollCheckPasser(K, K) [function]
 
@@ -136,7 +154,12 @@ module HASKELL-PREPROCESSING
 
     //rule tyConCollCheck(.K,preModule(Alpha:Map,H:K,Mod:K)) => tyConCollCheck(innerCollCheck(H),preModule(Alpha,H,Mod))
 
-    //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheck(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
+    rule tyConCollCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(Ty:K,E:K,F:K,H:K,G:K)) Inners:List)) Rest:List),J:List,D:Set) => 
+                    tyConCollCheck(TList(ListItem(TObject(A,B,Inners)) Rest),ListItem(Ty) J, SetItem(Ty) D)
+    rule tyConCollCheck(TList(ListItem(TObject(A:K,B:K,.List)) Rest:List),J:List,D:Set) => 
+                    tyConCollCheck(TList(Rest),J,D)
+    //rule tyConCollCheck(TList(.List),J:List,D:Set) => 
+                    //tyConCollCheck(TList(Rest),J,D)
 
     //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheckPasser(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
 
