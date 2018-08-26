@@ -146,6 +146,10 @@ module HASKELL-PREPROCESSING
              => tyConCollCheck(T,.List,.Set) ...</k>
          <tempT> T </tempT>
 
+    rule <k> checkAlphaNoLoops
+             => aloopCheck(A) ...</k>
+         <tempAlpha> A </tempAlpha>
+
     //syntax KItem ::= tChecker(K) [function]
     syntax KItem ::= tyConCollCheck(K,K,K) [function] //(TList,List of Tycons,Set of Tycons) 
     syntax KItem ::= lengthCheck(K,K) [function]
@@ -171,6 +175,8 @@ module HASKELL-PREPROCESSING
                     requires A =/=Int B
 
     //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheckPasser(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
+    syntax KItem ::= aloopCheck(K) [function]
+    
 
     // STEP 3 Transform T into beta
 
