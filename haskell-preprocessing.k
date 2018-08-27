@@ -40,7 +40,7 @@ module HASKELL-PREPROCESSING
 
     //start of Checker Code
     syntax KItem ::= Module(K, K)
-    syntax KItem ::= preModule(Map,K) //(alpha, T)
+    syntax KItem ::= preModule(K,K) //(alpha, T)
 
     // STEP 1 CONSTRUCT T AND ALPHA
     // alpha = type
@@ -58,13 +58,15 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= getCon(K) [function]
     syntax List ::= getArgSorts(K) [function] //LIST
 
+    syntax KItem ::= AObject(K,K) //(1st -> 2nd) map without idempotency
+
     syntax KItem ::= TList(K) //list of T objects for every new type introduced by data and newtype
     syntax KItem ::= TObject(K,K,K) //(type name, entire list of poly type vars, list of inner T pieces)
     syntax KItem ::= InnerTPiece(K,K,K,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
 
-    rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(.Map,TList(.List)))
-    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(.Map,TList(.List)))
-    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(.Map,TList(.List)))
+    rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(.List,TList(.List)))
+    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(.List,TList(.List)))
+    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(.List,TList(.List)))
 
     rule getPreModule('bodytopdecls(I:K), J:K) => getPreModule(I,J)
     rule getPreModule('topdeclslist('type(A:K,, B:K),, Rest:K),J:K) => fetchTypes(A,B,Rest,J) //constructalpha
@@ -83,9 +85,9 @@ module HASKELL-PREPROCESSING
 
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
-    rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), C:K, Rest:K, preModule(M:Map, L:K)) => getPreModule(Rest,preModule(M[I <- C],L))
+    rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), C:K, Rest:K, preModule(M:List, L:K)) => getPreModule(Rest,preModule(ListItem(AObject(I,C)) M, L))
 
-    rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(M:Map, TList(ListInside:List))) => getPreModule(Rest,preModule(M,TList(ListItem(TObject(I,H,makeInnerT(I,H,D))) ListInside)))
+    rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(M:List, TList(ListInside:List))) => getPreModule(Rest,preModule(M,TList(ListItem(TObject(I,H,makeInnerT(I,H,D))) ListInside)))
 
     rule makeInnerT(A:K,B:K,'nonemptyConstrs(C:K)) => makeInnerT(A,B,C)
     rule makeInnerT(A:K,B:K,'singleConstr(C:K)) => ListItem(InnerTPiece(getCon(C),getTypeVars(C),getArgSorts(C),C,A))
@@ -115,6 +117,7 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= "error"
 
     syntax KItem ::= "startChecks"
+    syntax KItem ::= "checkAlphaNoSameKey"
     syntax KItem ::= "checkAlphaNoLoops"
         //alpha check for no loops
     syntax KItem ::= "checkTypeConsDontCollide"
@@ -140,15 +143,13 @@ module HASKELL-PREPROCESSING
                 ~> checkLandingDomResumes)))))) ...</k> */
 
     rule <k> startChecks
-             => checkTypeConsDontCollide ~> (checkAlphaNoLoops)...</k>
+             => checkTypeConsDontCollide
+                ~> (checkAlphaNoSameKey
+                ~> (checkAlphaNoLoops)) ...</k>
 
     rule <k> checkTypeConsDontCollide
              => tyConCollCheck(T,.List,.Set) ...</k>
          <tempT> T </tempT>
-
-    rule <k> checkAlphaNoLoops
-             => aloopCheck(A) ...</k>
-         <tempAlpha> A </tempAlpha>
 
     //syntax KItem ::= tChecker(K) [function]
     syntax KItem ::= tyConCollCheck(K,K,K) [function] //(TList,List of Tycons,Set of Tycons) 
@@ -175,7 +176,21 @@ module HASKELL-PREPROCESSING
                     requires A =/=Int B
 
     //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheckPasser(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
-    syntax KItem ::= aloopCheck(K) [function]
+    syntax KItem ::= akeyCheck(K,K) [function] //(Alpha,List of Alpha,Set of Alpha)
+    syntax KItem ::= aloopCheck(K) [function] //(Alpha,List of Alpha,Set of Alpha,CurrNode)
+
+    rule <k> checkAlphaNoSameKey
+             => akeyCheck(A, .Set) ...</k>
+         <tempAlpha> A </tempAlpha>
+
+    rule <k> checkAlphaNoLoops
+             => aloopCheck(A) ...</k>
+         <tempAlpha> A </tempAlpha>
+
+    rule akeyCheck(ListItem(AObject(A:K,B:K)) C:List, D:Set) => akeyCheck(C, SetItem(A) D)
+
+    //aloopCheck set and list to check cycles
+    //rule aloopCheck(A:Map (B:K |-> C:K)) => aloopCheck(A)
     
 
     // STEP 3 Transform T into beta
