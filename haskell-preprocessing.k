@@ -178,7 +178,7 @@ module HASKELL-PREPROCESSING
 
     //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheckPasser(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
     syntax KItem ::= akeyCheck(K,K,K) [function] //(Alpha,List of Alpha,Set of Alpha)
-    syntax KItem ::= aloopCheck(K) [function] //(Alpha,List of Alpha,Set of Alpha,CurrNode)
+    syntax KItem ::= aloopCheck(K,K,K,K) [function] //(Alpha,List of Alpha,Set of Alpha,CurrNode)
 
     rule <k> checkAlphaNoSameKey
              => akeyCheck(A, .Set, A) ...</k>
@@ -187,14 +187,15 @@ module HASKELL-PREPROCESSING
     //         => akeyCheck(.K, .Set) ...</k>
 
     rule <k> checkAlphaNoLoops
-             => aloopCheck(A) ...</k>
-         <tempAlpha> A </tempAlpha>
+             => aloopCheck(A,.List,.Set,.K) ...</k>
+         <tempAlpha> A:K </tempAlpha>
 
     rule akeyCheck(AList(ListItem(AObject(A:K,B:K)) C:List), D:Set, G:K) => akeyCheck(AList(C), SetItem(A) D, G)
     rule akeyCheck(AList(.List), D:Set, AList(G:List)) => lengthCheck(size(G),size(D))
 
     //aloopCheck set and list to check cycles
-    //rule aloopCheck(A:Map (B:K |-> C:K)) => aloopCheck(A)
+    rule aloopCheck(AList(ListItem(AObject(A:K,B:K)) C:List), D:List, G:Set, .K) => aloopCheck(AList(ListItem(AObject(A,B)) C), ListItem(A) D, SetItem(A) G, A)
+    rule aloopCheck(AList(ListItem(AObject(H,B:K)) C:List), D:List, G:Set, H:ConId) => aloopCheck(AList(C:List), ListItem(B) D, SetItem(B) G, B)
     
 
     // STEP 3 Transform T into beta
