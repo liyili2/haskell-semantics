@@ -86,7 +86,7 @@ module HASKELL-PREPROCESSING
 
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
-    rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), C:K, Rest:K, preModule(AList(M:List), L:K)) => getPreModule(Rest,preModule(AList(ListItem(AObject(I,C)) M), L))
+    rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), 'atypeGTyCon(C:K), Rest:K, preModule(AList(M:List), L:K)) => getPreModule(Rest,preModule(AList(ListItem(AObject(I,C)) M), L))
 
     rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(AList(M:List), TList(ListInside:List))) => getPreModule(Rest,preModule(AList(M),TList(ListItem(TObject(I,H,makeInnerT(I,H,D))) ListInside)))
 
@@ -230,8 +230,11 @@ module HASKELL-PREPROCESSING
     rule aloopCheck(Alpha:Map (A:KItem |-> B:KItem), D:List, G:Set, .K, .K) => aloopCheck(Alpha, ListItem(B) ListItem(A) D, SetItem(B) SetItem(A) G, B, .K)
     rule aloopCheck(Alpha:Map (H |-> B:KItem), D:List, G:Set, H:KItem, .K) => aloopCheck(Alpha, ListItem(B) D, SetItem(B) G, B, .K)
 
-    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K) => aloopCheck(Alpha, .List, .Set, .K, lengthCheck(size(G),size(D)))
-         requires notBool H in keys(Alpha)
+//    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K) => aloopCheck(Alpha, .List, .Set, .K, lengthCheck(size(G),size(D)))
+//         requires notBool H in keys(Alpha)
+
+//    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K) => keys(Alpha) ~> H
+//         requires notBool H in keys(Alpha)
 
     rule aloopCheck(.Map, .List, .Set, .K, .K) => .K
 //    rule aloopCheck(AList(Front:List ListItem(AObject(H,B:K)) C:List), D:List, G:Set, H:ConId) => aloopCheck(AList(C:List), ListItem(B) D, SetItem(B) G, B)
