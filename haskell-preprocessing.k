@@ -130,10 +130,10 @@ module HASKELL-PREPROCESSING
         //make map for alpha
     syntax KItem ::= "checkAlphaNoLoops"
         //alpha check for no loops
+        //check alpha to make sure that everything points to a T
     syntax KItem ::= "checkArgSortsAreTargets"
            //Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
 //NEED TO CHECK all the polymorphic parameters are used in left side and right side (1 to 1)
-        //check alpha to make sure that everything points to a T
 
     rule <k> preModule(A:K,T:K) => startChecks ...</k>
          <tempAlpha> OldAlpha:K => A </tempAlpha>
@@ -221,23 +221,28 @@ module HASKELL-PREPROCESSING
 //    rule tkeyCheck(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set, G:K) => tkeyCheck(TList(Rest), SetItem(A) D, G)
 //    rule tkeyCheck(TList(.List), D:Set, TList(G:List)) => lengthCheck(size(G),size(D))
 
-    syntax KItem ::= aloopCheck(K,K,K,K,K) [function] //(Alpha,List of Alpha,Set of Alpha,CurrNode,lengthcheck)
+    syntax KItem ::= aloopCheck(K,K,K,K,K,K) [function] //(Alpha,List of Alpha,Set of Alpha,CurrNode,lengthcheck,T)
 
     rule <k> checkAlphaNoLoops
-             => aloopCheck(A,.List,.Set,.K,.K) ...</k>
+             => aloopCheck(A,.List,.Set,.K,.K,T) ...</k>
          <tempAlphaMap> A:K </tempAlphaMap>
+         <tempT> T:K </tempT>
 
     //aloopCheck set and list to check cycles
-    rule aloopCheck(Alpha:Map (A:KItem |-> B:KItem), D:List, G:Set, .K, .K) => aloopCheck(Alpha, ListItem(B) ListItem(A) D, SetItem(B) SetItem(A) G, B, .K)
-    rule aloopCheck(Alpha:Map (H |-> B:KItem), D:List, G:Set, H:KItem, .K) => aloopCheck(Alpha, ListItem(B) D, SetItem(B) G, B, .K)
+    rule aloopCheck(Alpha:Map (A:KItem |-> B:KItem), D:List, G:Set, .K, .K,T:K) => aloopCheck(Alpha, ListItem(B) ListItem(A) D, SetItem(B) SetItem(A) G, B, .K,T)
+    rule aloopCheck(Alpha:Map (H |-> B:KItem), D:List, G:Set, H:KItem, .K,T:K) => aloopCheck(Alpha, ListItem(B) D, SetItem(B) G, B, .K,T)
 
-    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K) => aloopCheck(Alpha, .List, .Set, .K, lengthCheck(size(G),size(D)))
-         requires notBool H in keys(Alpha)
+    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K,T:K) => aloopCheck(Alpha, .List, .Set, .K, lengthCheck(size(G),size(D)),T)
+         requires (notBool H in keys(Alpha)) andBool H in typeSet(T, .Set)
+
+
+    syntax KItem ::= typeSet(K,K) [function] //(K, KSet)
+    rule typeSet(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set) => typeSet(AList(.List), TList(Rest), SetItem(A) D)
 
 //    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K) => keys(Alpha) ~> H
 //         requires notBool H in keys(Alpha)
 
-    rule aloopCheck(.Map, .List, .Set, .K, .K) => .K
+    rule aloopCheck(.Map, .List, .Set, .K, .K,T:K) => .K
 //    rule aloopCheck(AList(Front:List ListItem(AObject(H,B:K)) C:List), D:List, G:Set, H:ConId) => aloopCheck(AList(C:List), ListItem(B) D, SetItem(B) G, B)
     
 
