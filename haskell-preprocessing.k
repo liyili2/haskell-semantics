@@ -118,12 +118,16 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= "error"
 
     syntax KItem ::= "startChecks"
-    syntax KItem ::= "checkAlphaNoSameKey"
+//    syntax KItem ::= "checkAlphaNoSameKey"
         //Keys of alpha and keys of T should be unique
-    syntax KItem ::= "checkTNoSameKey"
+//    syntax KItem ::= "checkTNoSameKey"
+        //Keys of alpha and keys of T should be unique
+    syntax KItem ::= "checkNoSameKey"
         //Keys of alpha and keys of T should be unique
     syntax KItem ::= "checkTypeConsDontCollide"
         //Make sure typeconstructors do not collide in T
+    syntax KItem ::= "makeAlphaMap"
+        //make map for alpha
     syntax KItem ::= "checkAlphaNoLoops"
         //alpha check for no loops
     syntax KItem ::= "checkArgSortsAreTargets"
@@ -146,9 +150,9 @@ module HASKELL-PREPROCESSING
                 ~> checkLandingDomResumes)))))) ...</k> */
 
     rule <k> startChecks
-             => checkAlphaNoSameKey
-                ~> (checkTNoSameKey
+             => checkNoSameKey
                 ~> (checkTypeConsDontCollide
+                ~> (makeAlphaMap
                 ~> (checkAlphaNoLoops))) ...</k>
 
     rule <k> checkTypeConsDontCollide
@@ -180,25 +184,27 @@ module HASKELL-PREPROCESSING
                     requires A =/=Int B
 
     //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheckPasser(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
-    syntax KItem ::= akeyCheck(K,K,K) [function] //(Alpha,List of Alpha,Set of Alpha)
+    syntax KItem ::= keyCheck(K,K,K,K) [function] //(Alpha, T, List of names, Set of names)
 
-    rule <k> checkAlphaNoSameKey
-             => akeyCheck(A, .Set, A) ...</k>
+    rule <k> checkNoSameKey
+             => keyCheck(A, T, .Set, .List) ...</k>
          <tempAlpha> A:K </tempAlpha>
+         <tempT> T:K </tempT>
     //rule <k> checkAlphaNoSameKey
     //         => akeyCheck(.K, .Set) ...</k>
 
-    rule akeyCheck(AList(ListItem(AObject(A:K,B:K)) C:List), D:Set, G:K) => akeyCheck(AList(C), SetItem(A) D, G)
-    rule akeyCheck(AList(.List), D:Set, AList(G:List)) => lengthCheck(size(G),size(D))
+    rule keyCheck(AList(ListItem(AObject(A:K,B:K)) C:List), T:K, D:Set, G:List) => keyCheck(AList(C), T, SetItem(A) D, ListItem(A) G)
+    rule keyCheck(AList(.List), TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set, G:List) => keyCheck(AList(.List), TList(Rest), SetItem(A) D, ListItem(A) G)
+    rule keyCheck(AList(.List), TList(.List), D:Set, G:List) => lengthCheck(size(G),size(D))
 
-    syntax KItem ::= tkeyCheck(K,K,K) [function] //(T,List of T,Set of T)
+//    syntax KItem ::= tkeyCheck(K,K,K) [function] //(T,List of T,Set of T)
 
-    rule <k> checkTNoSameKey
-             => tkeyCheck(T, .Set, T) ...</k>
-         <tempT> T:K </tempT>
+//    rule <k> checkTNoSameKey
+//             => tkeyCheck(T, .Set, T) ...</k>
+//         <tempT> T:K </tempT>
 
-    rule tkeyCheck(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set, G:K) => tkeyCheck(TList(Rest), SetItem(A) D, G)
-    rule tkeyCheck(TList(.List), D:Set, TList(G:List)) => lengthCheck(size(G),size(D))
+//    rule tkeyCheck(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set, G:K) => tkeyCheck(TList(Rest), SetItem(A) D, G)
+//    rule tkeyCheck(TList(.List), D:Set, TList(G:List)) => lengthCheck(size(G),size(D))
 
     syntax KItem ::= aloopCheck(K,K,K,K) [function] //(Alpha,List of Alpha,Set of Alpha,CurrNode)
 

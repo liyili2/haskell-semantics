@@ -11,7 +11,8 @@ module HASKELL-CONFIGURATION
         <T>
             <k> callInit($PGM:Module) </k>
             <tempModule> .K </tempModule>
-            <tempAlpha> .Map </tempAlpha>
+            <tempAlpha> .K </tempAlpha>
+            <tempAlphaMap> .Map </tempAlphaMap>
             <tempT> .K </tempT>
         </T>
 
