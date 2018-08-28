@@ -197,6 +197,20 @@ module HASKELL-PREPROCESSING
     rule keyCheck(AList(.List), TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set, G:List) => keyCheck(AList(.List), TList(Rest), SetItem(A) D, ListItem(A) G)
     rule keyCheck(AList(.List), TList(.List), D:Set, G:List) => lengthCheck(size(G),size(D))
 
+
+    syntax KItem ::= makeAlphaM(K,K) [function] //(Alpha, AlphaMap)
+    syntax KItem ::= tAlphaMap(K) //(AlphaMap) temp alphamap
+
+    rule <k> makeAlphaMap
+             => makeAlphaM(A, .Map) ...</k>
+         <tempAlpha> A:K </tempAlpha>
+
+    rule makeAlphaM(AList(ListItem(AObject(A:K,B:K)) C:List), M:Map) => makeAlphaM(AList(C), M[A <- B])
+    rule makeAlphaM(AList(.List), M:Map) => tAlphaMap(M)
+
+    rule <k> tAlphaMap(M:K) => .K ...</k>
+         <tempAlphaMap> OldAlphaMap:K => M </tempAlphaMap>
+
 //    syntax KItem ::= tkeyCheck(K,K,K) [function] //(T,List of T,Set of T)
 
 //    rule <k> checkTNoSameKey
@@ -210,7 +224,7 @@ module HASKELL-PREPROCESSING
 
     rule <k> checkAlphaNoLoops
              => aloopCheck(A,.List,.Set,.K) ...</k>
-         <tempAlpha> A:K </tempAlpha>
+         <tempAlphaMap> A:K </tempAlphaMap>
 
     //aloopCheck set and list to check cycles
     rule aloopCheck(AList(ListItem(AObject(A:K,B:K)) C:List), D:List, G:Set, .K) => aloopCheck(AList(ListItem(AObject(A,B)) C), ListItem(A) D, SetItem(A) G, A)
