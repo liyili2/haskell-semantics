@@ -220,15 +220,20 @@ module HASKELL-PREPROCESSING
 //    rule tkeyCheck(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set, G:K) => tkeyCheck(TList(Rest), SetItem(A) D, G)
 //    rule tkeyCheck(TList(.List), D:Set, TList(G:List)) => lengthCheck(size(G),size(D))
 
-    syntax KItem ::= aloopCheck(K,K,K,K) [function] //(Alpha,List of Alpha,Set of Alpha,CurrNode)
+    syntax KItem ::= aloopCheck(K,K,K,K,K) [function] //(Alpha,List of Alpha,Set of Alpha,CurrNode,lengthcheck)
 
     rule <k> checkAlphaNoLoops
-             => aloopCheck(A,.List,.Set,.K) ...</k>
+             => aloopCheck(A,.List,.Set,.K,.K) ...</k>
          <tempAlphaMap> A:K </tempAlphaMap>
 
     //aloopCheck set and list to check cycles
-    rule aloopCheck(AList(ListItem(AObject(A:K,B:K)) C:List), D:List, G:Set, .K) => aloopCheck(AList(ListItem(AObject(A,B)) C), ListItem(A) D, SetItem(A) G, A)
-    rule aloopCheck(AList(ListItem(AObject(H,B:K)) C:List), D:List, G:Set, H:ConId) => aloopCheck(AList(C:List), ListItem(B) D, SetItem(B) G, B)
+    rule aloopCheck(Alpha:Map (A:KItem |-> B:KItem), D:List, G:Set, .K, .K) => aloopCheck(Alpha, ListItem(B) ListItem(A) D, SetItem(B) SetItem(A) G, B, .K)
+    rule aloopCheck(Alpha:Map (H |-> B:KItem), D:List, G:Set, H:KItem, .K) => aloopCheck(Alpha, ListItem(B) D, SetItem(B) G, B, .K)
+
+    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K) => aloopCheck(Alpha, .List, .Set, .K, lengthCheck(size(G),size(D)))
+         requires notBool H in keys(Alpha)
+
+    rule aloopCheck(.Map, .List, .Set, .K, .K) => .K
 //    rule aloopCheck(AList(Front:List ListItem(AObject(H,B:K)) C:List), D:List, G:Set, H:ConId) => aloopCheck(AList(C:List), ListItem(B) D, SetItem(B) G, B)
     
 
