@@ -122,10 +122,10 @@ module HASKELL-PREPROCESSING
         //Keys of alpha and keys of T should be unique
     syntax KItem ::= "checkTNoSameKey"
         //Keys of alpha and keys of T should be unique
-    syntax KItem ::= "checkAlphaNoLoops"
-        //alpha check for no loops
     syntax KItem ::= "checkTypeConsDontCollide"
         //Make sure typeconstructors do not collide in T
+    syntax KItem ::= "checkAlphaNoLoops"
+        //alpha check for no loops
     syntax KItem ::= "checkArgSortsAreTargets"
            //Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
 //NEED TO CHECK all the polymorphic parameters are used in left side and right side (1 to 1)
@@ -146,9 +146,9 @@ module HASKELL-PREPROCESSING
                 ~> checkLandingDomResumes)))))) ...</k> */
 
     rule <k> startChecks
-             => checkTypeConsDontCollide
-                ~> (checkAlphaNoSameKey
+             => checkAlphaNoSameKey
                 ~> (checkTNoSameKey
+                ~> (checkTypeConsDontCollide
                 ~> (checkAlphaNoLoops))) ...</k>
 
     rule <k> checkTypeConsDontCollide
