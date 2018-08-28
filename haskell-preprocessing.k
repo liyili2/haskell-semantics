@@ -133,6 +133,7 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= "checkArgSortsAreTargets"
            //Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
 //NEED TO CHECK all the polymorphic parameters are used in left side and right side (1 to 1)
+        //check alpha to make sure that everything points to a T
 
     rule <k> preModule(A:K,T:K) => startChecks ...</k>
          <tempAlpha> OldAlpha:K => A </tempAlpha>
@@ -230,8 +231,8 @@ module HASKELL-PREPROCESSING
     rule aloopCheck(Alpha:Map (A:KItem |-> B:KItem), D:List, G:Set, .K, .K) => aloopCheck(Alpha, ListItem(B) ListItem(A) D, SetItem(B) SetItem(A) G, B, .K)
     rule aloopCheck(Alpha:Map (H |-> B:KItem), D:List, G:Set, H:KItem, .K) => aloopCheck(Alpha, ListItem(B) D, SetItem(B) G, B, .K)
 
-//    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K) => aloopCheck(Alpha, .List, .Set, .K, lengthCheck(size(G),size(D)))
-//         requires notBool H in keys(Alpha)
+    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K) => aloopCheck(Alpha, .List, .Set, .K, lengthCheck(size(G),size(D)))
+         requires notBool H in keys(Alpha)
 
 //    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K) => keys(Alpha) ~> H
 //         requires notBool H in keys(Alpha)
