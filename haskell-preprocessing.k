@@ -118,10 +118,6 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= "error"
 
     syntax KItem ::= "startChecks"
-//    syntax KItem ::= "checkAlphaNoSameKey"
-        //Keys of alpha and keys of T should be unique
-//    syntax KItem ::= "checkTNoSameKey"
-        //Keys of alpha and keys of T should be unique
     syntax KItem ::= "checkNoSameKey"
         //Keys of alpha and keys of T should be unique
     syntax KItem ::= "checkTypeConsDontCollide"
@@ -133,6 +129,7 @@ module HASKELL-PREPROCESSING
         //check alpha to make sure that everything points to a T
     syntax KItem ::= "checkArgSortsAreTargets"
            //Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
+    syntax KItem ::= "checkParBiject"
 //NEED TO CHECK all the polymorphic parameters are used in left side and right side (1 to 1)
 
     rule <k> preModule(A:K,T:K) => startChecks ...</k>
@@ -154,7 +151,9 @@ module HASKELL-PREPROCESSING
              => checkNoSameKey
                 ~> (checkTypeConsDontCollide
                 ~> (makeAlphaMap
-                ~> (checkAlphaNoLoops))) ...</k>
+                ~> (checkAlphaNoLoops
+                ~> (checkArgSortsAreTargets
+                ~> (checkParBiject))))) ...</k>
 
     rule <k> checkTypeConsDontCollide
              => tyConCollCheck(T,.List,.Set) ...</k>
@@ -248,7 +247,32 @@ module HASKELL-PREPROCESSING
 
     rule aloopCheck(.Map, .List, .Set, .K, .K,T:K, S:Set) => .K
 //    rule aloopCheck(AList(Front:List ListItem(AObject(H,B:K)) C:List), D:List, G:Set, H:ConId) => aloopCheck(AList(C:List), ListItem(B) D, SetItem(B) G, B)
+
+
+//    syntax KItem ::= TList(K) //list of T objects for every new type introduced by data and newtype
+//    syntax KItem ::= TObject(K,K,K) //(type name, entire list of poly type vars, list of inner T pieces)
+//    syntax KItem ::= InnerTPiece(K,K,K,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
+
+//Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
+
+    syntax KItem ::= argSortCheck(K,K,K) [function] //(T,AlphaMap)
+
+    rule <k> checkArgSortsAreTargets
+             => argSortCheck(T,A,typeSet(T,.Set)) ...</k>
+         <tempAlphaMap> A:K </tempAlphaMap>
+         <tempT> T:K </tempT>
     
+    rule argSortCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,D:K,ListItem(Arg:KItem) ArgsRest:List,E:K,F:K)) InnerRest:List)) TListRest:List),AlphaMap:Map,Tset:Set) => argSortCheck(TList(ListItem(TObject(A,B,ListItem(InnerTPiece(C,D,ArgsRest,E,F)) InnerRest)) TListRest),AlphaMap,Tset)
+         requires ((Arg in keys(AlphaMap)) orBool (Arg in Tset))
+
+    rule argSortCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,D:K,ListItem(Arg:KItem) ArgsRest:List,E:K,F:K)) InnerRest:List)) TListRest:List),AlphaMap:Map,Tset:Set) => error
+         requires (notBool ((Arg in keys(AlphaMap)) orBool (Arg in Tset)))
+
+    rule argSortCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,D:K,.List,E:K,F:K)) InnerRest:List)) TListRest:List),AlphaMap:Map,Tset:Set) => argSortCheck(TList(ListItem(TObject(A,B,InnerRest)) TListRest),AlphaMap,Tset)
+
+    rule argSortCheck(TList(ListItem(TObject(A:K,B:K,.List)) TListRest:List),AlphaMap:Map,Tset:Set) => argSortCheck(TList(TListRest),AlphaMap,Tset)
+
+    rule argSortCheck(TList(.List),AlphaMap:Map,Tset:Set) => .K
 
     // STEP 3 Transform T into beta
 
