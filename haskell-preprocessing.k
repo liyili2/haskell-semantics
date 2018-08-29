@@ -221,28 +221,32 @@ module HASKELL-PREPROCESSING
 //    rule tkeyCheck(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set, G:K) => tkeyCheck(TList(Rest), SetItem(A) D, G)
 //    rule tkeyCheck(TList(.List), D:Set, TList(G:List)) => lengthCheck(size(G),size(D))
 
-    syntax KItem ::= aloopCheck(K,K,K,K,K,K) [function] //(Alpha,List of Alpha,Set of Alpha,CurrNode,lengthcheck,T)
+    syntax KItem ::= aloopCheck(K,K,K,K,K,K,K) [function] //(Alpha,List of Alpha,Set of Alpha,CurrNode,lengthcheck,T,BigSet)
 
     rule <k> checkAlphaNoLoops
-             => aloopCheck(A,.List,.Set,.K,.K,T) ...</k>
+             => aloopCheck(A,.List,.Set,.K,.K,T,.Set) ...</k>
          <tempAlphaMap> A:K </tempAlphaMap>
          <tempT> T:K </tempT>
 
     //aloopCheck set and list to check cycles
-    rule aloopCheck(Alpha:Map (A:KItem |-> B:KItem), D:List, G:Set, .K, .K,T:K) => aloopCheck(Alpha, ListItem(B) ListItem(A) D, SetItem(B) SetItem(A) G, B, .K,T)
-    rule aloopCheck(Alpha:Map (H |-> B:KItem), D:List, G:Set, H:KItem, .K,T:K) => aloopCheck(Alpha, ListItem(B) D, SetItem(B) G, B, .K,T)
+    rule aloopCheck(Alpha:Map (A:KItem |-> B:KItem), D:List, G:Set, .K, .K,T:K,S:Set) => aloopCheck(Alpha, ListItem(B) ListItem(A) D, SetItem(B) SetItem(A) G, B, .K,T,S)
+    rule aloopCheck(Alpha:Map (H |-> B:KItem), D:List, G:Set, H:KItem, .K,T:K,S:Set) => aloopCheck(Alpha, ListItem(B) D, SetItem(B) G, B, .K,T,S)
 
-    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K,T:K) => aloopCheck(Alpha, .List, .Set, .K, lengthCheck(size(G),size(D)),T)
-         requires (notBool H in keys(Alpha)) andBool H in typeSet(T, .Set)
+    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K,T:K,S:Set) => aloopCheck(Alpha, .List, .Set, .K, lengthCheck(size(G),size(D)),T,G S) //type rename loop ERROR
+         requires (notBool H in keys(Alpha)) andBool (H in typeSet(T, .Set) orBool H in S) 
+
+    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K,T:K,S:Set) => error //terminal alpha rename is not in T ERROR
+         requires (notBool H in keys(Alpha)) andBool (notBool (H in typeSet(T, .Set) orBool H in S))
 
 
-    syntax KItem ::= typeSet(K,K) [function] //(K, KSet)
-    rule typeSet(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set) => typeSet(AList(.List), TList(Rest), SetItem(A) D)
+    syntax Set ::= typeSet(K,K) [function] //(K, KSet)
+    rule typeSet(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set) => typeSet(TList(Rest), SetItem(A) D)
+    rule typeSet(TList(.List), D:Set) => D
 
 //    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K) => keys(Alpha) ~> H
 //         requires notBool H in keys(Alpha)
 
-    rule aloopCheck(.Map, .List, .Set, .K, .K,T:K) => .K
+    rule aloopCheck(.Map, .List, .Set, .K, .K,T:K, S:Set) => .K
 //    rule aloopCheck(AList(Front:List ListItem(AObject(H,B:K)) C:List), D:List, G:Set, H:ConId) => aloopCheck(AList(C:List), ListItem(B) D, SetItem(B) G, B)
     
 
