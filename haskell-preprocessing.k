@@ -131,6 +131,7 @@ module HASKELL-PREPROCESSING
            //Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
     syntax KItem ::= "checkParBiject"
 //NEED TO CHECK all the polymorphic parameters are used in left side and right side (1 to 1)
+//NEED TO CHECK UNIQUENESS FOR POLY PARAM ON LEFT SIDE ONLY
 
     rule <k> preModule(A:K,T:K) => startChecks ...</k>
          <tempAlpha> OldAlpha:K => A </tempAlpha>
@@ -273,6 +274,24 @@ module HASKELL-PREPROCESSING
     rule argSortCheck(TList(ListItem(TObject(A:K,B:K,.List)) TListRest:List),AlphaMap:Map,Tset:Set) => argSortCheck(TList(TListRest),AlphaMap,Tset)
 
     rule argSortCheck(TList(.List),AlphaMap:Map,Tset:Set) => .K
+
+//NEED TO CHECK all the polymorphic parameters are used in left side and right side (1 to 1)
+//NEED TO CHECK UNIQUENESS FOR POLY PARAM ON LEFT SIDE ONLY
+
+    syntax KItem ::= parBijectCheck(K) [function] //(T,AlphaMap)
+    syntax KItem ::= makeParLists(K,K,K) [function] //(T,AlphaMap)
+    syntax KItem ::= makeTyVarList(K,K,K) [function] //(TyVars, NewList)
+
+    rule <k> checkParBiject
+             => makeParLists(T,.List,.Set) ...</k>
+         <tempT> T:K </tempT>
+
+    //rule makeParLists(TList(ListItem(TObject(A:K,ListItem(Arg:KItem) PolyList:List,C:K)) Rest:List),Tlist:List,Tset:Set) => makeParLists(TList(ListItem(TObject(A,PolyList,C)) Rest),ListItem(Arg) Tlist,SetItem(Arg) Tset)
+    rule makeParLists(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List),Tlist:List,Tset:Set) => makeTyVarList(B,.List,.Set)
+
+    rule makeTyVarList('typeVars(A:K,,Rest:K),NewList:List,NewSet:Set) => makeTyVarList(Rest, ListItem(A) NewList, SetItem(A) NewSet)
+    
+    //rule argSortCheck(TList(ListItem(TObject(A:K,B:K,C:K)
 
     // STEP 3 Transform T into beta
 
