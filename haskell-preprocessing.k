@@ -129,8 +129,8 @@ module HASKELL-PREPROCESSING
         //check alpha to make sure that everything points to a T
     syntax KItem ::= "checkArgSortsAreTargets"
            //Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
-    syntax KItem ::= "checkParBiject"
-//NEED TO CHECK all the polymorphic parameters are used in left side and right side (1 to 1)
+    syntax KItem ::= "checkParUsed"
+//NEED TO CHECK all the polymorphic parameters from right appear on left. RIGHT SIDE ONLY
 //NEED TO CHECK UNIQUENESS FOR POLY PARAM ON LEFT SIDE ONLY
 
     rule <k> preModule(A:K,T:K) => startChecks ...</k>
@@ -154,7 +154,7 @@ module HASKELL-PREPROCESSING
                 ~> (makeAlphaMap
                 ~> (checkAlphaNoLoops
                 ~> (checkArgSortsAreTargets
-                ~> (checkParBiject))))) ...</k>
+                ~> (checkParUsed))))) ...</k>
 
     rule <k> checkTypeConsDontCollide
              => tyConCollCheck(T,.List,.Set) ...</k>
@@ -275,21 +275,36 @@ module HASKELL-PREPROCESSING
 
     rule argSortCheck(TList(.List),AlphaMap:Map,Tset:Set) => .K
 
-//NEED TO CHECK all the polymorphic parameters are used in left side and right side (1 to 1)
+//NEED TO CHECK all the polymorphic parameters from right appear on left. RIGHT SIDE ONLY
 //NEED TO CHECK UNIQUENESS FOR POLY PARAM ON LEFT SIDE ONLY
 
-    syntax KItem ::= parBijectCheck(K) [function] //(T,AlphaMap)
-    syntax KItem ::= makeParLists(K,K,K) [function] //(T,AlphaMap)
+    syntax KItem ::= parCheck(K,K) [function] //(T,AlphaMap)
     syntax KItem ::= makeTyVarList(K,K,K) [function] //(TyVars, NewList)
+    syntax KItem ::= lengthRet(K,K,K) [function]
 
-    rule <k> checkParBiject
-             => makeParLists(T,.List,.Set) ...</k>
+    rule <k> checkParUsed
+             => parCheck(T,.K) ...</k>
          <tempT> T:K </tempT>
 
     //rule makeParLists(TList(ListItem(TObject(A:K,ListItem(Arg:KItem) PolyList:List,C:K)) Rest:List),Tlist:List,Tset:Set) => makeParLists(TList(ListItem(TObject(A,PolyList,C)) Rest),ListItem(Arg) Tlist,SetItem(Arg) Tset)
-    rule makeParLists(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List),Tlist:List,Tset:Set) => makeTyVarList(B,.List,.Set)
+    rule parCheck(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List),.K) => parCheck(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List),makeTyVarList(B,.List,.Set))
+
+    rule parCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,ListItem(Par:KItem) ParRest:List,D:K,E:K,F:K)) InnerRest:List)) Rest:List),NewSet:Set) =>
+         parCheck(TList(ListItem(TObject(A,B,ListItem(InnerTPiece(C,ParRest,D,E,F)) InnerRest)) Rest),NewSet)
+            requires Par in NewSet
+
+    rule parCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,ListItem(Par:KItem) ParRest:List,D:K,E:K,F:K)) InnerRest:List)) Rest:List),NewSet:Set) => error
+            requires notBool (Par in NewSet)
 
     rule makeTyVarList('typeVars(A:K,,Rest:K),NewList:List,NewSet:Set) => makeTyVarList(Rest, ListItem(A) NewList, SetItem(A) NewSet)
+
+    rule makeTyVarList(.TyVars,NewList:List,NewSet:Set) => lengthRet(size(NewList),size(NewSet),NewSet)
+
+    rule lengthRet(A:Int, B:Int, C:K) => C
+                    requires A ==Int B
+
+    rule lengthRet(A:Int, B:Int, C:K) => error
+                    requires A =/=Int B
     
     //rule argSortCheck(TList(ListItem(TObject(A:K,B:K,C:K)
 
