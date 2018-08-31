@@ -48,7 +48,10 @@ data H a b c d = A a c | B b d
 
 T = [(H,[a,b,c,d],List)]
 
-NEED TO CHECK all the polymorphic parameters are used in left side and right side (1 to 1)
+STRIKETHROUGH -- INCORRECT //NEED TO CHECK all the polymorphic parameters are used in left side and right side (1 to 1)
+
+NEED TO CHECK all the polymorphic parameters from right appear on left. RIGHT SIDE ONLY
+NEED TO CHECK UNIQUENESS FOR POLY PARAM ON LEFT SIDE ONLY
 
 3. Make sure typeconstructors do not collide in T
 4. Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
