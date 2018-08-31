@@ -1,11 +1,13 @@
 //
 requires "haskell-syntax.k"
+requires "haskell-configuration.k"
 
 module HASKELL-PREPROCESSING
     imports HASKELL-SYNTAX
+    imports HASKELL-CONFIGURATION
 
-    configuration <k> tChecker(initPreModule($PGM:Module)) </k>
-
+/*
+    //USER DEFINED LIST
     //definition of ElemList
 
     //syntax KItem ::= ElemList
@@ -22,43 +24,50 @@ module HASKELL-PREPROCESSING
     syntax KResult ::= ElementResult
     rule val(K:KResult) => valValue(K) [structural]
 
-
     //form ElemList
     syntax ElemList ::= formElemList(K) [function]
 
+    //CONVERT ~> TO List
+    //list convert
+    syntax List ::= convertToList(K)  [function]
+    rule convertToList(.K) => .List
+    rule convertToList(A:KItem ~> B:K) => ListItem(A) convertToList(B)
+*/
+
+    //call before Checker Code
+    rule <k> callInit(S:K) => initPreModule(S) ...</k>
+         <tempModule> A:K => S </tempModule>
 
     //start of Checker Code
     syntax KItem ::= Module(K, K)
-    syntax KItem ::= preModule(Map,K,K) //(alpha, T, Source Code)
+    syntax KItem ::= preModule(K,K) //(alpha, T)
 
-    //rule getPreModule(module I:ModId where J:Body) => preModule(J)
-    //rule getPreModule({I:TopDecls}) => getPreModule(I)
-    //rule getPreModule(data I:OptContext J K L) => preModule(I)
-
-    // First pass
+    // STEP 1 CONSTRUCT T AND ALPHA
+    // alpha = type
+    // T = newtype and data, temporary data structure
 
     syntax KItem ::= initPreModule(K) [function]
-    syntax KItem ::= getPreModule(K, K) [function]
+    syntax KItem ::= getPreModule(K, K) [function] //(Current term, premodule)
     syntax KItem ::= makeT (K,K,K,K) [function]
 
     syntax KItem ::= fetchTypes (K,K,K,K) [function]
 
-    syntax K ::= makeInnerT (K,K,K) [function]
-    syntax K ::= getTypeVars(K) [function]
+    syntax List ::= makeInnerT (K,K,K) [function] //LIST
+    syntax List ::= getTypeVars(K) [function] //LIST
 
     syntax KItem ::= getCon(K) [function]
-    syntax K ::= getArgSorts(K) [function]
+    syntax List ::= getArgSorts(K) [function] //LIST
+
+    syntax KItem ::= AList(K)
+    syntax KItem ::= AObject(K,K) //(1st -> 2nd) map without idempotency
 
     syntax KItem ::= TList(K) //list of T objects for every new type introduced by data and newtype
-    //syntax KItem ::= TList(KList) //list of T objects for every new type introduced by data and newtype
     syntax KItem ::= TObject(K,K,K) //(type name, entire list of poly type vars, list of inner T pieces)
-    //syntax KItem ::= TObject(K,K,KList) //(type name, entire list of poly type vars, list of inner T pieces)
     syntax KItem ::= InnerTPiece(K,K,K,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
-    //syntax KItem ::= InnerTPiece(K,KList,KList,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
 
-    rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(.Map,TList(.K),J))
-    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(.Map,TList(.K),J))
-    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(.Map,TList(.K),J))
+    rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
+    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
+    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(AList(.List),TList(.List)))
 
     rule getPreModule('bodytopdecls(I:K), J:K) => getPreModule(I,J)
     rule getPreModule('topdeclslist('type(A:K,, B:K),, Rest:K),J:K) => fetchTypes(A,B,Rest,J) //constructalpha
@@ -69,28 +78,28 @@ module HASKELL-PREPROCESSING
 
 
     rule getPreModule('topdeclslist('topdecldecl(A:K),, Rest:K),J:K) => getPreModule(Rest,J)
-    rule getPreModule('topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
-    rule getPreModule('topdeclslist('instance(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
-    rule getPreModule('topdeclslist('default(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
-    rule getPreModule('topdeclslist('foreign(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => fetchTypes(B,C,Rest,J)
+    rule getPreModule('topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
+    rule getPreModule('topdeclslist('instance(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
+    rule getPreModule('topdeclslist('default(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
+    rule getPreModule('topdeclslist('foreign(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
     rule getPreModule(.TopDecls,J:K) => J
 
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
-    rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), C:K, Rest:K, preModule(M:Map, L:K, J:K)) => getPreModule(Rest,preModule(M[I <- C],L,J))
+    rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), 'atypeGTyCon(C:K), Rest:K, preModule(AList(M:List), L:K)) => getPreModule(Rest,preModule(AList(ListItem(AObject(I,C)) M), L))
 
-    rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(M:Map, TList(ListInside:K), J:K)) => getPreModule(Rest,preModule(M,TList( TObject(I,H,makeInnerT(I,H,D)) ~> ListInside),J))
+    rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(AList(M:List), TList(ListInside:List))) => getPreModule(Rest,preModule(AList(M),TList(ListItem(TObject(I,H,makeInnerT(I,H,D))) ListInside)))
 
     rule makeInnerT(A:K,B:K,'nonemptyConstrs(C:K)) => makeInnerT(A,B,C)
-    rule makeInnerT(A:K,B:K,'singleConstr(C:K)) => InnerTPiece(getCon(C),getTypeVars(C),getArgSorts(C),C,A)
-    rule makeInnerT(A:K,B:K,'multConstr(C:K,, D:K)) => InnerTPiece(getCon(C),getTypeVars(C),getArgSorts(C),C,A) ~> makeInnerT(A,B,D)
+    rule makeInnerT(A:K,B:K,'singleConstr(C:K)) => ListItem(InnerTPiece(getCon(C),getTypeVars(C),getArgSorts(C),C,A))
+    rule makeInnerT(A:K,B:K,'multConstr(C:K,, D:K)) => ListItem(InnerTPiece(getCon(C),getTypeVars(C),getArgSorts(C),C,A)) makeInnerT(A,B,D)
 
     rule getTypeVars('constrCon(A:K,, B:K)) => getTypeVars(B)
-    rule getTypeVars('optBangATypes(A:K,, Rest:K)) => getTypeVars(A) ~> getTypeVars(Rest)
+    rule getTypeVars('optBangATypes(A:K,, Rest:K)) => getTypeVars(A) getTypeVars(Rest)
     rule getTypeVars('optBangAType('emptyBang(.KList),, Rest:K)) => getTypeVars(Rest)
-    rule getTypeVars('atypeGTyCon(A:K)) => .K
-    rule getTypeVars('atypeTyVar(A:K)) => A
-    rule getTypeVars(.OptBangATypes) => .OptBangATypes
+    rule getTypeVars('atypeGTyCon(A:K)) => .List
+    rule getTypeVars('atypeTyVar(A:K)) => ListItem(A)
+    rule getTypeVars(.OptBangATypes) => .List
 
     //rule getCon('emptyConstrs()) => .K
     //rule getCon('nonemptyConstrs(A:K)) => getCon(A)
@@ -98,30 +107,215 @@ module HASKELL-PREPROCESSING
 
     //rule getArgSorts('constrCon(A:K,, B:K)) => B
     rule getArgSorts('constrCon(A:K,, B:K)) => getArgSorts(B)
-    rule getArgSorts('optBangATypes(A:K,, Rest:K)) => getArgSorts(A) ~> getArgSorts(Rest)
+    rule getArgSorts('optBangATypes(A:K,, Rest:K)) => getArgSorts(A) getArgSorts(Rest)
     rule getArgSorts('optBangAType('emptyBang(.KList),, Rest:K)) => getArgSorts(Rest)
-    rule getArgSorts('atypeGTyCon(A:K)) => A
-    rule getArgSorts('atypeTyVar(A:K)) => .K
-    rule getArgSorts(.OptBangATypes) => .OptBangATypes 
+    rule getArgSorts('atypeGTyCon(A:K)) => ListItem(A)
+    rule getArgSorts('atypeTyVar(A:K)) => .List
+    rule getArgSorts(.OptBangATypes) => .List
 
-    // t Checker
+    // STEP 2 PERFORM CHECKS
 
-    syntax KItem ::= tChecker(K) [function]
-    syntax KItem ::= tyConCollCheck(K,K) [function]
-    syntax K ::= innerCollCheck(K) [function]
+    syntax KItem ::= "error"
+
+    syntax KItem ::= "startChecks"
+    syntax KItem ::= "checkNoSameKey"
+        //Keys of alpha and keys of T should be unique
+    syntax KItem ::= "checkTypeConsDontCollide"
+        //Make sure typeconstructors do not collide in T
+    syntax KItem ::= "makeAlphaMap"
+        //make map for alpha
+    syntax KItem ::= "checkAlphaNoLoops"
+        //alpha check for no loops
+        //check alpha to make sure that everything points to a T
+    syntax KItem ::= "checkArgSortsAreTargets"
+           //Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
+    syntax KItem ::= "checkParUsed"
+//NEED TO CHECK all the polymorphic parameters from right appear on left. RIGHT SIDE ONLY
+//NEED TO CHECK UNIQUENESS FOR POLY PARAM ON LEFT SIDE ONLY
+
+    rule <k> preModule(A:K,T:K) => startChecks ...</k>
+         <tempAlpha> OldAlpha:K => A </tempAlpha>
+         <tempT> OldT:K => T </tempT>
+
+
+/*    rule <k> performNextChecks
+             => checkUseVars
+                ~> (checkLabelUses
+                ~> (checkBlockAddress(.K)
+                ~> (checkNoNormalBlocksHavingLandingpad(.K, TNS -Set TES)
+                ~> (checkAllExpBlocksHavingLandingpad(.K, TES)
+                ~> (checkAllExpInFromInvoke(.K, TES)
+                ~> (checkLandingpad
+                ~> checkLandingDomResumes)))))) ...</k> */
+
+    rule <k> startChecks
+             => checkNoSameKey
+                ~> (checkTypeConsDontCollide
+                ~> (makeAlphaMap
+                ~> (checkAlphaNoLoops
+                ~> (checkArgSortsAreTargets
+                ~> (checkParUsed))))) ...</k>
+
+    rule <k> checkTypeConsDontCollide
+             => tyConCollCheck(T,.List,.Set) ...</k>
+         <tempT> T:K </tempT>
+
+    //syntax KItem ::= tChecker(K) [function]
+    syntax KItem ::= tyConCollCheck(K,K,K) [function] //(TList,List of Tycons,Set of Tycons) 
+    syntax KItem ::= lengthCheck(K,K) [function]
+    //syntax KItem ::= tyConCollCheck(K,K,K) [function]
+    //syntax K ::= innerCollCheck(K) [function]
     //syntax K ::= tyConCollCheckPasser(K, K) [function]
 
-    rule tChecker(preModule(Alpha:Map,T:K,Mod:K)) => tyConCollCheck(innerCollCheck(T),preModule(Alpha,T,Mod))
+    //rule tChecker(preModule(Alpha:Map,T:K,Mod:K)) => tyConCollCheck(innerCollCheck(T),preModule(Alpha,T,Mod))
 
     //rule tyConCollCheck(.K,preModule(Alpha:Map,H:K,Mod:K)) => tyConCollCheck(innerCollCheck(H),preModule(Alpha,H,Mod))
 
-    //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheck(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
+    rule tyConCollCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(Ty:K,E:K,F:K,H:K,G:K)) Inners:List)) Rest:List),J:List,D:Set) => 
+                    tyConCollCheck(TList(ListItem(TObject(A,B,Inners)) Rest),ListItem(Ty) J, SetItem(Ty) D)
+    rule tyConCollCheck(TList(ListItem(TObject(A:K,B:K,.List)) Rest:List),J:List,D:Set) => 
+                    tyConCollCheck(TList(Rest),J,D)
+    rule tyConCollCheck(TList(.List),J:List,D:Set) => 
+                    lengthCheck(size(J),size(D))
+
+    rule lengthCheck(A:Int, B:Int) => .K
+                    requires A ==Int B
+
+    rule lengthCheck(A:Int, B:Int) => error
+                    requires A =/=Int B
 
     //rule tyConCollCheck(TList(TObject(A:K,B:K,C:K) ~> Rest:K),J:K) => tyConCollCheckPasser(TList(innerCollCheck(TObject(A:K,B:K,C:K)) ~> Rest:K),J:K)
+    syntax KItem ::= keyCheck(K,K,K,K) [function] //(Alpha, T, List of names, Set of names)
+
+    rule <k> checkNoSameKey
+             => keyCheck(A, T, .Set, .List) ...</k>
+         <tempAlpha> A:K </tempAlpha>
+         <tempT> T:K </tempT>
+    //rule <k> checkAlphaNoSameKey
+    //         => akeyCheck(.K, .Set) ...</k>
+
+    rule keyCheck(AList(ListItem(AObject(A:K,B:K)) C:List), T:K, D:Set, G:List) => keyCheck(AList(C), T, SetItem(A) D, ListItem(A) G)
+    rule keyCheck(AList(.List), TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set, G:List) => keyCheck(AList(.List), TList(Rest), SetItem(A) D, ListItem(A) G)
+    rule keyCheck(AList(.List), TList(.List), D:Set, G:List) => lengthCheck(size(G),size(D))
 
 
-    //list convert
-    syntax List ::= convertToList(K)  [function]
-    rule convertToList(.K) => .List
-    rule convertToList(A:KItem ~> B:K) => ListItem(A) convertToList(B)
+    syntax KItem ::= makeAlphaM(K,K) [function] //(Alpha, AlphaMap)
+    syntax KItem ::= tAlphaMap(K) //(AlphaMap) temp alphamap
+
+    rule <k> makeAlphaMap
+             => makeAlphaM(A, .Map) ...</k>
+         <tempAlpha> A:K </tempAlpha>
+
+    rule makeAlphaM(AList(ListItem(AObject(A:K,B:K)) C:List), M:Map) => makeAlphaM(AList(C), M[A <- B])
+    rule makeAlphaM(AList(.List), M:Map) => tAlphaMap(M)
+
+    rule <k> tAlphaMap(M:K) => .K ...</k>
+         <tempAlphaMap> OldAlphaMap:K => M </tempAlphaMap>
+
+//    syntax KItem ::= tkeyCheck(K,K,K) [function] //(T,List of T,Set of T)
+
+//    rule <k> checkTNoSameKey
+//             => tkeyCheck(T, .Set, T) ...</k>
+//         <tempT> T:K </tempT>
+
+//    rule tkeyCheck(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set, G:K) => tkeyCheck(TList(Rest), SetItem(A) D, G)
+//    rule tkeyCheck(TList(.List), D:Set, TList(G:List)) => lengthCheck(size(G),size(D))
+
+    syntax KItem ::= aloopCheck(K,K,K,K,K,K,K) [function] //(Alpha,List of Alpha,Set of Alpha,CurrNode,lengthcheck,T,BigSet)
+
+    rule <k> checkAlphaNoLoops
+             => aloopCheck(A,.List,.Set,.K,.K,T,.Set) ...</k>
+         <tempAlphaMap> A:K </tempAlphaMap>
+         <tempT> T:K </tempT>
+
+    //aloopCheck set and list to check cycles
+    rule aloopCheck(Alpha:Map (A:KItem |-> B:KItem), D:List, G:Set, .K, .K,T:K,S:Set) => aloopCheck(Alpha, ListItem(B) ListItem(A) D, SetItem(B) SetItem(A) G, B, .K,T,S)
+    rule aloopCheck(Alpha:Map (H |-> B:KItem), D:List, G:Set, H:KItem, .K,T:K,S:Set) => aloopCheck(Alpha, ListItem(B) D, SetItem(B) G, B, .K,T,S)
+
+    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K,T:K,S:Set) => aloopCheck(Alpha, .List, .Set, .K, lengthCheck(size(G),size(D)),T,G S) //type rename loop ERROR
+         requires (notBool H in keys(Alpha)) andBool (H in typeSet(T, .Set) orBool H in S) 
+
+    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K,T:K,S:Set) => error //terminal alpha rename is not in T ERROR
+         requires (notBool H in keys(Alpha)) andBool (notBool (H in typeSet(T, .Set) orBool H in S))
+
+
+    syntax Set ::= typeSet(K,K) [function] //(K, KSet)
+    rule typeSet(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set) => typeSet(TList(Rest), SetItem(A) D)
+    rule typeSet(TList(.List), D:Set) => D
+
+//    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K) => keys(Alpha) ~> H
+//         requires notBool H in keys(Alpha)
+
+    rule aloopCheck(.Map, .List, .Set, .K, .K,T:K, S:Set) => .K
+//    rule aloopCheck(AList(Front:List ListItem(AObject(H,B:K)) C:List), D:List, G:Set, H:ConId) => aloopCheck(AList(C:List), ListItem(B) D, SetItem(B) G, B)
+
+
+//    syntax KItem ::= TList(K) //list of T objects for every new type introduced by data and newtype
+//    syntax KItem ::= TObject(K,K,K) //(type name, entire list of poly type vars, list of inner T pieces)
+//    syntax KItem ::= InnerTPiece(K,K,K,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
+
+//Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
+
+    syntax KItem ::= argSortCheck(K,K,K) [function] //(T,AlphaMap)
+
+    rule <k> checkArgSortsAreTargets
+             => argSortCheck(T,A,typeSet(T,.Set)) ...</k>
+         <tempAlphaMap> A:K </tempAlphaMap>
+         <tempT> T:K </tempT>
+    
+    rule argSortCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,D:K,ListItem(Arg:KItem) ArgsRest:List,E:K,F:K)) InnerRest:List)) TListRest:List),AlphaMap:Map,Tset:Set) => argSortCheck(TList(ListItem(TObject(A,B,ListItem(InnerTPiece(C,D,ArgsRest,E,F)) InnerRest)) TListRest),AlphaMap,Tset)
+         requires ((Arg in keys(AlphaMap)) orBool (Arg in Tset))
+
+    rule argSortCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,D:K,ListItem(Arg:KItem) ArgsRest:List,E:K,F:K)) InnerRest:List)) TListRest:List),AlphaMap:Map,Tset:Set) => error
+         requires (notBool ((Arg in keys(AlphaMap)) orBool (Arg in Tset)))
+
+    rule argSortCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,D:K,.List,E:K,F:K)) InnerRest:List)) TListRest:List),AlphaMap:Map,Tset:Set) => argSortCheck(TList(ListItem(TObject(A,B,InnerRest)) TListRest),AlphaMap,Tset)
+
+    rule argSortCheck(TList(ListItem(TObject(A:K,B:K,.List)) TListRest:List),AlphaMap:Map,Tset:Set) => argSortCheck(TList(TListRest),AlphaMap,Tset)
+
+    rule argSortCheck(TList(.List),AlphaMap:Map,Tset:Set) => .K
+
+//NEED TO CHECK all the polymorphic parameters from right appear on left. RIGHT SIDE ONLY
+//NEED TO CHECK UNIQUENESS FOR POLY PARAM ON LEFT SIDE ONLY
+
+    syntax KItem ::= parCheck(K,K) [function] //(T,AlphaMap)
+    syntax KItem ::= makeTyVarList(K,K,K) [function] //(TyVars, NewList)
+    syntax KItem ::= lengthRet(K,K,K) [function]
+
+    rule <k> checkParUsed
+             => parCheck(T,.K) ...</k>
+         <tempT> T:K </tempT>
+
+    //rule makeParLists(TList(ListItem(TObject(A:K,ListItem(Arg:KItem) PolyList:List,C:K)) Rest:List),Tlist:List,Tset:Set) => makeParLists(TList(ListItem(TObject(A,PolyList,C)) Rest),ListItem(Arg) Tlist,SetItem(Arg) Tset)
+    rule parCheck(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List),.K) => parCheck(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List),makeTyVarList(B,.List,.Set))
+
+    rule parCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,ListItem(Par:KItem) ParRest:List,D:K,E:K,F:K)) InnerRest:List)) Rest:List),NewSet:Set) =>
+         parCheck(TList(ListItem(TObject(A,B,ListItem(InnerTPiece(C,ParRest,D,E,F)) InnerRest)) Rest),NewSet)
+            requires Par in NewSet
+
+    rule parCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,ListItem(Par:KItem) ParRest:List,D:K,E:K,F:K)) InnerRest:List)) Rest:List),NewSet:Set) => error
+            requires notBool (Par in NewSet)
+
+    rule parCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,.List,D:K,E:K,F:K)) InnerRest:List)) Rest:List),NewSet:Set) =>
+         parCheck(TList(ListItem(TObject(A,B,InnerRest)) Rest),NewSet)
+
+    rule parCheck(TList(ListItem(TObject(A:K,B:K,.List)) Rest:List),NewSet:Set) =>
+         parCheck(TList(Rest),NewSet)
+
+    rule parCheck(TList(.List),NewSet:Set) => .K
+
+    rule makeTyVarList('typeVars(A:K,,Rest:K),NewList:List,NewSet:Set) => makeTyVarList(Rest, ListItem(A) NewList, SetItem(A) NewSet)
+
+    rule makeTyVarList(.TyVars,NewList:List,NewSet:Set) => lengthRet(size(NewList),size(NewSet),NewSet)
+
+    rule lengthRet(A:Int, B:Int, C:K) => C
+                    requires A ==Int B
+
+    rule lengthRet(A:Int, B:Int, C:K) => error
+                    requires A =/=Int B
+    
+    //rule argSortCheck(TList(ListItem(TObject(A:K,B:K,C:K)
+
+    // STEP 3 Transform T into beta
+
 endmodule
