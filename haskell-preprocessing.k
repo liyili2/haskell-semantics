@@ -296,6 +296,14 @@ module HASKELL-PREPROCESSING
     rule parCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,ListItem(Par:KItem) ParRest:List,D:K,E:K,F:K)) InnerRest:List)) Rest:List),NewSet:Set) => error
             requires notBool (Par in NewSet)
 
+    rule parCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,.List,D:K,E:K,F:K)) InnerRest:List)) Rest:List),NewSet:Set) =>
+         parCheck(TList(ListItem(TObject(A,B,InnerRest)) Rest),NewSet)
+
+    rule parCheck(TList(ListItem(TObject(A:K,B:K,.List)) Rest:List),NewSet:Set) =>
+         parCheck(TList(Rest),NewSet)
+
+    rule parCheck(TList(.List),NewSet:Set) => .K
+
     rule makeTyVarList('typeVars(A:K,,Rest:K),NewList:List,NewSet:Set) => makeTyVarList(Rest, ListItem(A) NewList, SetItem(A) NewSet)
 
     rule makeTyVarList(.TyVars,NewList:List,NewSet:Set) => lengthRet(size(NewList),size(NewSet),NewSet)
