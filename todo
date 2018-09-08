@@ -146,3 +146,57 @@ MORE for polymorphism...
 put each function name from decl into beta with a fresh variable
 
 (Gen(f,Beta,Gamma) => forall (a b c), Gamma
+
+start parsing multiple modules
+
+Create checks for multiple modules
+test collisions between different modules
+
+A
+type A = B
+
+B
+type A = C
+
+
+also including modules loop
+
+A include B
+B include A
+
+
+<T>
+	<tempcode>
+	<temp classes>
+	<temp alpha>
+	<temp T>
+	<current module> Name
+	<modules>
+		 <module multiplicity="*" color="LightSkyBlue">
+			name
+			alpha +
+                        T+/Beta+
+                        compiled code (after type inference)
+		
+</T>
+
+
+
+
+
+rule <k> 'modlist(mod A body,, tail:K) => dealwithimports(A,body) ~> tail ...</k>
+
+(.bag =>
+      <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
+	overwrite module name
+   ...</module>
+)
+
+rule <k> dealwithimports(Mod:K (import A,, tail:K) => dealwithimports(Mod, tail))
+ <modname> Mod </modname>
+ <imports> S:Set (.set => SetItem(A)) </imports>
+
+Could make deal with imports into a function that returns a set, then dump into module's imports
+
+1. Make new top sort for module list
+2. Change configuration to incorporate modules
