@@ -152,14 +152,17 @@ start parsing multiple modules
 Create checks for multiple modules
 test collisions between different modules
 
-A
+// THIS IS ALLOWED
+
+File1
 type A = B
 
-B
-type A = C
+File2
+type A = B
 
+//IS ALLOWED, HOWEVER, CANT REFERENCE B ANYMORE. THIS IS AMBIGUOUS. YOU NEED TO USE File1.B or File2.B
 
-also including modules loop
+also including modules loop //NOT ALLOWED, CREATES A CYCLE
 
 A include B
 B include A

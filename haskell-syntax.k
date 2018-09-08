@@ -70,6 +70,10 @@ module HASKELL-SYNTAX
 
     syntax QOp ::= QVarOp | QConOp
 
+//  CUSTOM SYNTAX NOT PART OF OFFICAL HASKELL
+
+    syntax ModuleList ::= Module | Module "<NEXTMODULE>" Module
+
 //  Section 10.5
 
     syntax ModuleName ::= "module" ModId
