@@ -34,6 +34,24 @@ module HASKELL-PREPROCESSING
     rule convertToList(A:KItem ~> B:K) => ListItem(A) convertToList(B)
 */
 
+    syntax KItem ::= dealWithImports(K,K)
+
+    rule <k> 'modListSingle('module(A:ModuleName,, B:Body)) => dealWithImports(A,B) </k>
+
+    (.Bag =>
+          <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
+    	    <moduleName> A </moduleName>
+       ...</module>
+    )
+
+//    rule dealWithImports(Mod:K, A:K) => callInit(A)
+
+    rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A) ...</k>
+
+//    rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K) => dealWithImports(Mod, tail)) ...<k>
+//        <modname> Mod </modname>
+//        <imports> S:Set (.Set => SetItem(A)) </imports>
+
     //call before Checker Code
     rule <k> callInit(S:K) => initPreModule(S) ...</k>
          <tempModule> A:K => S </tempModule>
@@ -65,9 +83,11 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= TObject(K,K,K) //(type name, entire list of poly type vars, list of inner T pieces)
     syntax KItem ::= InnerTPiece(K,K,K,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
 
-    rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
-    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
-    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(AList(.List),TList(.List)))
+//    rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
+//    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
+//    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(AList(.List),TList(.List)))
+
+    rule initPreModule(J:K) => getPreModule(J,preModule(AList(.List),TList(.List)))
 
     rule getPreModule('bodytopdecls(I:K), J:K) => getPreModule(I,J)
     rule getPreModule('topdeclslist('type(A:K,, B:K),, Rest:K),J:K) => fetchTypes(A,B,Rest,J) //constructalpha

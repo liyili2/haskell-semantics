@@ -28,7 +28,7 @@ module HASKELL-SYNTAX
   | ([\=][\! \# \$ \% \& \* \+ \. \/ \< \= \? \@ \\ \^ \| \~ \:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)} [onlyLabel]
     syntax ConSym ::= Token{[\:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 
-    syntax IntFloat ::= "(" Integer ")"  [bracket]
+    syntax IntFloat ::= "(" Integer ")"  [bracket] //NOT OFFICIAL SYNTAX
                       | "(" CusFloat ")" [bracket]
 
     syntax Literal ::= IntFloat | CusChar | CusString
@@ -72,11 +72,11 @@ module HASKELL-SYNTAX
 
 //  CUSTOM SYNTAX NOT PART OF OFFICAL HASKELL
 
-    syntax ModuleList ::= Module | Module "<NEXTMODULE>" Module
+    syntax ModuleList ::= Module [klabel('modListSingle)] | Module "<NEXTMODULE>" Module [klabel('modList)]
 
 //  Section 10.5
 
-    syntax ModuleName ::= "module" ModId
+    syntax ModuleName ::= "module" ModId [klabel('moduleName)]
 
     syntax Module ::= ModuleName "where" Body          [klabel('module)]
                     | ModuleName Exports "where" Body  [klabel('moduleExp)]

@@ -9,7 +9,7 @@ module HASKELL-CONFIGURATION
 
     configuration 
         <T>
-            <k> callInit($PGM:ModuleList) </k>
+            <k> $PGM:ModuleList </k>
             <tempModule> .K </tempModule>
             <tempCode> .K </tempCode>
             <tempAlpha> .K </tempAlpha>
@@ -21,6 +21,12 @@ module HASKELL-CONFIGURATION
                     <moduleAlphaPlus> "" </moduleAlphaPlus>
                     <moduleBetaPlus> "" </moduleBetaPlus>
                     <moduleCompCode> "" </moduleCompCode>
+                    <imports> "" </imports>
+                    <classes> //static information about a module
+                        <class multiplicity="*">
+                            <className> "" </className>
+                        </class>
+                    </classes>
                 </module>
             </modules>
         </T>
