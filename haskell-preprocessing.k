@@ -38,7 +38,7 @@ module HASKELL-PREPROCESSING
 
     rule <k> 'modListSingle('module(A:K,, B:K)) => dealWithImports(A,B) </k>
 
-    (.Bag =>
+    (G:Bag =>
           <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
     	    <moduleName> A </moduleName>
        ...</module>
@@ -46,7 +46,7 @@ module HASKELL-PREPROCESSING
 
     rule <k> 'modList('module(A:K,, B:K),, C:K) => dealWithImports(A,B) ~> C </k>
 
-    (.Bag =>
+    (G:Bag =>
           <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
     	    <moduleName> A </moduleName>
        ...</module>
@@ -59,8 +59,8 @@ module HASKELL-PREPROCESSING
     rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A) ...</k>
 
     rule <k> dealWithImports(Mod:K, 'bodyimpdecls(A:K)) => .K ...</k>
-        <moduleName> Mod </moduleName>
-        <imports> S:Set (.Set => SetItem(A)) </imports>
+//        <moduleName> Mod </moduleName>
+//        <imports> S:Set (.Set => SetItem(A)) </imports>
 
     //call before Checker Code
     rule <k> callInit(S:K) => initPreModule(S) ...</k>
