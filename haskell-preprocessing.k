@@ -36,7 +36,15 @@ module HASKELL-PREPROCESSING
 
     syntax KItem ::= dealWithImports(K,K)
 
-    rule <k> 'modListSingle('module(A:ModuleName,, B:Body)) => dealWithImports(A,B) </k>
+    rule <k> 'modListSingle('module(A:K,, B:K)) => dealWithImports(A,B) </k>
+
+    (.Bag =>
+          <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
+    	    <moduleName> A </moduleName>
+       ...</module>
+    )
+
+    rule <k> 'modList('module(A:K,, B:K),, C:K) => dealWithImports(A,B) ~> C </k>
 
     (.Bag =>
           <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
@@ -46,11 +54,13 @@ module HASKELL-PREPROCESSING
 
 //    rule dealWithImports(Mod:K, A:K) => callInit(A)
 
+//    rule <k> dealWithImports(Mod:K, A:K) => callInit(A) ...</k>
+
     rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A) ...</k>
 
-//    rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K) => dealWithImports(Mod, tail)) ...<k>
-//        <modname> Mod </modname>
-//        <imports> S:Set (.Set => SetItem(A)) </imports>
+    rule <k> dealWithImports(Mod:K, 'bodyimpdecls(A:K)) => .K ...</k>
+        <moduleName> Mod </moduleName>
+        <imports> S:Set (.Set => SetItem(A)) </imports>
 
     //call before Checker Code
     rule <k> callInit(S:K) => initPreModule(S) ...</k>

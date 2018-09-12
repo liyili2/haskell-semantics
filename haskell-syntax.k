@@ -72,7 +72,7 @@ module HASKELL-SYNTAX
 
 //  CUSTOM SYNTAX NOT PART OF OFFICAL HASKELL
 
-    syntax ModuleList ::= Module [klabel('modListSingle)] | Module "<NEXTMODULE>" Module [klabel('modList)]
+    syntax ModuleList ::= Module [klabel('modListSingle)] | Module "<NEXTMODULE>" ModuleList [klabel('modList)]
 
 //  Section 10.5
 
