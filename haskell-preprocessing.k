@@ -36,17 +36,17 @@ module HASKELL-PREPROCESSING
 
     syntax KItem ::= dealWithImports(K,K)
 
-    rule <k> 'modListSingle('module(A:K,, B:K)) => dealWithImports(A,B) </k>
+    rule <k> 'modListSingle('module(A:K,, B:K)) => dealWithImports(A,B) ...</k>
 
-    (G:Bag =>
+    (.Bag =>
           <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
     	    <moduleName> A </moduleName>
        ...</module>
     )
 
-    rule <k> 'modList('module(A:K,, B:K),, C:K) => dealWithImports(A,B) ~> C </k>
+    rule <k> 'modList('module(A:K,, B:K),, C:K) => dealWithImports(A,B) ~> C ...</k>
 
-    (G:Bag =>
+    (.Bag =>
           <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
     	    <moduleName> A </moduleName>
        ...</module>
