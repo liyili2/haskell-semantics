@@ -17,14 +17,14 @@ module HASKELL-CONFIGURATION
             <tempT> .K </tempT>
             <modules> //static information about a module
                 <module multiplicity="*">
-                    <moduleName> "" </moduleName>
-                    <moduleAlphaPlus> "" </moduleAlphaPlus>
-                    <moduleBetaPlus> "" </moduleBetaPlus>
-                    <moduleCompCode> "" </moduleCompCode>
-                    <imports> "" </imports>
+                    <moduleName> .K </moduleName>
+                    <moduleAlphaPlus> .K </moduleAlphaPlus>
+                    <moduleBetaPlus> .K </moduleBetaPlus>
+                    <moduleCompCode> .K </moduleCompCode>
+                    <imports> .Set </imports>
                     <classes> //static information about a module
                         <class multiplicity="*">
-                            <className> "" </className>
+                            <className> .K </className>
                         </class>
                     </classes>
                 </module>
