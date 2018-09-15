@@ -203,3 +203,20 @@ Could make deal with imports into a function that returns a set, then dump into 
 
 1. Make new top sort for module list
 2. Change configuration to incorporate modules
+
+
+NEW TODO ALGORITHM
+1. Construct tree for module inclusion
+2. Check tree for cycles
+3. Go to each leaf and recursively go up the tree and build alpha* and beta* for the types of the module and the children
+(and specify scoping) (desugar the scope so that each type specifies the scope)
+
+"I also realized theres polymorphism for type synonyms as well btw
+the alpha
+qangel [5:04 PM]
+yes
+you will need to take care of that.
+haskell will definitely have polymorphism
+but the type variables for polymorphism in alpha does not mean anything
+for example a A = b B
+it does not mean that a = b in all cases, it will only mean that a = b in this expression, you will just need a field to take care of this."

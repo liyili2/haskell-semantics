@@ -56,11 +56,15 @@ module HASKELL-PREPROCESSING
 
 //    rule <k> dealWithImports(Mod:K, A:K) => callInit(A) ...</k>
 
-    rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A) ...</k>
+    rule <k> dealWithImports(Mod:K, 'bodyimpandtop(A:K,, B:K)) => .K ...</k>
+        <moduleName> Mod </moduleName>
+        <imports> S:Set (.Set => SetItem(A)) </imports>
 
     rule <k> dealWithImports(Mod:K, 'bodyimpdecls(A:K)) => .K ...</k>
         <moduleName> Mod </moduleName>
         <imports> S:Set (.Set => SetItem(A)) </imports>
+
+    rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A) ...</k>
 
     //call before Checker Code
     rule <k> callInit(S:K) => initPreModule(S) ...</k>
