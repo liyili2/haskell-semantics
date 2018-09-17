@@ -57,14 +57,26 @@ module HASKELL-PREPROCESSING
 //    rule <k> dealWithImports(Mod:K, A:K) => callInit(A) ...</k>
 
     rule <k> dealWithImports(Mod:K, 'bodyimpandtop(A:K,, B:K)) => .K ...</k>
+        <importTree> L:List => L importListConvert(Mod, A) </importTree>
+
         <moduleName> Mod </moduleName>
         <imports> S:Set (.Set => SetItem(A)) </imports>
 
     rule <k> dealWithImports(Mod:K, 'bodyimpdecls(A:K)) => .K ...</k>
+        <importTree> L:List => L importListConvert(Mod, A) </importTree>
+
         <moduleName> Mod </moduleName>
         <imports> S:Set (.Set => SetItem(A)) </imports>
 
     rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A) ...</k>
+
+    //importlist convert
+    syntax List ::= importListConvert(K,K) [function]
+    syntax KItem ::= impObject(K,K)
+
+    rule importListConvert(Name:K, 'impDecls(A:K,, Rest:K)) => importListConvert(Name, A) importListConvert(Name, Rest)
+    rule importListConvert('moduleName(Name:K), 'impDecl(A:K,, Modid:K,, C:K,, D:K)) => ListItem(impObject(Name, Modid))
+    rule importListConvert(Name:K, .ImpDecls) => .List
 
     //call before Checker Code
     rule <k> callInit(S:K) => initPreModule(S) ...</k>

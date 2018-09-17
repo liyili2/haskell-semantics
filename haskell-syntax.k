@@ -86,7 +86,7 @@ module HASKELL-SYNTAX
                   | "{" ImpDecls "}" [klabel('bodyimpdecls)]
                   | "{" TopDecls "}" [klabel('bodytopdecls)]
 
-    syntax ImpDecls ::= List{ImpDecl, ";"}
+    syntax ImpDecls ::= List{ImpDecl, ";"} [klabel('impDecls)]
 
     syntax Exports ::= "(" ExportList OptComma ")"
     syntax ExportList ::= List{Export, ","}
@@ -103,7 +103,7 @@ module HASKELL-SYNTAX
                        | "" [onlyLabel, klabel('emptyOptCNameList)]
     syntax CQList ::= List{CQName, ","}
 
-    syntax ImpDecl ::= "import" OptQualified ModId OptAsModId OptImpSpec
+    syntax ImpDecl ::= "import" OptQualified ModId OptAsModId OptImpSpec [klabel('impDecl)]
                      | "" [onlyLabel, klabel('emptyImpDecl)]
     syntax OptQualified ::= "qualified"
                           | ""  [onlyLabel, klabel('emptyQualified)]
