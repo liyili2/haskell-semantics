@@ -3,13 +3,14 @@ requires "haskell-syntax.k"
 module HASKELL-CONFIGURATION
     imports HASKELL-SYNTAX
 
+    syntax KItem ::= "startImportRecursion"
     syntax KItem ::= callInit(K)
     //syntax KItem ::= initPreModule(K) [function]
     //syntax KItem ::= tChecker(K) [function]
 
     configuration 
         <T>
-            <k> $PGM:ModuleList </k>
+            <k> $PGM:ModuleList ~> startImportRecursion </k>
             <tempModule> .K </tempModule>
             <tempCode> .K </tempCode>
             <tempAlpha> .K </tempAlpha>

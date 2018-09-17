@@ -78,6 +78,26 @@ module HASKELL-PREPROCESSING
     rule importListConvert('moduleName(Name:K), 'impDecl(A:K,, Modid:K,, C:K,, D:K)) => ListItem(impObject(Name, Modid))
     rule importListConvert(Name:K, .ImpDecls) => .List
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /*NEW TODO ALGORITHM
+1. Construct tree for module inclusion
+2. Check tree for cycles
+3. Go to each leaf and recursively go up the tree and build alpha* and beta* for the types of the module and the children
+(and specify scoping) (desugar the scope so that each type specifies the scope) */
+
+    syntax KItem ::= "checkImportCycle"
+
+    rule <k> startImportRecursion => checkImportCycle ...</k>
+
+    syntax KItem ::= cycleCheck(K) [function]
+
+    rule <k> checkImportCycle
+             => cycleCheck(I) ...</k>
+         <importTree> I:List </importTree>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     //call before Checker Code
     rule <k> callInit(S:K) => initPreModule(S) ...</k>
          <tempModule> A:K => S </tempModule>
