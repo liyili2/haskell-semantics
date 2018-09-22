@@ -28,7 +28,7 @@ module HASKELL-SYNTAX
   | ([\=][\! \# \$ \% \& \* \+ \. \/ \< \= \? \@ \\ \^ \| \~ \:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)} [onlyLabel]
     syntax ConSym ::= Token{[\:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
 
-    syntax IntFloat ::= "(" Integer ")"  [bracket]
+    syntax IntFloat ::= "(" Integer ")"  [bracket] //NOT OFFICIAL SYNTAX
                       | "(" CusFloat ")" [bracket]
 
     syntax Literal ::= IntFloat | CusChar | CusString
@@ -70,9 +70,13 @@ module HASKELL-SYNTAX
 
     syntax QOp ::= QVarOp | QConOp
 
+//  CUSTOM SYNTAX NOT PART OF OFFICAL HASKELL
+
+    syntax ModuleList ::= Module [klabel('modListSingle)] | Module "<NEXTMODULE>" ModuleList [klabel('modList)]
+
 //  Section 10.5
 
-    syntax ModuleName ::= "module" ModId
+    syntax ModuleName ::= "module" ModId [klabel('moduleName)]
 
     syntax Module ::= ModuleName "where" Body          [klabel('module)]
                     | ModuleName Exports "where" Body  [klabel('moduleExp)]
@@ -82,7 +86,7 @@ module HASKELL-SYNTAX
                   | "{" ImpDecls "}" [klabel('bodyimpdecls)]
                   | "{" TopDecls "}" [klabel('bodytopdecls)]
 
-    syntax ImpDecls ::= List{ImpDecl, ";"}
+    syntax ImpDecls ::= List{ImpDecl, ";"} [klabel('impDecls)]
 
     syntax Exports ::= "(" ExportList OptComma ")"
     syntax ExportList ::= List{Export, ","}
@@ -99,7 +103,7 @@ module HASKELL-SYNTAX
                        | "" [onlyLabel, klabel('emptyOptCNameList)]
     syntax CQList ::= List{CQName, ","}
 
-    syntax ImpDecl ::= "import" OptQualified ModId OptAsModId OptImpSpec
+    syntax ImpDecl ::= "import" OptQualified ModId OptAsModId OptImpSpec [klabel('impDecl)]
                      | "" [onlyLabel, klabel('emptyImpDecl)]
     syntax OptQualified ::= "qualified"
                           | ""  [onlyLabel, klabel('emptyQualified)]

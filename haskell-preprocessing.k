@@ -34,6 +34,88 @@ module HASKELL-PREPROCESSING
     rule convertToList(A:KItem ~> B:K) => ListItem(A) convertToList(B)
 */
 
+    syntax KItem ::= dealWithImports(K,K)
+
+    rule <k> 'modListSingle('module(A:K,, B:K)) => dealWithImports(A,B) ...</k>
+
+    (.Bag =>
+          <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
+    	    <moduleName> A </moduleName>
+       ...</module>
+    )
+
+    rule <k> 'modList('module(A:K,, B:K),, C:K) => dealWithImports(A,B) ~> C ...</k>
+
+    (.Bag =>
+          <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
+    	    <moduleName> A </moduleName>
+       ...</module>
+    )
+
+//    rule dealWithImports(Mod:K, A:K) => callInit(A)
+
+//    rule <k> dealWithImports(Mod:K, A:K) => callInit(A) ...</k>
+
+    rule <k> dealWithImports(Mod:K, 'bodyimpandtop(A:K,, B:K)) => .K ...</k>
+        <importTree> L:List => L importListConvert(Mod, A) </importTree>
+
+        <moduleName> Mod </moduleName>
+        <imports> S:Set (.Set => SetItem(A)) </imports>
+
+    rule <k> dealWithImports(Mod:K, 'bodyimpdecls(A:K)) => .K ...</k>
+        <importTree> L:List => L importListConvert(Mod, A) </importTree>
+
+        <moduleName> Mod </moduleName>
+        <imports> S:Set (.Set => SetItem(A)) </imports>
+
+    rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A) ...</k>
+
+    //importlist convert
+    syntax List ::= importListConvert(K,K) [function]
+    syntax KItem ::= impObject(K,K)
+
+    rule importListConvert(Name:K, 'impDecls(A:K,, Rest:K)) => importListConvert(Name, A) importListConvert(Name, Rest)
+    rule importListConvert('moduleName(Name:K), 'impDecl(A:K,, Modid:K,, C:K,, D:K)) => ListItem(impObject(Name, Modid))
+    rule importListConvert(Name:K, .ImpDecls) => .List
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /*NEW TODO ALGORITHM
+1. Construct tree for module inclusion
+2. Check tree for cycles
+3. Go to each leaf and recursively go up the tree and build alpha* and beta* for the types of the module and the children
+(and specify scoping) (desugar the scope so that each type specifies the scope) */
+
+    syntax KItem ::= "checkImportCycle"
+
+    rule <k> startImportRecursion => checkImportCycle ...</k>
+
+    syntax KItem ::= cycleCheck(K,K,K,K) [function] //current node, map of all nodes to visited or not, stack, graph
+    syntax Map ::= createVisitMap(K,K) [function] //graph, visitmap
+    syntax KItem ::= getUnvisitedNode(K) [function] //visitmap
+    syntax List ::= getNodeNeighbors(K,K) [function] //visitmap
+
+    rule <k> checkImportCycle
+             => cycleCheck(.K,.K,.K,I) ...</k>
+         <importTree> I:List </importTree>
+
+    syntax KItem ::= "visited"
+    syntax KItem ::= "unvisited"
+
+    rule createVisitMap(ListItem(impObject(A:K,B:K)) Rest:List, M:Map) => createVisitMap(Rest, M[A <- unvisited][B <- unvisited])
+    rule createVisitMap(.List, M:Map) => M
+
+    rule cycleCheck(A:K,.K,.K,I:K) => cycleCheck(A,createVisitMap(I,.Map),.List,I)
+
+    rule cycleCheck(.K, M:Map, .List, I:K) => cycleCheck(getUnvisitedNode(M), M, .List, I)
+
+    rule cycleCheck(Node:K, M:Map, S:List, I:K) => cycleCheck(.K, M[Node <- visited], getNodeNeighbors(Node,I) S, I)
+
+    rule cycleCheck(.K, M:Map, ListItem(Node:K) S:List, I:K) => cycleCheck(Node, M, S, I)
+    //rule cycleCheck(.K, M:Map, .K, ListItem(impObject(A:K,B:K)) Rest:List) => cycleCheck(ListItem(impObject(A:K,B:K)) Rest:List)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     //call before Checker Code
     rule <k> callInit(S:K) => initPreModule(S) ...</k>
          <tempModule> A:K => S </tempModule>
@@ -65,9 +147,11 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= TObject(K,K,K) //(type name, entire list of poly type vars, list of inner T pieces)
     syntax KItem ::= InnerTPiece(K,K,K,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
 
-    rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
-    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
-    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(AList(.List),TList(.List)))
+//    rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
+//    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
+//    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(AList(.List),TList(.List)))
+
+    rule initPreModule(J:K) => getPreModule(J,preModule(AList(.List),TList(.List)))
 
     rule getPreModule('bodytopdecls(I:K), J:K) => getPreModule(I,J)
     rule getPreModule('topdeclslist('type(A:K,, B:K),, Rest:K),J:K) => fetchTypes(A,B,Rest,J) //constructalpha
