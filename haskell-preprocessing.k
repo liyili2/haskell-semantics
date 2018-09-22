@@ -90,30 +90,47 @@ module HASKELL-PREPROCESSING
 
     rule <k> startImportRecursion => checkImportCycle ...</k>
 
-    syntax KItem ::= cycleCheck(K,K,K,K) [function] //current node, map of all nodes to visited or not, stack, graph
-    syntax Map ::= createVisitMap(K,K) [function] //graph, visitmap
-    syntax KItem ::= getUnvisitedNode(K) [function] //visitmap
-    syntax List ::= getNodeNeighbors(K,K) [function] //visitmap
+    syntax KItem ::= cycleCheck(K,Map,List,List) [function] //current node, map of all nodes to visited or not, stack, graph
+    syntax Map ::= createVisitMap(List,Map) [function] //graph, visitmap
+    syntax KItem ::= getUnvisitedNode(K,K, Map) [function] //visitmap
+    syntax List ::= getNodeNeighbors(K,List) [function] //visitmap
 
     rule <k> checkImportCycle
-             => cycleCheck(.K,.K,.K,I) ...</k>
+             => cycleCheck(.K,createVisitMap(I, .Map),.List,I) ...</k>
          <importTree> I:List </importTree>
 
     syntax KItem ::= "visited"
     syntax KItem ::= "unvisited"
+    syntax KItem ::= "none"
 
-    rule createVisitMap(ListItem(impObject(A:K,B:K)) Rest:List, M:Map) => createVisitMap(Rest, M[A <- unvisited][B <- unvisited])
+    rule createVisitMap(ListItem(impObject(A:K,B:K)) Rest:List, M:Map) 
+             => createVisitMap(Rest, M[A <- unvisited][B <- unvisited])
     rule createVisitMap(.List, M:Map) => M
 
+    rule getUnvisitedNode(.K, .K, .Map) => none
+    rule getUnvisitedNode(.K, .K, (A:K |-> B:K) M:Map)
+           => getUnvisitedNode(A, B, M)
+    rule getUnvisitedNode(A:KItem, unvisited, M:Map) => A
+    rule getUnvisitedNode(A:KItem, visited, M:Map)
+            =>  getUnvisitedNode(.K, .K, M)
+
+    rule cycleCheck(none, M:Map, .List, L:List) => .K
+    rule cycleCheck(.K, M:Map, .List, I:List) => cycleCheck(getUnvisitedNode(.K, .K, M), M, .List, I)
+    rule cycleCheck(.K, M:Map, ListItem(Node:K) S:List, I:List) => cycleCheck(Node, M, S, I)
+    rule cycleCheck(Node:K, M:Map, S:List, I:List)
+                 => cycleCheck(.K, M[Node <- visited], getNodeNeighbors(Node,I) S, I)
+         requires Node =/=K .K andBool Node =/=K none
+
+/*
     rule cycleCheck(A:K,.K,.K,I:K) => cycleCheck(A,createVisitMap(I,.Map),.List,I)
 
-    rule cycleCheck(.K, M:Map, .List, I:K) => cycleCheck(getUnvisitedNode(M), M, .List, I)
+
 
     rule cycleCheck(Node:K, M:Map, S:List, I:K) => cycleCheck(.K, M[Node <- visited], getNodeNeighbors(Node,I) S, I)
 
     rule cycleCheck(.K, M:Map, ListItem(Node:K) S:List, I:K) => cycleCheck(Node, M, S, I)
     //rule cycleCheck(.K, M:Map, .K, ListItem(impObject(A:K,B:K)) Rest:List) => cycleCheck(ListItem(impObject(A:K,B:K)) Rest:List)
-
+*/
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //call before Checker Code
