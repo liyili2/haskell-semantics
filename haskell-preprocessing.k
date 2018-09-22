@@ -90,11 +90,29 @@ module HASKELL-PREPROCESSING
 
     rule <k> startImportRecursion => checkImportCycle ...</k>
 
-    syntax KItem ::= cycleCheck(K) [function]
+    syntax KItem ::= cycleCheck(K,K,K,K) [function] //current node, map of all nodes to visited or not, stack, graph
+    syntax Map ::= createVisitMap(K,K) [function] //graph, visitmap
+    syntax KItem ::= getUnvisitedNode(K) [function] //visitmap
+    syntax List ::= getNodeNeighbors(K,K) [function] //visitmap
 
     rule <k> checkImportCycle
-             => cycleCheck(I) ...</k>
+             => cycleCheck(.K,.K,.K,I) ...</k>
          <importTree> I:List </importTree>
+
+    syntax KItem ::= "visited"
+    syntax KItem ::= "unvisited"
+
+    rule createVisitMap(ListItem(impObject(A:K,B:K)) Rest:List, M:Map) => createVisitMap(Rest, M[A <- unvisited][B <- unvisited])
+    rule createVisitMap(.List, M:Map) => M
+
+    rule cycleCheck(A:K,.K,.K,I:K) => cycleCheck(A,createVisitMap(I,.Map),.List,I)
+
+    rule cycleCheck(.K, M:Map, .List, I:K) => cycleCheck(getUnvisitedNode(M), M, .List, I)
+
+    rule cycleCheck(Node:K, M:Map, S:List, I:K) => cycleCheck(.K, M[Node <- visited], getNodeNeighbors(Node,I) S, I)
+
+    rule cycleCheck(.K, M:Map, ListItem(Node:K) S:List, I:K) => cycleCheck(Node, M, S, I)
+    //rule cycleCheck(.K, M:Map, .K, ListItem(impObject(A:K,B:K)) Rest:List) => cycleCheck(ListItem(impObject(A:K,B:K)) Rest:List)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
