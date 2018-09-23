@@ -22,9 +22,12 @@ module HASKELL-CONFIGURATION
             <modules> //static information about a module
                 <module multiplicity="*">
                     <moduleName> .K </moduleName>
-                    <moduleAlphaPlus> .K </moduleAlphaPlus>
-                    <moduleBetaPlus> .K </moduleBetaPlus>
+                    <moduleAlphaStar> .K </moduleAlphaStar>
+                    <moduleBetaStar> .K </moduleBetaStar>
+                    <moduleImpAlphas> .K </moduleImpAlphas>
+                    <moduleImpBetas> .K </moduleImpBetas>
                     <moduleCompCode> .K </moduleCompCode>
+                    <moduleTempCode> .K </moduleTempCode>
                     <imports> .Set </imports>
                     <classes> //static information about a module
                         <class multiplicity="*">

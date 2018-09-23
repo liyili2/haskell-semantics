@@ -62,6 +62,7 @@ module HASKELL-PREPROCESSING
 
         <moduleName> Mod </moduleName>
         <imports> S:Set (.Set => SetItem(A)) </imports>
+        <moduleTempCode> OldTemp:K => B </moduleTempCode>
 
     rule <k> dealWithImports(Mod:K, 'bodyimpdecls(A:K)) => .K ...</k>
         <importTree> L:List => L importListConvert(Mod, A) </importTree>
@@ -71,7 +72,10 @@ module HASKELL-PREPROCESSING
         <imports> S:Set (.Set => SetItem(A)) </imports>
 
 //    rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A) ...</k>
-    rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => .K ...</k>
+    rule <k> dealWithImports(Mod:K, 'bodytopdecls(B:K)) => .K ...</k>
+
+        <moduleName> Mod </moduleName>
+        <moduleTempCode> OldTemp:K => B </moduleTempCode>
 
     //importlist convert
     syntax List ::= importListConvert(K,K) [function]
@@ -168,6 +172,7 @@ module HASKELL-PREPROCESSING
 //merge alpha and beta with imports to produce alpha* and beta*
 //perform checks
 //perform inferencing
+//insert alpha* and beta* into importing modules
 //remove all edges pointing to leaf
 
     syntax KItem ::= "leafDFS"
@@ -175,6 +180,7 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= "getAlphaBetaStar"
     syntax KItem ::= "performIndividualChecks"
     syntax KItem ::= "performIndividualInferencing"
+    syntax KItem ::= "insertAlphaBetaStar"
     syntax KItem ::= "removeAllEdges"
     syntax KItem ::= "seeIfFinished"
 
@@ -192,23 +198,44 @@ module HASKELL-PREPROCESSING
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     syntax KItem ::= returnLeafDFS(K,List,Map) [function] //current node, map of all nodes to visited or not, stack, graph
+    syntax KItem ::= innerLeafDFS(K,List) [function]
+    syntax KItem ::= loadModule(K)
 
     rule <k> leafDFS
              => returnLeafDFS(.K,I,M) ...</k>
          <recurImportTree> I:List </recurImportTree>
          <impTreeVMap> M:Map </impTreeVMap>
 
-    returnLeafDFS(.K,ListItem(impObject(Node:KItem,B:KItem)) I:List,M:Map) => returnLeafDFS(B,I,M)
-    returnLeafDFS(Node:KItem,ListItem(impObject(Node,B:KItem)) I:List,M:Map) => returnLeafDFS(B,I,M)
+    rule returnLeafDFS(.K,ListItem(impObject(Node:KItem,B:KItem)) I:List,M:Map) => returnLeafDFS(B,I,M)
+    rule returnLeafDFS(Node:KItem,I:List,M:Map) => returnLeafDFS(innerLeafDFS(Node,I),I,M)
+         requires innerLeafDFS(Node,I) =/=K none
+    rule returnLeafDFS(Node:KItem,I:List,M:Map) => loadModule(Node)
+         requires innerLeafDFS(Node,I) ==K none
+
+    rule innerLeafDFS(Node:KItem,ListItem(impObject(Node,B:KItem)) I:List) => B
+    rule innerLeafDFS(Node:KItem,ListItem(impObject(A:KItem,B:KItem)) I:List) => innerLeafDFS(Node,I)
+         requires Node =/=K A
+    rule innerLeafDFS(Node:KItem,.List) => none
 //    returnLeafDFS(Node:KItem,ListItem(impObject(Node,B:KItem)) I:List,M:Map) => returnLeafDFS(B,I,M)
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //call before Checker Code
-    rule <k> callInit(S:K) => initPreModule(S) ...</k>
+//    rule <k> callInit(S:K) => initPreModule(S) ...</k>
+//         <tempModule> A:K => S </tempModule>
+
+    rule <k> loadModule(S:KItem) => .K ...</k>
          <tempModule> A:K => S </tempModule>
 
+    rule <k> getAlphaAndBeta => initPreModule(Code) ...</k>
+         <tempModule> Mod:KItem </tempModule>
+
+         <moduleName> 'moduleName(Mod) </moduleName>
+         <moduleTempCode> Code:KItem </moduleTempCode>
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //start of Checker Code
     syntax KItem ::= Module(K, K)
     syntax KItem ::= preModule(K,K) //(alpha, T)
