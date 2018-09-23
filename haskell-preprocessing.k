@@ -198,6 +198,10 @@ module HASKELL-PREPROCESSING
          <recurImportTree> I:List </recurImportTree>
          <impTreeVMap> M:Map </impTreeVMap>
 
+    returnLeafDFS(.K,ListItem(impObject(Node:KItem,B:KItem)) I:List,M:Map) => returnLeafDFS(B,I,M)
+    returnLeafDFS(Node:KItem,ListItem(impObject(Node,B:KItem)) I:List,M:Map) => returnLeafDFS(B,I,M)
+//    returnLeafDFS(Node:KItem,ListItem(impObject(Node,B:KItem)) I:List,M:Map) => returnLeafDFS(B,I,M)
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
