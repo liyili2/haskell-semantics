@@ -58,17 +58,20 @@ module HASKELL-PREPROCESSING
 
     rule <k> dealWithImports(Mod:K, 'bodyimpandtop(A:K,, B:K)) => .K ...</k>
         <importTree> L:List => L importListConvert(Mod, A) </importTree>
+        <recurImportTree> L:List => L importListConvert(Mod, A) </recurImportTree>
 
         <moduleName> Mod </moduleName>
         <imports> S:Set (.Set => SetItem(A)) </imports>
 
     rule <k> dealWithImports(Mod:K, 'bodyimpdecls(A:K)) => .K ...</k>
         <importTree> L:List => L importListConvert(Mod, A) </importTree>
+        <recurImportTree> L:List => L importListConvert(Mod, A) </recurImportTree>
 
         <moduleName> Mod </moduleName>
         <imports> S:Set (.Set => SetItem(A)) </imports>
 
-    rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A) ...</k>
+//    rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A) ...</k>
+    rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => .K ...</k>
 
     //importlist convert
     syntax List ::= importListConvert(K,K) [function]
@@ -87,8 +90,20 @@ module HASKELL-PREPROCESSING
 (and specify scoping) (desugar the scope so that each type specifies the scope) */
 
     syntax KItem ::= "checkImportCycle"
+    syntax KItem ::= "recurseImportTree"
 
-    rule <k> startImportRecursion => checkImportCycle ...</k>
+/*    rule <k> performNextChecks
+             => checkUseVars
+                ~> (checkLabelUses
+                ~> (checkBlockAddress(.K)
+                ~> (checkNoNormalBlocksHavingLandingpad(.K, TNS -Set TES)
+                ~> (checkAllExpBlocksHavingLandingpad(.K, TES)
+                ~> (checkAllExpInFromInvoke(.K, TES)
+                ~> (checkLandingpad
+                ~> checkLandingDomResumes)))))) ...</k> */
+
+    rule <k> startImportRecursion => checkImportCycle 
+                                     ~> (recurseImportTree)...</k>
 
     syntax KItem ::= cycleCheck(K,Map,List,List) [function] //current node, map of all nodes to visited or not, stack, graph
     syntax Map ::= createVisitMap(List,Map) [function] //graph, visitmap
@@ -98,6 +113,7 @@ module HASKELL-PREPROCESSING
     rule <k> checkImportCycle
              => cycleCheck(.K,createVisitMap(I, .Map),.List,I) ...</k>
          <importTree> I:List </importTree>
+         <impTreeVMap> .Map => createVisitMap(I, .Map) </impTreeVMap>
 
     syntax KItem ::= "visited"
     syntax KItem ::= "unvisited"
@@ -114,12 +130,24 @@ module HASKELL-PREPROCESSING
     rule getUnvisitedNode(A:KItem, visited, M:Map)
             =>  getUnvisitedNode(.K, .K, M)
 
+
+
+    rule getNodeNeighbors(Node:K,.List) => .List
+    rule getNodeNeighbors(.K,Rest:List) => .List
+
+    rule getNodeNeighbors(Node:KItem,ListItem(impObject(Node,B:KItem)) Rest:List) => getNodeNeighbors(Node, Rest) ListItem(B)
+    rule getNodeNeighbors(Node:KItem,ListItem(impObject(A:KItem,B:KItem)) Rest:List) => getNodeNeighbors(Node, Rest)
+         requires Node =/=K A
+
+
     rule cycleCheck(none, M:Map, .List, L:List) => .K
     rule cycleCheck(.K, M:Map, .List, I:List) => cycleCheck(getUnvisitedNode(.K, .K, M), M, .List, I)
     rule cycleCheck(.K, M:Map, ListItem(Node:K) S:List, I:List) => cycleCheck(Node, M, S, I)
     rule cycleCheck(Node:K, M:Map, S:List, I:List)
                  => cycleCheck(.K, M[Node <- visited], getNodeNeighbors(Node,I) S, I)
          requires Node =/=K .K andBool Node =/=K none
+    rule cycleCheck(.K, M:Map, ListItem(Node:K) S:List, I:K) => cycleCheck(Node, M, S, I)
+         requires S =/=K .List
 
 /*
     rule cycleCheck(A:K,.K,.K,I:K) => cycleCheck(A,createVisitMap(I,.Map),.List,I)
@@ -131,6 +159,46 @@ module HASKELL-PREPROCESSING
     rule cycleCheck(.K, M:Map, ListItem(Node:K) S:List, I:K) => cycleCheck(Node, M, S, I)
     //rule cycleCheck(.K, M:Map, .K, ListItem(impObject(A:K,B:K)) Rest:List) => cycleCheck(ListItem(impObject(A:K,B:K)) Rest:List)
 */
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//COPY IMPORT GRAPH, NEED SECOND GRAPH FOR RECURSING, ADDITIONAL GRAPH FOR SELECTING IMPORTS FOR ALPHA* AND BETA*
+//DFS for leaf
+//acquire alpha and beta for leaf
+//merge alpha and beta with imports to produce alpha* and beta*
+//perform checks
+//perform inferencing
+//remove all edges pointing to leaf
+
+    syntax KItem ::= "leafDFS"
+    syntax KItem ::= "getAlphaAndBeta"
+    syntax KItem ::= "getAlphaBetaStar"
+    syntax KItem ::= "performIndividualChecks"
+    syntax KItem ::= "performIndividualInferencing"
+    syntax KItem ::= "removeAllEdges"
+    syntax KItem ::= "seeIfFinished"
+
+    rule <k> recurseImportTree => leafDFS 
+                                  ~> (getAlphaAndBeta
+                                  ~> (getAlphaBetaStar
+                                  ~> (performIndividualChecks)))...</k>
+
+//rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A) ...</k>
+
+//    rule <k> leaf
+//             => cycleCheck(.K,createVisitMap(I, .Map),.List,I) ...</k>
+//         <importTree> I:List </importTree>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    syntax KItem ::= returnLeafDFS(K,List,Map) [function] //current node, map of all nodes to visited or not, stack, graph
+
+    rule <k> leafDFS
+             => returnLeafDFS(.K,I,M) ...</k>
+         <recurImportTree> I:List </recurImportTree>
+         <impTreeVMap> M:Map </impTreeVMap>
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //call before Checker Code

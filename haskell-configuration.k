@@ -17,6 +17,8 @@ module HASKELL-CONFIGURATION
             <tempAlphaMap> .Map </tempAlphaMap>
             <tempT> .K </tempT>
             <importTree> .List </importTree>
+            <recurImportTree> .List </recurImportTree>
+            <impTreeVMap> .Map </impTreeVMap>
             <modules> //static information about a module
                 <module multiplicity="*">
                     <moduleName> .K </moduleName>
