@@ -236,7 +236,7 @@ module HASKELL-PREPROCESSING
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //start of Checker Code
+    //get alpha and beta
     syntax KItem ::= Module(K, K)
     syntax KItem ::= preModule(K,K) //(alpha, T)
 
@@ -313,6 +313,14 @@ module HASKELL-PREPROCESSING
     rule getArgSorts('atypeTyVar(A:K)) => .List
     rule getArgSorts(.OptBangATypes) => .List
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//    rule <k> preModule(A:K,T:K) => startChecks ...</k>
+//         <tempAlpha> OldAlpha:K => A </tempAlpha>
+//         <tempT> OldT:K => T </tempT>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     // STEP 2 PERFORM CHECKS
 
     syntax KItem ::= "error"
@@ -333,9 +341,9 @@ module HASKELL-PREPROCESSING
 //NEED TO CHECK all the polymorphic parameters from right appear on left. RIGHT SIDE ONLY
 //NEED TO CHECK UNIQUENESS FOR POLY PARAM ON LEFT SIDE ONLY
 
-    rule <k> preModule(A:K,T:K) => startChecks ...</k>
-         <tempAlpha> OldAlpha:K => A </tempAlpha>
-         <tempT> OldT:K => T </tempT>
+//    rule <k> preModule(A:K,T:K) => startChecks ...</k>
+//         <tempAlpha> OldAlpha:K => A </tempAlpha>
+//         <tempT> OldT:K => T </tempT>
 
 
 /*    rule <k> performNextChecks
@@ -517,5 +525,31 @@ module HASKELL-PREPROCESSING
     //rule argSortCheck(TList(ListItem(TObject(A:K,B:K,C:K)
 
     // STEP 3 Transform T into beta
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//    syntax KItem ::= "insertAlphaBetaStar"
+
+    syntax KItem ::= insertABRec(K,List)
+    syntax KItem ::= insertAB(K)
+
+    rule <k> insertAlphaBetaStar => insertABRec(Mod, Imp) ...</k>
+         <tempModule> Mod:KItem </tempModule>
+         <importTree> Imp:List </importTree>
+
+    rule <k> insertABRec(Node:KItem, ListItem(impObject(B:KItem,Node)) I:List) => insertAB(B) ~> insertABRec(Node, I) ...</k>
+
+    rule <k> insertABRec(Node:KItem, ListItem(impObject(B:KItem,C:KItem)) I:List) => insertABRec(Node, I) ...</k>
+             requires Node =/=K C
+
+    rule <k> insertAB(B) => .K ...</k>
+
+         <tempAlphaStar> Alph:KItem </tempAlphaStar>
+         <tempBetaStar> Bet:KItem </tempBetaStar>
+
+         <moduleName> 'moduleName(B) </moduleName>
+         <moduleImpAlphas> ImpAlphas:List => ListItem(Alph) ImpAlphas </moduleImpAlphas>
+         <moduleImpBetas> ImpBetas:List => ListItem(Bet) ImpBetas </moduleImpBetas>
+
 
 endmodule
