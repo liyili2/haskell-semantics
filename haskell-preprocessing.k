@@ -246,9 +246,9 @@ module HASKELL-PREPROCESSING
 
     syntax KItem ::= initPreModule(K) [function]
     syntax KItem ::= getPreModule(K, K) [function] //(Current term, premodule)
-    syntax KItem ::= makeT (K,K,K,K) [function]
+    syntax KItem ::= makeT (K,K,K,K)
 
-    syntax KItem ::= fetchTypes (K,K,K,K) [function]
+    syntax KItem ::= fetchTypes (K,K,K,K)
 
     syntax List ::= makeInnerT (K,K,K) [function] //LIST
     syntax List ::= getTypeVars(K) [function] //LIST
@@ -258,9 +258,10 @@ module HASKELL-PREPROCESSING
 
     syntax KItem ::= AList(K)
     syntax KItem ::= AObject(K,K) //(1st -> 2nd) map without idempotency
+    syntax KItem ::= ModPlusType(K,K)
 
     syntax KItem ::= TList(K) //list of T objects for every new type introduced by data and newtype
-    syntax KItem ::= TObject(K,K,K) //(type name, entire list of poly type vars, list of inner T pieces)
+    syntax KItem ::= TObject(K,K,K,K) //(module name, type name, entire list of poly type vars, list of inner T pieces)
     syntax KItem ::= InnerTPiece(K,K,K,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
 
 //    rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
@@ -286,9 +287,11 @@ module HASKELL-PREPROCESSING
 
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
-    rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), 'atypeGTyCon(C:K), Rest:K, preModule(AList(M:List), L:K)) => getPreModule(Rest,preModule(AList(ListItem(AObject(I,C)) M), L))
+    rule <k> fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), 'atypeGTyCon(C:K), Rest:K, preModule(AList(M:List), L:K)) => getPreModule(Rest,preModule(AList(ListItem(AObject(ModPlusType(ModName,I),C)) M), L)) ...</k>
+         <tempModule> ModName:KItem </tempModule>
 
-    rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(AList(M:List), TList(ListInside:List))) => getPreModule(Rest,preModule(AList(M),TList(ListItem(TObject(I,H,makeInnerT(I,H,D))) ListInside)))
+    rule <k> makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(AList(M:List), TList(ListInside:List))) => getPreModule(Rest,preModule(AList(M),TList(ListItem(TObject(ModName,I,H,makeInnerT(I,H,D))) ListInside))) ...</k>
+         <tempModule> ModName:KItem </tempModule>
 
     rule makeInnerT(A:K,B:K,'nonemptyConstrs(C:K)) => makeInnerT(A,B,C)
     rule makeInnerT(A:K,B:K,'singleConstr(C:K)) => ListItem(InnerTPiece(getCon(C),getTypeVars(C),getArgSorts(C),C,A))
@@ -379,9 +382,9 @@ module HASKELL-PREPROCESSING
 
     //rule tyConCollCheck(.K,preModule(Alpha:Map,H:K,Mod:K)) => tyConCollCheck(innerCollCheck(H),preModule(Alpha,H,Mod))
 
-    rule tyConCollCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(Ty:K,E:K,F:K,H:K,G:K)) Inners:List)) Rest:List),J:List,D:Set) => 
-                    tyConCollCheck(TList(ListItem(TObject(A,B,Inners)) Rest),ListItem(Ty) J, SetItem(Ty) D)
-    rule tyConCollCheck(TList(ListItem(TObject(A:K,B:K,.List)) Rest:List),J:List,D:Set) => 
+    rule tyConCollCheck(TList(ListItem(TObject(ModName:K, A:K,B:K,ListItem(InnerTPiece(Ty:K,E:K,F:K,H:K,G:K)) Inners:List)) Rest:List),J:List,D:Set) => 
+                    tyConCollCheck(TList(ListItem(TObject(ModName,A,B,Inners)) Rest),ListItem(Ty) J, SetItem(Ty) D)
+    rule tyConCollCheck(TList(ListItem(TObject(ModName:K, A:K,B:K,.List)) Rest:List),J:List,D:Set) => 
                     tyConCollCheck(TList(Rest),J,D)
     rule tyConCollCheck(TList(.List),J:List,D:Set) => 
                     lengthCheck(size(J),size(D))
@@ -403,7 +406,7 @@ module HASKELL-PREPROCESSING
     //         => akeyCheck(.K, .Set) ...</k>
 
     rule keyCheck(AList(ListItem(AObject(A:K,B:K)) C:List), T:K, D:Set, G:List) => keyCheck(AList(C), T, SetItem(A) D, ListItem(A) G)
-    rule keyCheck(AList(.List), TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set, G:List) => keyCheck(AList(.List), TList(Rest), SetItem(A) D, ListItem(A) G)
+    rule keyCheck(AList(.List), TList(ListItem(TObject(ModName:K, A:K,B:K,C:K)) Rest:List), D:Set, G:List) => keyCheck(AList(.List), TList(Rest), SetItem(A) D, ListItem(A) G)
     rule keyCheck(AList(.List), TList(.List), D:Set, G:List) => lengthCheck(size(G),size(D))
 
 
@@ -448,7 +451,7 @@ module HASKELL-PREPROCESSING
 
 
     syntax Set ::= typeSet(K,K) [function] //(K, KSet)
-    rule typeSet(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List), D:Set) => typeSet(TList(Rest), SetItem(A) D)
+    rule typeSet(TList(ListItem(TObject(ModName:K, A:K,B:K,C:K)) Rest:List), D:Set) => typeSet(TList(Rest), SetItem(A) D)
     rule typeSet(TList(.List), D:Set) => D
 
 //    rule aloopCheck(Alpha:Map, D:List, G:Set, H:KItem, .K) => keys(Alpha) ~> H
@@ -471,15 +474,15 @@ module HASKELL-PREPROCESSING
          <tempAlphaMap> A:K </tempAlphaMap>
          <tempT> T:K </tempT>
     
-    rule argSortCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,D:K,ListItem(Arg:KItem) ArgsRest:List,E:K,F:K)) InnerRest:List)) TListRest:List),AlphaMap:Map,Tset:Set) => argSortCheck(TList(ListItem(TObject(A,B,ListItem(InnerTPiece(C,D,ArgsRest,E,F)) InnerRest)) TListRest),AlphaMap,Tset)
+    rule argSortCheck(TList(ListItem(TObject(ModName:K, A:K,B:K,ListItem(InnerTPiece(C:K,D:K,ListItem(Arg:KItem) ArgsRest:List,E:K,F:K)) InnerRest:List)) TListRest:List),AlphaMap:Map,Tset:Set) => argSortCheck(TList(ListItem(TObject(ModName,A,B,ListItem(InnerTPiece(C,D,ArgsRest,E,F)) InnerRest)) TListRest),AlphaMap,Tset)
          requires ((Arg in keys(AlphaMap)) orBool (Arg in Tset))
 
-    rule argSortCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,D:K,ListItem(Arg:KItem) ArgsRest:List,E:K,F:K)) InnerRest:List)) TListRest:List),AlphaMap:Map,Tset:Set) => error
+    rule argSortCheck(TList(ListItem(TObject(ModName:K,A:K,B:K,ListItem(InnerTPiece(C:K,D:K,ListItem(Arg:KItem) ArgsRest:List,E:K,F:K)) InnerRest:List)) TListRest:List),AlphaMap:Map,Tset:Set) => error
          requires (notBool ((Arg in keys(AlphaMap)) orBool (Arg in Tset)))
 
-    rule argSortCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,D:K,.List,E:K,F:K)) InnerRest:List)) TListRest:List),AlphaMap:Map,Tset:Set) => argSortCheck(TList(ListItem(TObject(A,B,InnerRest)) TListRest),AlphaMap,Tset)
+    rule argSortCheck(TList(ListItem(TObject(ModName:K,A:K,B:K,ListItem(InnerTPiece(C:K,D:K,.List,E:K,F:K)) InnerRest:List)) TListRest:List),AlphaMap:Map,Tset:Set) => argSortCheck(TList(ListItem(TObject(ModName,A,B,InnerRest)) TListRest),AlphaMap,Tset)
 
-    rule argSortCheck(TList(ListItem(TObject(A:K,B:K,.List)) TListRest:List),AlphaMap:Map,Tset:Set) => argSortCheck(TList(TListRest),AlphaMap,Tset)
+    rule argSortCheck(TList(ListItem(TObject(ModName:K,A:K,B:K,.List)) TListRest:List),AlphaMap:Map,Tset:Set) => argSortCheck(TList(TListRest),AlphaMap,Tset)
 
     rule argSortCheck(TList(.List),AlphaMap:Map,Tset:Set) => .K
 
@@ -495,19 +498,19 @@ module HASKELL-PREPROCESSING
          <tempT> T:K </tempT>
 
     //rule makeParLists(TList(ListItem(TObject(A:K,ListItem(Arg:KItem) PolyList:List,C:K)) Rest:List),Tlist:List,Tset:Set) => makeParLists(TList(ListItem(TObject(A,PolyList,C)) Rest),ListItem(Arg) Tlist,SetItem(Arg) Tset)
-    rule parCheck(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List),.K) => parCheck(TList(ListItem(TObject(A:K,B:K,C:K)) Rest:List),makeTyVarList(B,.List,.Set))
+    rule parCheck(TList(ListItem(TObject(ModName:K,A:K,B:K,C:K)) Rest:List),.K) => parCheck(TList(ListItem(TObject(ModName,A:K,B:K,C:K)) Rest:List),makeTyVarList(B,.List,.Set))
 
-    rule parCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,ListItem(Par:KItem) ParRest:List,D:K,E:K,F:K)) InnerRest:List)) Rest:List),NewSet:Set) =>
-         parCheck(TList(ListItem(TObject(A,B,ListItem(InnerTPiece(C,ParRest,D,E,F)) InnerRest)) Rest),NewSet)
+    rule parCheck(TList(ListItem(TObject(ModName:K,A:K,B:K,ListItem(InnerTPiece(C:K,ListItem(Par:KItem) ParRest:List,D:K,E:K,F:K)) InnerRest:List)) Rest:List),NewSet:Set) =>
+         parCheck(TList(ListItem(TObject(ModName,A,B,ListItem(InnerTPiece(C,ParRest,D,E,F)) InnerRest)) Rest),NewSet)
             requires Par in NewSet
 
-    rule parCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,ListItem(Par:KItem) ParRest:List,D:K,E:K,F:K)) InnerRest:List)) Rest:List),NewSet:Set) => error
+    rule parCheck(TList(ListItem(TObject(ModName:K,A:K,B:K,ListItem(InnerTPiece(C:K,ListItem(Par:KItem) ParRest:List,D:K,E:K,F:K)) InnerRest:List)) Rest:List),NewSet:Set) => error
             requires notBool (Par in NewSet)
 
-    rule parCheck(TList(ListItem(TObject(A:K,B:K,ListItem(InnerTPiece(C:K,.List,D:K,E:K,F:K)) InnerRest:List)) Rest:List),NewSet:Set) =>
-         parCheck(TList(ListItem(TObject(A,B,InnerRest)) Rest),NewSet)
+    rule parCheck(TList(ListItem(TObject(ModName:K,A:K,B:K,ListItem(InnerTPiece(C:K,.List,D:K,E:K,F:K)) InnerRest:List)) Rest:List),NewSet:Set) =>
+         parCheck(TList(ListItem(TObject(ModName,A,B,InnerRest)) Rest),NewSet)
 
-    rule parCheck(TList(ListItem(TObject(A:K,B:K,.List)) Rest:List),NewSet:Set) =>
+    rule parCheck(TList(ListItem(TObject(ModName:K,A:K,B:K,.List)) Rest:List),NewSet:Set) =>
          parCheck(TList(Rest),NewSet)
 
     rule parCheck(TList(.List),NewSet:Set) => .K
@@ -524,7 +527,15 @@ module HASKELL-PREPROCESSING
     
     //rule argSortCheck(TList(ListItem(TObject(A:K,B:K,C:K)
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     // STEP 3 Transform T into beta
+
+    syntax KItem ::= "startTTransform"
+    syntax KItem ::= "constructGamma"
+
+    syntax KItem ::= makeGamma(K,K) [function] //(T,Gamma)
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
