@@ -318,9 +318,9 @@ module HASKELL-PREPROCESSING
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//    rule <k> preModule(A:K,T:K) => startChecks ...</k>
-//         <tempAlpha> OldAlpha:K => A </tempAlpha>
-//         <tempT> OldT:K => T </tempT>
+    rule <k> preModule(A:K,T:K) => startTTransform ...</k>
+         <tempAlpha> OldAlpha:K => A </tempAlpha>
+         <tempT> OldT:K => T </tempT>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -533,8 +533,46 @@ module HASKELL-PREPROCESSING
 
     syntax KItem ::= "startTTransform"
     syntax KItem ::= "constructGamma"
+    syntax KItem ::= "constructBeta"
 
-    syntax KItem ::= makeGamma(K,K) [function] //(T,Gamma)
+    rule <k> startTTransform
+             => constructGamma
+                ~> (constructBeta) ...</k>
+
+    rule <k> constructGamma
+             => makeGamma(T,.Map) ...</k>
+         <tempT> T:K </tempT>
+
+    syntax KItem ::= makeGamma(K,Map) [function] //(T,Gamma)
+    syntax KItem ::= newGamma(Map) //(T,Gamma)
+    syntax List ::= retPolyList(K,List) [function] //(T,Gamma)
+
+    rule makeGamma(TList(ListItem(TObject(ModName:K,A:K,Polys:K,C:K)) Rest:List),M:Map) =>
+         makeGamma(TList(Rest),M[ModPlusType(ModName,A) <- size(retPolyList(Polys,.List))])
+    rule makeGamma(TList(.List),M:Map) => newGamma(M)
+
+    rule retPolyList('typeVars(A:K,,Rest:K),NewList:List) => retPolyList(Rest, ListItem(A) NewList)
+    rule retPolyList(.TyVars,L:List) => L
+
+    rule <k> newGamma(M:Map)
+             => .K ...</k>
+         <tempGamma> M </tempGamma>
+
+    rule <k> constructBeta
+             => makeBeta(T,.Map) ...</k>
+         <tempT> T:K </tempT>
+
+    syntax KItem ::= makeBeta(K,Map) [function] //(T,Beta)
+
+    rule makeBeta(TList(ListItem(TObject(ModName:K,A:K,B:K,ListItem(InnerTPiece(Con:K,H:K,D:K,E:K,F:K)) InnerRest:List)) Rest:List),Beta:Map) =>
+         makeBeta(TList(ListItem(TObject(ModName,A,B,InnerRest)) Rest),Beta[ModPlusType(ModName,Con) <- betaParser(E,.K)])
+//    rule makeBeta(TList(ListItem(TObject(ModName:K,A:K,B:K,ListItem(InnerTPiece(C:K,H:K,D:K,E:K,F:K)) InnerRest:List)) Rest:List),Beta:Map) =>
+//         makeBeta(TList(ListItem(TObject(ModName,A,B,InnerRest)) Rest),Beta)
+
+    syntax KItem ::= betaParser(K,K) [function] //(Tree Piece,NewSyntax)
+
+
+    syntax KItem ::= funtype(K,K)
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

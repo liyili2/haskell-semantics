@@ -16,6 +16,7 @@ module HASKELL-CONFIGURATION
             <tempAlpha> .K </tempAlpha>
             <tempAlphaMap> .Map </tempAlphaMap>
             <tempT> .K </tempT>
+            <tempGamma> .Map </tempGamma>
             <tempAlphaStar> .K </tempAlphaStar>
             <tempBetaStar> .K </tempBetaStar>
             <importTree> .List </importTree>
