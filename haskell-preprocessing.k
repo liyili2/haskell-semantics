@@ -556,7 +556,7 @@ module HASKELL-PREPROCESSING
 
     rule <k> newGamma(M:Map)
              => .K ...</k>
-         <tempGamma> M </tempGamma>
+         <tempGamma> OldGamma:K => M </tempGamma>
 
     rule <k> constructBeta
              => makeBeta(T,.Map) ...</k>
@@ -566,6 +566,8 @@ module HASKELL-PREPROCESSING
 
     rule makeBeta(TList(ListItem(TObject(ModName:K,A:K,B:K,ListItem(InnerTPiece(Con:K,H:K,D:K,E:K,F:K)) InnerRest:List)) Rest:List),Beta:Map) =>
          makeBeta(TList(ListItem(TObject(ModName,A,B,InnerRest)) Rest),Beta[ModPlusType(ModName,Con) <- betaParser(E,.K)])
+    rule makeBeta(TList(ListItem(TObject(ModName:K,A:K,B:K,.List)) Rest:List),Beta:Map) =>
+         makeBeta(TList(Rest),Beta)
 //    rule makeBeta(TList(ListItem(TObject(ModName:K,A:K,B:K,ListItem(InnerTPiece(C:K,H:K,D:K,E:K,F:K)) InnerRest:List)) Rest:List),Beta:Map) =>
 //         makeBeta(TList(ListItem(TObject(ModName,A,B,InnerRest)) Rest),Beta)
 
