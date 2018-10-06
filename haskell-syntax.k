@@ -301,7 +301,7 @@ module HASKELL-SYNTAX
 
     syntax AType ::= GTyCon                     [klabel('atypeGTyCon)]
                    | TyVar                      [klabel('atypeTyVar)]
-                   | "(" TypeTuple ")"
+                   | "(" TypeTuple ")"          [klabel('atypeTuple)]
                    | "[" Type "]"               [klabel('tyList)]
                    | "(" Type ")"               [bracket]
     syntax TypeTuple ::= Type "," Type          [right,klabel('twoTypeTuple)]

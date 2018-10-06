@@ -562,19 +562,37 @@ module HASKELL-PREPROCESSING
              => makeBeta(T,.Map) ...</k>
          <tempT> T:K </tempT>
 
-    syntax KItem ::= makeBeta(K,Map) [function] //(T,Beta)
+    syntax KItem ::= makeBeta(K,Map) [function] //(T,Beta,Gamma)
 
     rule makeBeta(TList(ListItem(TObject(ModName:K,A:K,B:K,ListItem(InnerTPiece(Con:K,H:K,D:K,E:K,F:K)) InnerRest:List)) Rest:List),Beta:Map) =>
-         makeBeta(TList(ListItem(TObject(ModName,A,B,InnerRest)) Rest),Beta[ModPlusType(ModName,Con) <- betaParser(E,.K)])
+         makeBeta(TList(ListItem(TObject(ModName,A,B,InnerRest)) Rest),Beta[ModPlusType(ModName,Con) <- betaParser(E,B,A)])
     rule makeBeta(TList(ListItem(TObject(ModName:K,A:K,B:K,.List)) Rest:List),Beta:Map) =>
          makeBeta(TList(Rest),Beta)
 //    rule makeBeta(TList(ListItem(TObject(ModName:K,A:K,B:K,ListItem(InnerTPiece(C:K,H:K,D:K,E:K,F:K)) InnerRest:List)) Rest:List),Beta:Map) =>
 //         makeBeta(TList(ListItem(TObject(ModName,A,B,InnerRest)) Rest),Beta)
 
-    syntax KItem ::= betaParser(K,K) [function] //(Tree Piece,NewSyntax)
+    syntax KItem ::= betaParser(K,K,K) [function] //(Tree Piece,NewSyntax,Parameters,Constr)
+    syntax KItem ::= getTyVarsRHS(K,K) [function]
 
-
+    syntax KItem ::= forAll(K,K)
     syntax KItem ::= funtype(K,K)
+
+
+//if optbangAtypes, need to see if first variable is a typecon
+//if its a typecon then need to go into gamma and see the amount of parameters it has
+//then count the number of optbangAtypes after the typecon
+    rule betaParser('constrCon(A:K,, B:K), Par:K, Con:K) => forAll(getTyVarsRHS(B,.K), betaParser(B, Par, Con))
+    rule betaParser('optBangATypes('optBangAType('emptyBang(.KList),, 'atypeTyVar(Tyv:K)),, Rest:K), Par:K, Con:K) => funtype(Tyv, betaParser(Rest, Par, Con))
+    rule betaParser('optBangATypes('optBangAType('emptyBang(.KList),, 'baTypeCon(A:K,, B:K)),, Rest:K), Par:K, Con:K) => funtype('baTypeCon(A:K,, B:K), betaParser(Rest, Par, Con))
+    rule betaParser('optBangATypes('optBangAType('emptyBang(.KList),, 'atypeGTyCon(Tyc:K)),, Rest:K), Par:K, Con:K) => funtype(Tyc, betaParser(Rest, Par, Con))
+    rule betaParser(.OptBangATypes, Par:K, Con:K) => 'simpleTypeCon(Con,, Par)
+//    rule betaParser('optBangATypes('optBangAType('emptyBang(.KList),, 'atypeGTyCon(Tyc:K)),, Rest:KItem)) => getTypeVars(A) getTypeVars(Rest)
+//    rule getTypeVars('optBangAType('emptyBang(.KList),, Rest:K)) => getTypeVars(Rest)
+//    rule getTypeVars('atypeGTyCon(A:K)) => .List
+//    rule getTypeVars('atypeTyVar(A:K)) => ListItem(A)
+//    rule getTypeVars(.OptBangATypes) => .List
+
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
