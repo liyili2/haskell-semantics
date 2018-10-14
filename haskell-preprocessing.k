@@ -593,6 +593,11 @@ module HASKELL-PREPROCESSING
 //    rule getTypeVars(.OptBangATypes) => .List
 
 
+    syntax KItem ::= typeInferenceFun(K,K) //Input, Gamma, 
+    rule typeInferenceFun(Var:K, (Var |-> Type:K) Gamma:Map) => Var
+    rule typeInferenceFun(Var:K, (Var |-> Type:K) Gamma:Map) => type
+         requires typeInferenceFun()
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
