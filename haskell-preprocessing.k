@@ -544,7 +544,8 @@ module HASKELL-PREPROCESSING
          <tempT> T:K </tempT>
 
     syntax KItem ::= makeGamma(K,Map) [function] //(T,Gamma)
-    syntax KItem ::= newGamma(Map) //(T,Gamma)
+    syntax KItem ::= newGamma(Map) //gamma
+    syntax KItem ::= newBeta(Map) //beta
     syntax List ::= retPolyList(K,List) [function] //(T,Gamma)
 
     rule makeGamma(TList(ListItem(TObject(ModName:K,A:K,Polys:K,C:K)) Rest:List),M:Map) =>
@@ -568,6 +569,8 @@ module HASKELL-PREPROCESSING
          makeBeta(TList(ListItem(TObject(ModName,A,B,InnerRest)) Rest),Beta[ModPlusType(ModName,Con) <- betaParser(E,B,A)])
     rule makeBeta(TList(ListItem(TObject(ModName:K,A:K,B:K,.List)) Rest:List),Beta:Map) =>
          makeBeta(TList(Rest),Beta)
+    rule makeBeta(TList(.List),Beta:Map) =>
+         newBeta(Beta)
 //    rule makeBeta(TList(ListItem(TObject(ModName:K,A:K,B:K,ListItem(InnerTPiece(C:K,H:K,D:K,E:K,F:K)) InnerRest:List)) Rest:List),Beta:Map) =>
 //         makeBeta(TList(ListItem(TObject(ModName,A,B,InnerRest)) Rest),Beta)
 
@@ -593,10 +596,15 @@ module HASKELL-PREPROCESSING
 //    rule getTypeVars(.OptBangATypes) => .List
 
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // STEP 4 Type Inferencing
+
     syntax KItem ::= typeInferenceFun(K,K) //Input, Gamma, 
-    rule typeInferenceFun(Var:K, (Var |-> Type:K) Gamma:Map) => Var
-    rule typeInferenceFun(Var:K, (Var |-> Type:K) Gamma:Map) => type
-         requires typeInferenceFun()
+    rule typeInferenceFun('aexpQVar(Var:K), (Var |-> Type:K) Gamma:Map) => Var
+    //rule typeInferenceFun(Var:K, Gamma:Map) => type
+    //     requires typeInferenceFun() ==K funtype(Tone:K,Ttwo:K)
+    //rule typeInferenceFun(Var:K, (Var |-> Type:K) Gamma:Map) => type
 
 
 

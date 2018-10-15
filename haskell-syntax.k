@@ -226,6 +226,9 @@ module HASKELL-SYNTAX
                   | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp
                   | "case" Exp "of" "{" Alts "}"
                   | "do" "{" Stmts "}"
+                  | FExp
+
+    syntax FExp ::= AExp | FExp AExp
 
     syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
     syntax OptComma ::= "," | ""     [onlyLabel, klabel('emptyComma)]
