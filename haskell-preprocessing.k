@@ -532,38 +532,38 @@ module HASKELL-PREPROCESSING
     // STEP 3 Transform T into beta
 
     syntax KItem ::= "startTTransform"
-    syntax KItem ::= "constructGamma"
+    syntax KItem ::= "constructDelta"
     syntax KItem ::= "constructBeta"
 
     rule <k> startTTransform
-             => constructGamma
+             => constructDelta
                 ~> (constructBeta) ...</k>
 
-    rule <k> constructGamma
-             => makeGamma(T,.Map) ...</k>
+    rule <k> constructDelta
+             => makeDelta(T,.Map) ...</k>
          <tempT> T:K </tempT>
 
-    syntax KItem ::= makeGamma(K,Map) [function] //(T,Gamma)
-    syntax KItem ::= newGamma(Map) //gamma
+    syntax KItem ::= makeDelta(K,Map) [function] //(T,Delta)
+    syntax KItem ::= newDelta(Map) //Delta
     syntax KItem ::= newBeta(Map) //beta
-    syntax List ::= retPolyList(K,List) [function] //(T,Gamma)
+    syntax List ::= retPolyList(K,List) [function] //(T,Delta)
 
-    rule makeGamma(TList(ListItem(TObject(ModName:K,A:K,Polys:K,C:K)) Rest:List),M:Map) =>
-         makeGamma(TList(Rest),M[ModPlusType(ModName,A) <- size(retPolyList(Polys,.List))])
-    rule makeGamma(TList(.List),M:Map) => newGamma(M)
+    rule makeDelta(TList(ListItem(TObject(ModName:K,A:K,Polys:K,C:K)) Rest:List),M:Map) =>
+         makeDelta(TList(Rest),M[ModPlusType(ModName,A) <- size(retPolyList(Polys,.List))])
+    rule makeDelta(TList(.List),M:Map) => newDelta(M)
 
     rule retPolyList('typeVars(A:K,,Rest:K),NewList:List) => retPolyList(Rest, ListItem(A) NewList)
     rule retPolyList(.TyVars,L:List) => L
 
-    rule <k> newGamma(M:Map)
+    rule <k> newDelta(M:Map)
              => .K ...</k>
-         <tempGamma> OldGamma:K => M </tempGamma>
+         <tempDelta> OldDelta:K => M </tempDelta>
 
     rule <k> constructBeta
              => makeBeta(T,.Map) ...</k>
          <tempT> T:K </tempT>
 
-    syntax KItem ::= makeBeta(K,Map) [function] //(T,Beta,Gamma)
+    syntax KItem ::= makeBeta(K,Map) [function] //(T,Beta,Delta)
 
     rule makeBeta(TList(ListItem(TObject(ModName:K,A:K,B:K,ListItem(InnerTPiece(Con:K,H:K,D:K,E:K,F:K)) InnerRest:List)) Rest:List),Beta:Map) =>
          makeBeta(TList(ListItem(TObject(ModName,A,B,InnerRest)) Rest),Beta[ModPlusType(ModName,Con) <- betaParser(E,B,A)])
@@ -582,7 +582,7 @@ module HASKELL-PREPROCESSING
 
 
 //if optbangAtypes, need to see if first variable is a typecon
-//if its a typecon then need to go into gamma and see the amount of parameters it has
+//if its a typecon then need to go into Delta and see the amount of parameters it has
 //then count the number of optbangAtypes after the typecon
     rule betaParser('constrCon(A:K,, B:K), Par:K, Con:K) => forAll(getTyVarsRHS(B,.K), betaParser(B, Par, Con))
     rule betaParser('optBangATypes('optBangAType('emptyBang(.KList),, 'atypeTyVar(Tyv:K)),, Rest:K), Par:K, Con:K) => funtype(Tyv, betaParser(Rest, Par, Con))
@@ -602,36 +602,45 @@ module HASKELL-PREPROCESSING
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // STEP 4 Type Inferencing
-    syntax KItem ::= inferenceShell(K,Map) [function]//Input, Gamma, 
-    syntax KItem ::= typeInferenceFun(K,Map,K,K) [function]//Input, Gamma, 
+    syntax KItem ::= inferenceShell(K,Map,Map,Map,Map) [function]//Input, AlphaMap, Beta, Delta, Gamma
+    syntax KItem ::= typeInferenceFun(K,Map,Map,Map,Map,K,K) [function]//Input, Alpha, Beta, Delta, Gamma
 
-    rule <k> performIndividualInferencing => inferenceShell(Code,.Map) ...</k>
+    rule <k> performIndividualInferencing => inferenceShell(Code,Alpha,Beta,Delta,.Map) ...</k>
          <tempModule> Mod:KItem </tempModule>
+         <tempAlphaMap> Alpha:Map </tempAlphaMap>
+         <tempBeta> Beta:Map </tempBeta>
+         <tempDelta> Delta:Map </tempDelta>
 
          <moduleName> 'moduleName(Mod) </moduleName>
          <moduleTempCode> Code:KItem </moduleTempCode>
 
-    rule inferenceShell('topdeclslist('type(A:K,, B:K),, Rest:K),J:K) => inferenceShell(Rest,J) //constructalpha
-    rule inferenceShell('topdeclslist('data(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => inferenceShell(Rest,J)
-    rule inferenceShell('topdeclslist('newtype(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => inferenceShell(Rest,J)
-    rule inferenceShell('topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => inferenceShell(Rest,J)
-    rule inferenceShell('topdeclslist('instance(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => inferenceShell(Rest,J)
-    rule inferenceShell('topdeclslist('default(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => inferenceShell(Rest,J)
-    rule inferenceShell('topdeclslist('foreign(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => inferenceShell(Rest,J)
+    rule inferenceShell('topdeclslist('type(A:K,, B:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma) //constructalpha
+    rule inferenceShell('topdeclslist('data(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
+    rule inferenceShell('topdeclslist('newtype(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
+    rule inferenceShell('topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
+    rule inferenceShell('topdeclslist('instance(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
+    rule inferenceShell('topdeclslist('default(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
+    rule inferenceShell('topdeclslist('foreign(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
 
-    rule inferenceShell('topdeclslist('topdecldecl(A:K),, Rest:K),J:K) => typeInferenceFun(A,J,.K,.K) ~> inferenceShell(Rest,J)
-    //rule inferenceShell(.TopDecls,J:K) => J
+    rule inferenceShell('topdeclslist('topdecldecl(A:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) =>
+         typeInferenceFun(A,Alpha,Beta,Delta,Gamma,.K,.K) ~> inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
 
-    rule typeInferenceFun('aexpQVar(Var:K), (Var |-> Type:K) Gamma:Map,.K,.K) => Var
-    rule typeInferenceFun('funApp(Eone:K,, Etwo:K), Gamma:Map,.K,.K) => 
-         typeInferenceFun('funApp(Eone,, Etwo), Gamma,typeInferenceFun(Eone,Gamma,.K,.K),typeInferenceFun(Etwo,Gamma,.K,.K))
-         //requires (typeInferenceFun(Eone,Gamma) ==K funtype(A:K, B:K))
-         //andBool  (typeInferenceFun(Etwo,Gamma) ==K A)
-    rule typeInferenceFun('funApp(Eone:K,, Etwo:K), Gamma:Map, funtype(A:K, B:K), A) => B
-    rule typeInferenceFun('declFunLhsRhs(Fn:K,, Lhsrhs:K), Gamma:Map,.K,.K) => typeInferenceFun(Lhsrhs, Gamma:Map,.K,.K)
-    //rule typeInferenceFun(Var:K, Gamma:Map) => type
-    //     requires typeInferenceFun() ==K funtype(Tone:K,Ttwo:K)
-    //rule typeInferenceFun(Var:K, (Var |-> Type:K) Gamma:Map) => type
+
+    rule typeInferenceFun('declFunLhsRhs(Fn:K,, Lhsrhs:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map,.K,.K) =>
+         typeInferenceFun(Lhsrhs, Alpha, Beta, Delta, Gamma,.K,.K)
+    rule typeInferenceFun('eqExpOptDecls(Ex:K,, Optdecls:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map,.K,.K) =>
+         typeInferenceFun(Ex, Alpha, Beta, Delta, Gamma,.K,.K)
+
+    rule typeInferenceFun('aexpQVar(Var:K), Alpha:Map, Beta:Map, Delta:Map, (Var |-> Type:K) Gamma:Map,.K,.K) => Type //T-App
+    //Gamma Proves x:phi(tau) if Gamma(x) = \forall alpha_1, ..., alpha_n . tau
+    //where phi replaces all occurrences of alpha_1, ..., alpha_n by monotypes tau_1, ..., tau_n
+
+    rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, (Gcon |-> Type:K) Beta:Map, Delta:Map, Gamma:Map,.K,.K) => Type //T-App
+
+    rule typeInferenceFun('funApp(Eone:K,, Etwo:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map,.K,.K) => //T-Var
+         typeInferenceFun('funApp(Eone,, Etwo), Alpha, Beta, Delta, Gamma,typeInferenceFun(Eone,Alpha, Beta, Delta, Gamma,.K,.K),typeInferenceFun(Etwo,Alpha, Beta, Delta, Gamma,.K,.K))
+    rule typeInferenceFun('funApp(Eone:K,, Etwo:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map, funtype(A:K, B:K), A) => B
+
 
 
 
