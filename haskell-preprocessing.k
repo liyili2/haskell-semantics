@@ -604,6 +604,7 @@ module HASKELL-PREPROCESSING
     // STEP 4 Type Inferencing
     syntax KItem ::= inferenceShell(K,Map,Map,Map,Map) [function]//Input, AlphaMap, Beta, Delta, Gamma
     syntax KItem ::= typeInferenceFun(K,Map,Map,Map,Map,K,K) [function]//Input, Alpha, Beta, Delta, Gamma
+    syntax Map ::= genGamma(K,Map)//Apatlist, Gamma
 
     rule <k> performIndividualInferencing => inferenceShell(Code,Alpha,Beta,Delta,.Map) ...</k>
          <tempModule> Mod:KItem </tempModule>
@@ -631,17 +632,25 @@ module HASKELL-PREPROCESSING
     rule typeInferenceFun('eqExpOptDecls(Ex:K,, Optdecls:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map,.K,.K) =>
          typeInferenceFun(Ex, Alpha, Beta, Delta, Gamma,.K,.K)
 
-    rule typeInferenceFun('aexpQVar(Var:K), Alpha:Map, Beta:Map, Delta:Map, (Var |-> Type:K) Gamma:Map,.K,.K) => Type //T-App
+    //T-App
+    rule typeInferenceFun('aexpQVar(Var:K), Alpha:Map, Beta:Map, Delta:Map, (Var |-> Sigma:K) Gamma:Map,.K,.K) => Sigma
     //Gamma Proves x:phi(tau) if Gamma(x) = \forall alpha_1, ..., alpha_n . tau
     //where phi replaces all occurrences of alpha_1, ..., alpha_n by monotypes tau_1, ..., tau_n
 
-    rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, (Gcon |-> Type:K) Beta:Map, Delta:Map, Gamma:Map,.K,.K) => Type //T-App
+    rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, (Gcon |-> Sigma:K) Beta:Map, Delta:Map, Gamma:Map,.K,.K) => Sigma //T-App
+    //rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, Lol:Map, Delta:Map, Gamma:Map,.K,.K) => Sigma //T-App
+    //     <tempBeta> (Gcon |-> Sigma:K) Beta:Map </tempBeta>
 
-    rule typeInferenceFun('funApp(Eone:K,, Etwo:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map,.K,.K) => //T-Var
+    //T-Var
+    rule typeInferenceFun('funApp(Eone:K,, Etwo:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map,.K,.K) =>
          typeInferenceFun('funApp(Eone,, Etwo), Alpha, Beta, Delta, Gamma,typeInferenceFun(Eone,Alpha, Beta, Delta, Gamma,.K,.K),typeInferenceFun(Etwo,Alpha, Beta, Delta, Gamma,.K,.K))
-    rule typeInferenceFun('funApp(Eone:K,, Etwo:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map, funtype(A:K, B:K), A) => B
+    rule typeInferenceFun('funApp(Eone:K,, Etwo:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map, funtype(Tauone:K, Tautwo:K), Tauone) => Tautwo
 
+    //T-Lam
+    rule typeInferenceFun('lambdaFun(Apatlist:K,, Ex:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map,.K,.K) =>
+         typeInferenceFun('lambdaFun(Apatlist,, Ex), Alpha, Beta, Delta, Gamma,typeInferenceFun(Ex, Alpha, Beta, Delta, genGamma(Apatlist,Gamma),.K,.K),.K)
 
+    rule typeInferenceFun('lambdaFun(Apatlist:K,, Ex:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map,Tautwo:K,.K) => Tautwo
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
