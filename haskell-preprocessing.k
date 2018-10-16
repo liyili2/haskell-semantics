@@ -186,8 +186,8 @@ module HASKELL-PREPROCESSING
 
     rule <k> recurseImportTree => leafDFS 
                                   ~> (getAlphaAndBeta
-                                  ~> (getAlphaBetaStar
-                                  ~> (performIndividualChecks)))...</k>
+                                  //~> (getAlphaBetaStar
+                                  ~> (performIndividualInferencing))...</k>
 
 //rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A) ...</k>
 
@@ -595,13 +595,40 @@ module HASKELL-PREPROCESSING
 //    rule getTypeVars('atypeTyVar(A:K)) => ListItem(A)
 //    rule getTypeVars(.OptBangATypes) => .List
 
+    rule <k> newBeta(M:Map)
+             => .K ...</k>
+         <tempBeta> OldBeta:K => M </tempBeta>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // STEP 4 Type Inferencing
+    syntax KItem ::= inferenceShell(K,Map) [function]//Input, Gamma, 
+    syntax KItem ::= typeInferenceFun(K,Map,K,K) [function]//Input, Gamma, 
 
-    syntax KItem ::= typeInferenceFun(K,K) //Input, Gamma, 
-    rule typeInferenceFun('aexpQVar(Var:K), (Var |-> Type:K) Gamma:Map) => Var
+    rule <k> performIndividualInferencing => inferenceShell(Code,.Map) ...</k>
+         <tempModule> Mod:KItem </tempModule>
+
+         <moduleName> 'moduleName(Mod) </moduleName>
+         <moduleTempCode> Code:KItem </moduleTempCode>
+
+    rule inferenceShell('topdeclslist('type(A:K,, B:K),, Rest:K),J:K) => inferenceShell(Rest,J) //constructalpha
+    rule inferenceShell('topdeclslist('data(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => inferenceShell(Rest,J)
+    rule inferenceShell('topdeclslist('newtype(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => inferenceShell(Rest,J)
+    rule inferenceShell('topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => inferenceShell(Rest,J)
+    rule inferenceShell('topdeclslist('instance(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => inferenceShell(Rest,J)
+    rule inferenceShell('topdeclslist('default(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => inferenceShell(Rest,J)
+    rule inferenceShell('topdeclslist('foreign(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => inferenceShell(Rest,J)
+
+    rule inferenceShell('topdeclslist('topdecldecl(A:K),, Rest:K),J:K) => typeInferenceFun(A,J,.K,.K) ~> inferenceShell(Rest,J)
+    //rule inferenceShell(.TopDecls,J:K) => J
+
+    rule typeInferenceFun('aexpQVar(Var:K), (Var |-> Type:K) Gamma:Map,.K,.K) => Var
+    rule typeInferenceFun('funApp(Eone:K,, Etwo:K), Gamma:Map,.K,.K) => 
+         typeInferenceFun('funApp(Eone,, Etwo), Gamma,typeInferenceFun(Eone,Gamma,.K,.K),typeInferenceFun(Etwo,Gamma,.K,.K))
+         //requires (typeInferenceFun(Eone,Gamma) ==K funtype(A:K, B:K))
+         //andBool  (typeInferenceFun(Etwo,Gamma) ==K A)
+    rule typeInferenceFun('funApp(Eone:K,, Etwo:K), Gamma:Map, funtype(A:K, B:K), A) => B
+    rule typeInferenceFun('declFunLhsRhs(Fn:K,, Lhsrhs:K), Gamma:Map,.K,.K) => typeInferenceFun(Lhsrhs, Gamma:Map,.K,.K)
     //rule typeInferenceFun(Var:K, Gamma:Map) => type
     //     requires typeInferenceFun() ==K funtype(Tone:K,Ttwo:K)
     //rule typeInferenceFun(Var:K, (Var |-> Type:K) Gamma:Map) => type

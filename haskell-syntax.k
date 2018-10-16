@@ -196,12 +196,12 @@ module HASKELL-SYNTAX
     syntax DClassList ::= List{DClass, ","}
     syntax DClass ::= QTyCon
 
-    syntax FunLhs ::= Var APatList
-                    | Pat VarOp Pat
-                    | "(" FunLhs ")" APatList
+    syntax FunLhs ::= Var APatList [klabel('varApatList)]
+                    | Pat VarOp Pat [klabel('patVarOpPat)]
+                    | "(" FunLhs ")" APatList [klabel('funlhsApatList)]
 
-    syntax Rhs ::= "=" Exp OptDecls
-                 | GdRhs OptDecls
+    syntax Rhs ::= "=" Exp OptDecls [klabel('eqExpOptDecls)]
+                 | GdRhs OptDecls [klabel('gdRhsOptDecls)]
 
     syntax GdRhs ::= Guards "=" Exp
                    | Guards "=" Exp GdRhs
@@ -221,14 +221,14 @@ module HASKELL-SYNTAX
                       > LExp QOp InfixExp
 
     syntax LExp ::= AExp
-                  > "\\" APatList "->" Exp
-                  | "let" Decls "in" Exp
-                  | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp
-                  | "case" Exp "of" "{" Alts "}"
-                  | "do" "{" Stmts "}"
-                  | FExp
+                  > "\\" APatList "->" Exp [klabel('lambdaFun)]
+                  | "let" Decls "in" Exp [klabel('letIn)]
+                  | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp [klabel('ifThenElse)]
+                  | "case" Exp "of" "{" Alts "}" [klabel('caseOf)]
+                  | "do" "{" Stmts "}" [klabel('doBlock)]
+                  //| FExp
 
-    syntax FExp ::= AExp | FExp AExp
+    //syntax FExp ::= AExp | FExp AExp
 
     syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
     syntax OptComma ::= "," | ""     [onlyLabel, klabel('emptyComma)]
@@ -236,8 +236,8 @@ module HASKELL-SYNTAX
 //    syntax OptWhereDecls ::= "where" Decls | ""
 
     syntax AExp ::= QVar [klabel('aexpQVar)]
-                  | GCon
-                  | Literal
+                  | GCon [klabel('aexpGCon)]
+                  | Literal [klabel('aexpLiteral)]
                   > AExp AExp [left, klabel('funApp)]
                   > QCon "{" FBindList "}"
                   | AExp "{" FBindList "}" //aexp cannot be qcon UNFINISHED
