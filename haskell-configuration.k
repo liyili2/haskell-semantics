@@ -1,12 +1,10 @@
+//configuration of haskell
 requires "haskell-syntax.k"
+requires "haskell-abstract-syntax.k"
 
 module HASKELL-CONFIGURATION
     imports HASKELL-SYNTAX
-
-    syntax KItem ::= "startImportRecursion"
-    syntax KItem ::= callInit(K)
-    //syntax KItem ::= initPreModule(K) [function]
-    //syntax KItem ::= tChecker(K) [function]
+    imports HASKELL-ABSTRACT-SYNTAX
 
     configuration 
         <T>

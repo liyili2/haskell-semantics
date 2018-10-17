@@ -1,9 +1,11 @@
 //
 requires "haskell-syntax.k"
 requires "haskell-configuration.k"
+requires "haskell-abstract-syntax.k"
 
 module HASKELL-PREPROCESSING
     imports HASKELL-SYNTAX
+    imports HASKELL-ABSTRACT-SYNTAX
     imports HASKELL-CONFIGURATION
 
 /*
@@ -33,8 +35,6 @@ module HASKELL-PREPROCESSING
     rule convertToList(.K) => .List
     rule convertToList(A:KItem ~> B:K) => ListItem(A) convertToList(B)
 */
-
-    syntax KItem ::= dealWithImports(K,K)
 
     rule <k> 'modListSingle('module(A:K,, B:K)) => dealWithImports(A,B) ...</k>
 
@@ -72,7 +72,6 @@ module HASKELL-PREPROCESSING
 
     //importlist convert
     syntax List ::= importListConvert(K,K) [function]
-    syntax KItem ::= impObject(K,K)
 
     rule importListConvert(Name:K, 'impDecls(A:K,, Rest:K)) => importListConvert(Name, A) importListConvert(Name, Rest)
     rule importListConvert('moduleName(Name:K), 'impDecl(A:K,, Modid:K,, C:K,, D:K)) => ListItem(impObject(Name, Modid))
@@ -86,8 +85,6 @@ module HASKELL-PREPROCESSING
 3. Go to each leaf and recursively go up the tree and build alpha* and beta* for the types of the module and the children
 (and specify scoping) (desugar the scope so that each type specifies the scope) */
 
-    syntax KItem ::= "checkImportCycle"
-
     rule <k> startImportRecursion => checkImportCycle ...</k>
 
     syntax KItem ::= cycleCheck(K,Map,List,List) [function] //current node, map of all nodes to visited or not, stack, graph
@@ -98,10 +95,6 @@ module HASKELL-PREPROCESSING
     rule <k> checkImportCycle
              => cycleCheck(.K,createVisitMap(I, .Map),.List,I) ...</k>
          <importTree> I:List </importTree>
-
-    syntax KItem ::= "visited"
-    syntax KItem ::= "unvisited"
-    syntax KItem ::= "none"
 
     rule createVisitMap(ListItem(impObject(A:K,B:K)) Rest:List, M:Map) 
              => createVisitMap(Rest, M[A <- unvisited][B <- unvisited])
@@ -138,9 +131,6 @@ module HASKELL-PREPROCESSING
          <tempModule> A:K => S </tempModule>
 
     //start of Checker Code
-    syntax KItem ::= Module(K, K)
-    syntax KItem ::= preModule(K,K) //(alpha, T)
-
     // STEP 1 CONSTRUCT T AND ALPHA
     // alpha = type
     // T = newtype and data, temporary data structure
@@ -157,13 +147,6 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= getCon(K) [function]
     syntax List ::= getArgSorts(K) [function] //LIST
 
-    syntax KItem ::= AList(K)
-    syntax KItem ::= AObject(K,K) //(1st -> 2nd) map without idempotency
-
-    syntax KItem ::= TList(K) //list of T objects for every new type introduced by data and newtype
-    syntax KItem ::= TObject(K,K,K) //(type name, entire list of poly type vars, list of inner T pieces)
-    syntax KItem ::= InnerTPiece(K,K,K,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
-
 //    rule initPreModule('module(I:ModuleName,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
 //    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
 //    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(AList(.List),TList(.List)))
@@ -179,7 +162,8 @@ module HASKELL-PREPROCESSING
 
 
     rule getPreModule('topdeclslist('topdecldecl(A:K),, Rest:K),J:K) => getPreModule(Rest,J)
-    rule getPreModule('topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
+    rule getPreModule('topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K)
+             => getPreModule(Rest,J)
     rule getPreModule('topdeclslist('instance(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
     rule getPreModule('topdeclslist('default(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
     rule getPreModule('topdeclslist('foreign(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
@@ -215,24 +199,6 @@ module HASKELL-PREPROCESSING
     rule getArgSorts(.OptBangATypes) => .List
 
     // STEP 2 PERFORM CHECKS
-
-    syntax KItem ::= "error"
-
-    syntax KItem ::= "startChecks"
-    syntax KItem ::= "checkNoSameKey"
-        //Keys of alpha and keys of T should be unique
-    syntax KItem ::= "checkTypeConsDontCollide"
-        //Make sure typeconstructors do not collide in T
-    syntax KItem ::= "makeAlphaMap"
-        //make map for alpha
-    syntax KItem ::= "checkAlphaNoLoops"
-        //alpha check for no loops
-        //check alpha to make sure that everything points to a T
-    syntax KItem ::= "checkArgSortsAreTargets"
-           //Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
-    syntax KItem ::= "checkParUsed"
-//NEED TO CHECK all the polymorphic parameters from right appear on left. RIGHT SIDE ONLY
-//NEED TO CHECK UNIQUENESS FOR POLY PARAM ON LEFT SIDE ONLY
 
     rule <k> preModule(A:K,T:K) => startChecks ...</k>
          <tempAlpha> OldAlpha:K => A </tempAlpha>
@@ -301,7 +267,6 @@ module HASKELL-PREPROCESSING
 
 
     syntax KItem ::= makeAlphaM(K,K) [function] //(Alpha, AlphaMap)
-    syntax KItem ::= tAlphaMap(K) //(AlphaMap) temp alphamap
 
     rule <k> makeAlphaMap
              => makeAlphaM(A, .Map) ...</k>
