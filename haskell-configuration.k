@@ -22,12 +22,11 @@ module HASKELL-CONFIGURATION
                     <moduleBetaPlus> .K </moduleBetaPlus>
                     <moduleCompCode> .K </moduleCompCode>
                     <imports> .Set </imports>
-                    <classes> //static information about a module
-                        <class multiplicity="*">
-                            <className> .K </className>
-                        </class>
-                    </classes>
+                    <classes> .Map </classes> //type classes
                 </module>
+              <classNameInMod> .Map </classNameInMod> //store all class names in a modules. 
+              <typeNameInMod> .Map </typeNameInMod> //store all type names in a modules. 
+              <constrNameInMod> .Map </constrNameInMod> //store all constructor names in a modules. 
             </modules>
         </T>
 

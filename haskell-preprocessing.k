@@ -163,11 +163,16 @@ module HASKELL-PREPROCESSING
 
     rule getPreModule('topdeclslist('topdecldecl(A:K),, Rest:K),J:K) => getPreModule(Rest,J)
     rule getPreModule('topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K)
-             => getPreModule(Rest,J)
+             => dealWithClass('class(A:K,, B:K,, C:K,, D:K))
+                         ~> getPreModule(Rest,J)
     rule getPreModule('topdeclslist('instance(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
     rule getPreModule('topdeclslist('default(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
     rule getPreModule('topdeclslist('foreign(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
     rule getPreModule(.TopDecls,J:K) => J
+
+    //a function to deal with a single class
+    syntax KItem ::= dealWithClass(K) [function]
+   
 
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
