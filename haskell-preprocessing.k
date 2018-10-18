@@ -603,8 +603,10 @@ module HASKELL-PREPROCESSING
 
     // STEP 4 Type Inferencing
     syntax KItem ::= inferenceShell(K,Map,Map,Map,Map) [function]//Input, AlphaMap, Beta, Delta, Gamma
-    syntax KItem ::= typeInferenceFun(K,Map,Map,Map,Map,K,K) [function]//Input, Alpha, Beta, Delta, Gamma
+    //syntax KItem ::= typeInferenceFun(K,Map,Map,Map,Map,K,K) [function]//Input, Alpha, Beta, Delta, Gamma
+    syntax KItem ::= typeInferenceFun(Map,K,K) //Gamma, Expression, Guessed Type
     syntax Map ::= genGamma(K,Map)//Apatlist, Gamma
+    syntax KItem ::= uniFun(K,K)
 
     rule <k> performIndividualInferencing => inferenceShell(Code,Alpha,Beta,Delta,.Map) ...</k>
          <tempModule> Mod:KItem </tempModule>
@@ -615,13 +617,20 @@ module HASKELL-PREPROCESSING
          <moduleName> 'moduleName(Mod) </moduleName>
          <moduleTempCode> Code:KItem </moduleTempCode>
 
-    rule inferenceShell('topdeclslist('type(A:K,, B:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma) //constructalpha
-    rule inferenceShell('topdeclslist('data(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
-    rule inferenceShell('topdeclslist('newtype(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
-    rule inferenceShell('topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
-    rule inferenceShell('topdeclslist('instance(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
-    rule inferenceShell('topdeclslist('default(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
-    rule inferenceShell('topdeclslist('foreign(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) => inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
+    rule inferenceShell('topdeclslist('type(A:K,, B:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) =>
+         inferenceShell(Rest, Alpha, Beta, Delta, Gamma) //constructalpha
+    rule inferenceShell('topdeclslist('data(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) =>
+         inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
+    rule inferenceShell('topdeclslist('newtype(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) =>
+         inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
+    rule inferenceShell('topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) =>
+         inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
+    rule inferenceShell('topdeclslist('instance(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) =>
+         inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
+    rule inferenceShell('topdeclslist('default(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) =>
+         inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
+    rule inferenceShell('topdeclslist('foreign(A:K,, B:K,, C:K,, D:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) =>
+         inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
 
     rule inferenceShell('topdeclslist('topdecldecl(A:K),, Rest:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map) =>
          typeInferenceFun(A,Alpha,Beta,Delta,Gamma,.K,.K) ~> inferenceShell(Rest, Alpha, Beta, Delta, Gamma)
@@ -633,13 +642,19 @@ module HASKELL-PREPROCESSING
          typeInferenceFun(Ex, Alpha, Beta, Delta, Gamma,.K,.K)
 
     //T-App
-    rule typeInferenceFun('aexpQVar(Var:K), Alpha:Map, Beta:Map, Delta:Map, (Var |-> Sigma:K) Gamma:Map,.K,.K) => Sigma
+    //rule typeInferenceFun('aexpQVar(Var:K), Alpha:Map, Beta:Map, Delta:Map, (Var |-> Sigma:K) Gamma:Map,.K,.K) => Sigma
     //Gamma Proves x:phi(tau) if Gamma(x) = \forall alpha_1, ..., alpha_n . tau
     //where phi replaces all occurrences of alpha_1, ..., alpha_n by monotypes tau_1, ..., tau_n
+    rule <k> typeInferenceFun((Var |-> Type:K) Gamma:Map, 'aexpQVar(Var:K), Guess:K) => uniFun(Guess,Type) ...</k>
 
-    rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, (Gcon |-> Sigma:K) Beta:Map, Delta:Map, Gamma:Map,.K,.K) => Sigma //T-App
+    //rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, (Gcon |-> Sigma:K) Beta:Map, Delta:Map, Gamma:Map,.K,.K) => Sigma //T-App
     //rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, Lol:Map, Delta:Map, Gamma:Map,.K,.K) => Sigma //T-App
     //     <tempBeta> (Gcon |-> Sigma:K) Beta:Map </tempBeta>
+    rule <k> typeInferenceFun(Gamma:Map, 'aexpGCon(Gcon:K), Guess:K) => uniFun(Guess, Type) ...</k>//T-App
+         <tempBeta> (Gcon |-> Type:K) Beta:Map </tempBeta>
+
+    rule <k> typeInferenceFun(Gamma:Map, 'lambdaFun(Apatlist:K,, Ex:K), Guess:K) 
+    => typeInferenceFun(genGamma(Apatlist,Gamma), ) ...</k>
 
     //T-Var
     rule typeInferenceFun('funApp(Eone:K,, Etwo:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map,.K,.K) =>
