@@ -2,11 +2,13 @@
 requires "haskell-syntax.k"
 requires "haskell-configuration.k"
 requires "haskell-abstract-syntax.k"
+requires "haskell-helper.k"
 
 module HASKELL-PREPROCESSING
     imports HASKELL-SYNTAX
     imports HASKELL-ABSTRACT-SYNTAX
     imports HASKELL-CONFIGURATION
+    imports HASKELL-HELPER
 
 /*
     //USER DEFINED LIST
@@ -56,26 +58,20 @@ module HASKELL-PREPROCESSING
 
 //    rule <k> dealWithImports(Mod:K, A:K) => callInit(A) ...</k>
 
-    rule <k> dealWithImports(Mod:K, 'bodyimpandtop(A:K,, B:K)) => .K ...</k>
-        <importTree> L:List => L importListConvert(Mod, A) </importTree>
+    rule dealWithImports(Mod:K, 'bodyimpandtop(A:K,, B:K))
+              => dealWithImportsAux(Mod, A) ~> callInit(B)
 
-        <moduleName> Mod </moduleName>
-        <imports> S:Set (.Set => SetItem(A)) </imports>
+    rule dealWithImports(Mod:K, 'bodyimpdecls(A:K))
+                => dealWithImportsAux(Mod, A)
+    rule dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A)
 
-    rule <k> dealWithImports(Mod:K, 'bodyimpdecls(A:K)) => .K ...</k>
-        <importTree> L:List => L importListConvert(Mod, A) </importTree>
-
-        <moduleName> Mod </moduleName>
-        <imports> S:Set (.Set => SetItem(A)) </imports>
-
-    rule <k> dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A) ...</k>
-
-    //importlist convert
-    syntax List ::= importListConvert(K,K) [function]
-
-    rule importListConvert(Name:K, 'impDecls(A:K,, Rest:K)) => importListConvert(Name, A) importListConvert(Name, Rest)
-    rule importListConvert('moduleName(Name:K), 'impDecl(A:K,, Modid:K,, C:K,, D:K)) => ListItem(impObject(Name, Modid))
-    rule importListConvert(Name:K, .ImpDecls) => .List
+    //TODO: need to deal with option cases for import
+    rule dealWithImportsAux(Mod:K, .ImpDecls) => .K
+    rule dealWithImportsAux(Mod:K, 'impDecls('emptyImpDecl(.KList),, As:ImpDecls))
+                 => dealWithImportsAux(Mod, As)
+    rule <k> dealWithImportsAux(Mod:K, 'impDecls('impDecl(X:K,, V:K,, Y:K,, U:K),, As:ImpDecls))
+                 => dealWithImportsAux(Mod, As) ...</k>
+         <importMap> M:Map => updateMapItem(M, .K, Mod, V) </importMap>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -136,7 +132,7 @@ module HASKELL-PREPROCESSING
     // T = newtype and data, temporary data structure
 
     syntax KItem ::= initPreModule(K) [function]
-    syntax KItem ::= getPreModule(K, K) [function] //(Current term, premodule)
+    syntax KItem ::= getPreModule(K, K)
     syntax KItem ::= makeT (K,K,K,K) [function]
 
     syntax KItem ::= fetchTypes (K,K,K,K) [function]
@@ -172,7 +168,6 @@ module HASKELL-PREPROCESSING
 
     //a function to deal with a single class
     syntax KItem ::= dealWithClass(K) [function]
-   
 
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
