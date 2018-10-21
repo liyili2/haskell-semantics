@@ -13,6 +13,7 @@ module HASKELL-CONFIGURATION
             <k> $PGM:ModuleList ~> startImportRecursion </k>
             <tempModule> .K </tempModule>
             <tempCode> .K </tempCode>
+            <typeIterator> 0 </typeIterator>
             <tempAlpha> .K </tempAlpha>
             <tempAlphaMap> .Map </tempAlphaMap>
             <tempBeta> .Map </tempBeta>
