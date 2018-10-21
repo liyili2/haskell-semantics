@@ -14,6 +14,7 @@ module HASKELL-CONFIGURATION
             <tempAlpha> .K </tempAlpha>
             <tempAlphaMap> .Map </tempAlphaMap>
             <tempT> .K </tempT>
+            <currModule> .K </currModule>
             <importTree> .List </importTree>
             <modules> //static information about a module
                 <module multiplicity="*">
@@ -24,9 +25,9 @@ module HASKELL-CONFIGURATION
                     //<imports> .Set </imports>
                     <classes> .Map </classes> //type classes
                 </module>
-              <classNameInMod> .Map </classNameInMod> //store all class names in a modules. 
-              <typeNameInMod> .Map </typeNameInMod> //store all type names in a modules. 
-              <constrNameInMod> .Map </constrNameInMod> //store all constructor names in a modules. 
+              <classNameInMod> .Map </classNameInMod> //store all class names in modules. 
+              <typeNameInMod> .Map </typeNameInMod> //store all type names in modules. 
+              <constrNameInMod> .Map </constrNameInMod> //store all constructor names in modules. 
               <importMap> .Map </importMap>
             </modules>
         </T>

@@ -338,7 +338,7 @@ module HASKELL-SYNTAX
                   | GCon
                   | QCon "{" FPats "}"
                   | Literal [klabel('apatLiteral)]
-                  | "_"
+                  | "_"     [klabel('underscore), onlyLabel]
                   | "(" Pat ")"   [bracket]
                   | "(" PatTuple ")"
                   | "[" PatList "]"

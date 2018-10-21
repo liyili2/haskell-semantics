@@ -59,11 +59,11 @@ module HASKELL-PREPROCESSING
 //    rule <k> dealWithImports(Mod:K, A:K) => callInit(A) ...</k>
 
     rule dealWithImports(Mod:K, 'bodyimpandtop(A:K,, B:K))
-              => dealWithImportsAux(Mod, A) ~> callInit(B)
+              => dealWithImportsAux(Mod, A) ~> callInit(Mod, B)
 
     rule dealWithImports(Mod:K, 'bodyimpdecls(A:K))
                 => dealWithImportsAux(Mod, A)
-    rule dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(A)
+    rule dealWithImports(Mod:K, 'bodytopdecls(A:K)) => callInit(Mod, A)
 
     //TODO: need to deal with option cases for import
     rule dealWithImportsAux(Mod:K, .ImpDecls) => .K
@@ -123,19 +123,20 @@ module HASKELL-PREPROCESSING
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //call before Checker Code
-    rule <k> callInit(S:K) => initPreModule(S) ...</k>
+    rule <k> callInit(Mod:K, S:K) => countNames(Mod, S)
+              ~> getPreModule(Mod, S,preModule(AList(.List),TList(.List))) ...</k>
          <tempModule> A:K => S </tempModule>
+         <currModule> _:K => Mod </currModule>
 
     //start of Checker Code
     // STEP 1 CONSTRUCT T AND ALPHA
     // alpha = type
     // T = newtype and data, temporary data structure
 
-    syntax KItem ::= initPreModule(K) [function]
-    syntax KItem ::= getPreModule(K, K)
-    syntax KItem ::= makeT (K,K,K,K) [function]
+    //syntax KItem ::= initPreModule(K) [function]
+    syntax KItem ::= makeT (K, K,K,K,K) [function]
 
-    syntax KItem ::= fetchTypes (K,K,K,K) [function]
+    syntax KItem ::= fetchTypes (K,K,K,K,K) [function]
 
     syntax List ::= makeInnerT (K,K,K) [function] //LIST
     syntax List ::= getTypeVars(K) [function] //LIST
@@ -147,33 +148,52 @@ module HASKELL-PREPROCESSING
 //    rule initPreModule('moduleExp(I:ModuleName,, L:K,, J:K)) => getPreModule(J,preModule(AList(.List),TList(.List)))
 //    rule initPreModule('moduleBody(J:Body)) => getPreModule(J,preModule(AList(.List),TList(.List)))
 
-    rule initPreModule(J:K) => getPreModule(J,preModule(AList(.List),TList(.List)))
+    //first create a map name for every classname/type name
+    rule countNames(Mod:K, 'bodytopdecls(I:K)) => countNames(Mod, I)
+    rule countNames(Mod:K, .TopDecls) => .K
+    rule <k> countNames(Mod:K, 'topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K))
+               => ...</k>
+         <modules>... <moduleName> Mod </moduleName>
+                      <classes> M:Map => M[B <- none] </classes>
+                ...</modules>
 
-    rule getPreModule('bodytopdecls(I:K), J:K) => getPreModule(I,J)
-    rule getPreModule('topdeclslist('type(A:K,, B:K),, Rest:K),J:K) => fetchTypes(A,B,Rest,J) //constructalpha
+
+    rule getPreModule(Mod:K,'bodytopdecls(I:K), J:K) => getPreModule(Mod:K, I,J)
+    rule getPreModule(Mod:K,'topdeclslist('type(A:K,, B:K),, Rest:K),J:K)
+                   => fetchTypes(Mod, A,B,Rest,J) //constructalpha
 
 
-    rule getPreModule('topdeclslist('data(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => makeT(B,C,Rest,J)
-    rule getPreModule('topdeclslist('newtype(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => makeT(B,C,Rest,J)
+    rule getPreModule(Mod:K,'topdeclslist('data(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K)
+                   => makeT(Mod, B,C,Rest,J)
+    rule getPreModule(Mod:K,'topdeclslist('newtype(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K)
+                    => makeT(Mod, B,C,Rest,J)
 
 
-    rule getPreModule('topdeclslist('topdecldecl(A:K),, Rest:K),J:K) => getPreModule(Rest,J)
-    rule getPreModule('topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K)
+    rule getPreModule(Mod:K,'topdeclslist('topdecldecl(A:K),, Rest:K),J:K) => getPreModule(Mod:K,Rest,J)
+    rule getPreModule(Mod:K,'topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K)
              => dealWithClass('class(A:K,, B:K,, C:K,, D:K))
-                         ~> getPreModule(Rest,J)
-    rule getPreModule('topdeclslist('instance(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
-    rule getPreModule('topdeclslist('default(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
-    rule getPreModule('topdeclslist('foreign(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K) => getPreModule(Rest,J)
-    rule getPreModule(.TopDecls,J:K) => J
+                         ~> getPreModule(Mod, Rest,J)
+    rule getPreModule(Mod:K,'topdeclslist('instance(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K)
+              => getPreModule(Mod:K,Rest,J)
+    rule getPreModule(Mod:K,'topdeclslist('default(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K)
+               => getPreModule(Mod:K,Rest,J)
+    rule getPreModule(Mod:K,'topdeclslist('foreign(A:K,, B:K,, C:K,, D:K),, Rest:K),J:K)
+                   => getPreModule(Mod:K,Rest,J)
+    rule getPreModule(Mod:K,.TopDecls,J:K) => J
 
     //a function to deal with a single class
     syntax KItem ::= dealWithClass(K) [function]
 
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
-    rule fetchTypes('simpleTypeCon(I:TyCon,, H:TyVars), 'atypeGTyCon(C:K), Rest:K, preModule(AList(M:List), L:K)) => getPreModule(Rest,preModule(AList(ListItem(AObject(I,C)) M), L))
+    rule fetchTypes(Mod:K, 'simpleTypeCon(I:TyCon,, H:TyVars),
+               'atypeGTyCon(C:K), Rest:K, preModule(AList(M:List), L:K))
+              => getPreModule(Mod, Rest,preModule(AList(ListItem(AObject(I,C)) M), L))
 
-    rule makeT('simpleTypeCon(I:TyCon,, H:TyVars), D:K, Rest:K, preModule(AList(M:List), TList(ListInside:List))) => getPreModule(Rest,preModule(AList(M),TList(ListItem(TObject(I,H,makeInnerT(I,H,D))) ListInside)))
+    rule makeT(Mod:K, 'simpleTypeCon(I:TyCon,, H:TyVars),
+                   D:K, Rest:K, preModule(AList(M:List), TList(ListInside:List)))
+                     => getPreModule(Mod, Rest,preModule(AList(M),
+                           TList(ListItem(TObject(I,H,makeInnerT(I,H,D))) ListInside)))
 
     rule makeInnerT(A:K,B:K,'nonemptyConstrs(C:K)) => makeInnerT(A,B,C)
     rule makeInnerT(A:K,B:K,'singleConstr(C:K)) => ListItem(InnerTPiece(getCon(C),getTypeVars(C),getArgSorts(C),C,A))
