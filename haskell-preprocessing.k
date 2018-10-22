@@ -129,7 +129,7 @@ module HASKELL-PREPROCESSING
          <currModule> _:K => Mod </currModule>
 
     //start of Checker Code
-    // STEP 1 CONSTRUCT T AND ALPHA
+    // STEP 1 CONSTRUCT T AND ALPHA 
     // alpha = type
     // T = newtype and data, temporary data structure
 
@@ -153,10 +153,10 @@ module HASKELL-PREPROCESSING
     rule countNames(Mod:K, .TopDecls) => .K
     rule <k> countNames(Mod:K, 'topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K))
                => ...</k>
-         <modules>... <moduleName> Mod </moduleName>
+         <module>... <moduleName> Mod </moduleName>
                       <classes> M:Map => M[B <- none] </classes>
-                ...</modules>
-
+                ...</module>
+         <classNameInMod> CM:Map => updateMapItem(CM, .K, Mod, B) </classNameInMod>
 
     rule getPreModule(Mod:K,'bodytopdecls(I:K), J:K) => getPreModule(Mod:K, I,J)
     rule getPreModule(Mod:K,'topdeclslist('type(A:K,, B:K),, Rest:K),J:K)
@@ -182,7 +182,13 @@ module HASKELL-PREPROCESSING
     rule getPreModule(Mod:K,.TopDecls,J:K) => J
 
     //a function to deal with a single class
-    syntax KItem ::= dealWithClass(K) [function]
+    rule <k> dealWithClass('class('emptyContext(.KList),, B:K,, C:K,, D:K)) => .K ...</k>
+         <module>... <moduleName> Mod </moduleName>
+           <classes> M:Map
+            => M[B <- typeClass(none, ListItem(C),
+                     classContentToList(Mod, D, TM))] </classes>
+                ...</module>
+         <typeNameInMod> TM:Map </typeNameInMod>
 
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 

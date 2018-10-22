@@ -166,9 +166,10 @@ module HASKELL-SYNTAX
                   | FunLhs Rhs [klabel('declFunLhsRhs)]
                   | Pat Rhs [klabel('declPatRhs)]
 
-    syntax OptCDecls ::= "where" CDecls | "" [onlyLabel, klabel('emptyOptCDecls)]
-    syntax CDecls ::= "{" CDeclsList "}"
-    syntax CDeclsList ::= List{CDecl, ";"}
+    syntax OptCDecls ::= "where" CDecls [klabel('cdeclWhere)]
+                       | "" [onlyLabel, klabel('emptyOptCDecls)]
+    syntax CDecls ::= "{" CDeclsList "}" [klabel('cdeclBracket)]
+    syntax CDeclsList ::= List{CDecl, ";"}   [klabel('cdeclCon)]
 
     syntax CDecl ::= GenDecl
                    | FunLhs Rhs
