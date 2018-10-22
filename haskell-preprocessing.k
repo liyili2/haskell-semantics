@@ -609,11 +609,6 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= typeInferenceFun(Map,K,K) //Gamma, Expression, Guessed Type
     syntax Map ::= genGamma(K,Map,Int) [function] //Apatlist, Gamma
     syntax KItem ::= genLambda(K,K) [function]
-    syntax KItem ::= uniFun(Map) [function]
-    syntax List ::= uniSub(K,K,K) [function]
-    syntax Bool ::= isVarType(K) [function]
-    syntax Bool ::= notChildVar(K,K) [function]
-    syntax KItem ::= uniPair(K,K)
     syntax KItem ::= guessType(Int)
     syntax KItem ::= "lambdaReturn"
 
@@ -652,14 +647,14 @@ module HASKELL-PREPROCESSING
     //Gamma Proves x:phi(tau) if Gamma(x) = \forall alpha_1, ..., alpha_n . tau
     //where phi replaces all occurrences of alpha_1, ..., alpha_n by monotypes tau_1, ..., tau_n
 
-    // rule <k> typeInferenceFun((Var |-> Type:K) Gamma:Map, 'aexpQVar(Var:K), Guess:K) => uniFun(ListItem(uniPair(Type,Guess))) ...</k> //Variable rule
+    rule <k> typeInferenceFun((Var |-> Type:K) Gamma:Map, 'aexpQVar(Var:K), Guess:K) => uniFun(ListItem(uniPair(Type,Guess))) ...</k> //Variable rule
 
     //rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, (Gcon |-> Sigma:K) Beta:Map, Delta:Map, Gamma:Map,.K,.K) => Sigma //T-App
     //rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, Lol:Map, Delta:Map, Gamma:Map,.K,.K) => Sigma //T-App
     //     <tempBeta> (Gcon |-> Sigma:K) Beta:Map </tempBeta>
 
-    // rule <k> typeInferenceFun(Gamma:Map, 'aexpGCon('conTyCon(Mid:K,, Gcon:K)), Guess:K) => uniFun(ListItem(uniPair(Type,Guess))) ...</k> //Constant rule
-    //     <tempBeta> (ModPlusType(Mid,Gcon) |-> Type:K) Beta:Map </tempBeta>
+    rule <k> typeInferenceFun(Gamma:Map, 'aexpGCon('conTyCon(Mid:K,, Gcon:K)), Guess:K) => uniFun(ListItem(uniPair(Type,Guess))) ...</k> //Constant rule
+         <tempBeta> (ModPlusType(Mid,Gcon) |-> Type:K) Beta:Map </tempBeta>
 
     //lambda rule
     rule <k> typeInferenceFun(Gamma:Map, 'lambdaFun(Apatlist:K,, Ex:K), Guess:K) => typeInferenceFun(genGamma(Apatlist,Gamma,TypeIt), genLambda(Apatlist,Ex), guessType(TypeIt +Int 1)) ~> lambdaReturn ...</k>
@@ -672,12 +667,29 @@ module HASKELL-PREPROCESSING
     rule genLambda('apatVar(Vari:K), Ex:K) => Ex
     rule genLambda('apatCon(Vari:K,, Pattwo:K), Ex:K) => 'lambdaFun(Pattwo,, Ex)
 
-    rule uniFun((uniPair(S:K,S) |-> .K) Rest:Map) => .K //uniFun(Rest)  //delete rule
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //Unification
+
+    syntax KItem ::= uniFun(List) [function]
+    //syntax List ::= uniSub(K,K,K) [function]
+    syntax Bool ::= isVarType(K) [function]
+    syntax Bool ::= notChildVar(K,K) [function]
+    syntax KItem ::= uniPair(K,K)
+
+    syntax List ::= uniSub(K,K) [function]
+
+    syntax KItem ::= applySub(K,K) [function]
+    syntax KItem ::= concat(K,K)
+
+    syntax KItem ::= substi(K,K)
+
+    rule uniFun(ListItem(uniPair(S:K,S)) Rest:List) => uniFun(Rest)  //delete rule
 
     // rule uniFun(SetItem(I:K)) => .K //uniFun(Rest)  //delete rule
 
-    // rule uniFun(ListItem(uniPair(S:K,T:K)) Rest:List) => uniFun(ListItem(uniPair(T,S)) Rest) //orient rule
-    //     requires isVarType(T) andBool (notBool isVarType(S))
+    rule uniFun(ListItem(uniPair(S:K,T:K)) Rest:List) => uniFun(ListItem(uniPair(T,S)) Rest) //orient rule
+         requires isVarType(T) andBool (notBool isVarType(S))
 
     //rule uniFun(ListItem(uniPair(forAll(Svars:List,S:K),forAll(.List,T:K))) Rest:List,Sigma:Map) => uniFun(ListItem(uniPair(forAll(.List,T),forAll(Svars,S))) Rest,Sigma) //orient rule
       //   requires Svars =/=K .List
@@ -687,8 +699,9 @@ module HASKELL-PREPROCESSING
    // rule uniFun(ListItem(uniPair(forAll(.List,S:K),T:K)) Rest:List, Sigma:Map) => uniFun(uniSub('aexpQVar(Var),T,Rest), Sigma['aexpQVar(Var) <- T]) //eliminate rule
    //      requires notChildVar('aexpQVar(Var:K),T)
 
-    //rule uniFun(SetItem(uniPair(S:K,T:K)) Rest:Set, Sigma:Map) => uniFun(uniSub(S,T,Rest), Sigma[S <- T]) //eliminate rule
-    //     requires isVarType(S) andBool notChildVar(S,T)
+    rule uniFun(ListItem(uniPair(S:K,T:K)) Rest:List) 
+      => concat(substi(S,applySub(uniFun(uniSub(substi(S,T),Rest)),T)),uniFun(uniSub(substi(S,T),Rest))) //eliminate rule
+         requires isVarType(S) andBool notChildVar(S,T)
 
     rule isVarType(S:K) => true
          requires getKLabel(S) ==KLabel 'guessType
@@ -696,7 +709,7 @@ module HASKELL-PREPROCESSING
 
     rule notChildVar(S:K,T:K) => true
 
-    rule uniSub(S:K,T:K,.List) => .List
+    rule uniSub(Sub:K,.List) => .List
 
 
    // rule notChildVar('aexpQVar(Var:K),T)
