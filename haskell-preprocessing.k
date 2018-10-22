@@ -611,7 +611,7 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= genLambda(K,K) [function]
     syntax KItem ::= uniFun(List,Map) [function]
     syntax List ::= uniSub(K,K,K) [function]
-    syntax Bool ::= isFunType(K) [function]
+    syntax Bool ::= isVarType(K) [function]
     syntax Bool ::= notChildVar(K,K) [function]
     syntax KItem ::= uniPair(K,K)
     syntax KItem ::= guessType(Int)
@@ -674,8 +674,8 @@ module HASKELL-PREPROCESSING
 
     rule uniFun(ListItem(uniPair(S:K,S)) Rest:List,Sigma:Map) => uniFun(Rest,Sigma)  //delete rule
 
-    rule uniFun(ListItem(uniPair(S:K,T:K))) Rest:List,Sigma:Map) => uniFun(ListItem(uniPair(T,S)) Rest,Sigma) //orient rule
-         requires isFunType(T) andBool (notBool isFunType(S))
+    rule uniFun(ListItem(uniPair(S:K,T:K)) Rest:List,Sigma:Map) => uniFun(ListItem(uniPair(T,S)) Rest,Sigma) //orient rule
+         requires isVarType(T) andBool (notBool isVarType(S))
 
     //rule uniFun(ListItem(uniPair(forAll(Svars:List,S:K),forAll(.List,T:K))) Rest:List,Sigma:Map) => uniFun(ListItem(uniPair(forAll(.List,T),forAll(Svars,S))) Rest,Sigma) //orient rule
       //   requires Svars =/=K .List
@@ -685,8 +685,16 @@ module HASKELL-PREPROCESSING
    // rule uniFun(ListItem(uniPair(forAll(.List,S:K),T:K)) Rest:List, Sigma:Map) => uniFun(uniSub('aexpQVar(Var),T,Rest), Sigma['aexpQVar(Var) <- T]) //eliminate rule
    //      requires notChildVar('aexpQVar(Var:K),T)
 
-    rule uniFun(ListItem(guessType(S:Int),T:K)) Rest:List, Sigma:Map) => uniFun(uniSub(guessType(S),T,Rest), Sigma[guessType(S) <- T]) //eliminate rule
-         requires notChildVar(guessType(S),T)
+    rule uniFun(ListItem(uniPair(S:K,T:K)) Rest:List, Sigma:Map) => uniFun(uniSub(S,T,Rest), Sigma[S <- T]) //eliminate rule
+         requires isVarType(S) andBool notChildVar(S,T)
+
+    rule isVarType(S:K) => true
+         requires getKLabel(S) ==KLabel 'guessType
+    rule isVarType(S:K) => false [owise]
+
+    rule notChildVar(S:K,T:K) => true
+
+    rule uniSub(S:K,T:K,.List) => .List
 
 
    // rule notChildVar('aexpQVar(Var:K),T)
