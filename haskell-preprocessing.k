@@ -634,7 +634,7 @@ module HASKELL-PREPROCESSING
          inferenceShell(Rest)
 
     rule inferenceShell('topdeclslist('topdecldecl(A:K),, Rest:K)) =>
-         typeInferenceFun(.Map,A,.K) ~> inferenceShell(Rest)
+         typeInferenceFun(.Map,A,guessType(0)) ~> inferenceShell(Rest)
 
 
     rule <k> typeInferenceFun(Gamma:Map, 'declFunLhsRhs(Fn:K,, Lhsrhs:K), Guess:K) =>
@@ -660,8 +660,11 @@ module HASKELL-PREPROCESSING
     rule <k> typeInferenceFun(Gamma:Map, 'lambdaFun(Apatlist:K,, Ex:K), Guess:K) => typeInferenceFun(genGamma(Apatlist,Gamma,guessType(TypeIt)), genLambda(Apatlist,Ex), guessType(TypeIt +Int 1)) ~> lambdaReturn(Guess,guessType(TypeIt),guessType(TypeIt +Int 1)) ...</k>
          <typeIterator> TypeIt:Int => TypeIt +Int 2 </typeIterator>
 
-    rule <k> substi(S:K,T:K) ~> lambdaReturn(Tau:K, Tauone:K, Tautwo:K) 
-          => compose(uniFun(ListItem(uniPair(typeSub(substi(S,T),Tau),typeSub(substi(S,T),funtype(Tauone,Tautwo))))),substi(S,T)) ...</k>
+    rule <k> Sigma:Map ~> lambdaReturn(Tau:K, Tauone:K, Tautwo:K) 
+          => compose(uniFun(ListItem(uniPair(typeSub(Sigma,Tau),typeSub(Sigma,funtype(Tauone,Tautwo))))),Sigma) ...</k>
+
+    //rule <k> substi(S:Map) ~> lambdaReturn(Tau:K, Tauone:K, Tautwo:K) 
+    //      => S[Tauone] ...</k>
 
 
     rule genGamma('apatVar(Vari:K), Gamma:Map, Guess:K) => Gamma[Vari <- Guess]
@@ -674,20 +677,20 @@ module HASKELL-PREPROCESSING
 
     //Unification
 
-    syntax KItem ::= uniFun(List) [function]
+    syntax Map ::= uniFun(List) [function]
     //syntax List ::= uniSub(K,K,K) [function]
     syntax Bool ::= isVarType(K) [function]
     syntax Bool ::= notChildVar(K,K) [function]
     syntax KItem ::= uniPair(K,K)
 
-    syntax List ::= uniSub(K,K) [function] //apply substitution to unification
+    syntax List ::= uniSub(Map,K) [function] //apply substitution to unification
 
-    syntax KItem ::= typeSub(K,K) [function] //apply substitution to type
-    syntax KItem ::= compose(K,K)
+    syntax KItem ::= typeSub(Map,K) [function] //apply substitution to type
+    syntax Map ::= compose(Map,Map) [function]
 
-    syntax KItem ::= substi(K,K)
+    // syntax KItem ::= Map
 
-    rule uniFun(.List) => substi(.K,.K) //substi(.K,.K) is id substitution
+    rule uniFun(.List) => .Map //substi(.K,.K) is id substitution
 
     rule uniFun(ListItem(uniPair(S:K,S)) Rest:List) => uniFun(Rest)  //delete rule
 
@@ -705,7 +708,7 @@ module HASKELL-PREPROCESSING
    //      requires notChildVar('aexpQVar(Var:K),T)
 
     rule uniFun(ListItem(uniPair(S:K,T:K)) Rest:List) 
-      => compose(substi(S,typeSub(uniFun(uniSub(substi(S,T),Rest)),T)),uniFun(uniSub(substi(S,T),Rest))) //eliminate rule
+      => compose((S |-> typeSub(uniFun(uniSub((S |-> T),Rest)),T)),uniFun(uniSub((S |-> T),Rest))) //eliminate rule
          requires isVarType(S) andBool notChildVar(S,T)
 
     rule isVarType(S:K) => true
@@ -714,15 +717,15 @@ module HASKELL-PREPROCESSING
 
     rule notChildVar(S:K,T:K) => true
 
-    rule uniSub(Sub:K,.List) => .List
-    rule uniSub(substi(.K,.K),L:List) => L
+    rule uniSub(Sigma:Map,.List) => .List
+    rule uniSub(.Map,L:List) => L
 
-    rule typeSub(substi(.K,.K),Tau:K) => Tau
+    //rule typeSub(substi(.Map),Tau:KItem) => Tau
+    rule typeSub(Sigma:Map (Tau |-> Newtau:KItem),Tau:KItem) => Newtau
+    rule typeSub(Sigma:Map,Tau:KItem) => Tau [owise]
 
-    rule typeSub(substi(S:K,T:K),Tau:K) => Tau
-         requires S =/=K Tau
-
-    rule compose(Subone:K,substi(.K,.K)) => Subone
+    rule compose(Sigmaone:Map,Sigmatwo:Map) => updateMap(Sigmaone,Sigmatwo)
+    // rule compose(substi(Sone:K,Tone:K),substi(Stwo:K,Ttwo:K)) => substi(typeSub(substi(Stwo,Ttwo),Sone),Tone)
 
 
    // rule notChildVar('aexpQVar(Var:K),T)
