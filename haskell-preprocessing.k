@@ -575,7 +575,7 @@ module HASKELL-PREPROCESSING
 //         makeBeta(TList(ListItem(TObject(ModName,A,B,InnerRest)) Rest),Beta)
 
     syntax KItem ::= betaParser(K,K,K) [function] //(Tree Piece,NewSyntax,Parameters,Constr)
-    syntax KItem ::= getTyVarsRHS(K,K) [function]
+    syntax KItem ::= getTyVarsRHS(K,List) [function]
 
     syntax KItem ::= forAll(K,K)
     syntax KItem ::= funtype(K,K)
@@ -584,7 +584,7 @@ module HASKELL-PREPROCESSING
 //if optbangAtypes, need to see if first variable is a typecon
 //if its a typecon then need to go into Delta and see the amount of parameters it has
 //then count the number of optbangAtypes after the typecon
-    rule betaParser('constrCon(A:K,, B:K), Par:K, Con:K) => forAll(getTyVarsRHS(B,.K), betaParser(B, Par, Con))
+    rule betaParser('constrCon(A:K,, B:K), Par:K, Con:K) => forAll(getTyVarsRHS(B,.List), betaParser(B, Par, Con))
     rule betaParser('optBangATypes('optBangAType('emptyBang(.KList),, 'atypeTyVar(Tyv:K)),, Rest:K), Par:K, Con:K) => funtype(Tyv, betaParser(Rest, Par, Con))
     rule betaParser('optBangATypes('optBangAType('emptyBang(.KList),, 'baTypeCon(A:K,, B:K)),, Rest:K), Par:K, Con:K) => funtype('baTypeCon(A:K,, B:K), betaParser(Rest, Par, Con))
     rule betaParser('optBangATypes('optBangAType('emptyBang(.KList),, 'atypeGTyCon(Tyc:K)),, Rest:K), Par:K, Con:K) => funtype(Tyc, betaParser(Rest, Par, Con))
@@ -594,6 +594,8 @@ module HASKELL-PREPROCESSING
 //    rule getTypeVars('atypeGTyCon(A:K)) => .List
 //    rule getTypeVars('atypeTyVar(A:K)) => ListItem(A)
 //    rule getTypeVars(.OptBangATypes) => .List
+
+    rule getTyVarsRHS(.OptBangATypes,Tylist:List) => Tylist
 
     rule <k> newBeta(M:Map)
              => .K ...</k>
@@ -607,7 +609,10 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= typeInferenceFun(Map,K,K) //Gamma, Expression, Guessed Type
     syntax Map ::= genGamma(K,Map,Int) [function] //Apatlist, Gamma
     syntax KItem ::= genLambda(K,K) [function]
-    syntax KItem ::= uniFun(List) [function]
+    syntax KItem ::= uniFun(List,Map) [function]
+    syntax List ::= uniSub(K,K,K) [function]
+    syntax Bool ::= isFunType(K) [function]
+    syntax Bool ::= notChildVar(K,K) [function]
     syntax KItem ::= uniPair(K,K)
     syntax KItem ::= guessType(Int)
     syntax KItem ::= "lambdaReturn"
@@ -646,14 +651,17 @@ module HASKELL-PREPROCESSING
     //rule typeInferenceFun('aexpQVar(Var:K), Alpha:Map, Beta:Map, Delta:Map, (Var |-> Sigma:K) Gamma:Map,.K,.K) => Sigma
     //Gamma Proves x:phi(tau) if Gamma(x) = \forall alpha_1, ..., alpha_n . tau
     //where phi replaces all occurrences of alpha_1, ..., alpha_n by monotypes tau_1, ..., tau_n
-    rule <k> typeInferenceFun((Var |-> Type:K) Gamma:Map, 'aexpQVar(Var:K), Guess:K) => uniFun(ListItem(uniPair(Guess,Type))) ...</k>
+
+    rule <k> typeInferenceFun((Var |-> Type:K) Gamma:Map, 'aexpQVar(Var:K), Guess:K) => uniFun(ListItem(uniPair(Type,Guess)),.Map) ...</k> //Variable rule
 
     //rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, (Gcon |-> Sigma:K) Beta:Map, Delta:Map, Gamma:Map,.K,.K) => Sigma //T-App
     //rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, Lol:Map, Delta:Map, Gamma:Map,.K,.K) => Sigma //T-App
     //     <tempBeta> (Gcon |-> Sigma:K) Beta:Map </tempBeta>
-    rule <k> typeInferenceFun(Gamma:Map, 'aexpGCon('conTyCon(Mid:K,, Gcon:K)), Guess:K) => uniFun(ListItem(uniPair(Guess,Type))) ...</k>//T-App
+
+    rule <k> typeInferenceFun(Gamma:Map, 'aexpGCon('conTyCon(Mid:K,, Gcon:K)), Guess:K) => uniFun(ListItem(uniPair(Type,Guess)),.Map) ...</k> //Constant rule
          <tempBeta> (ModPlusType(Mid,Gcon) |-> Type:K) Beta:Map </tempBeta>
 
+    //lambda rule
     rule <k> typeInferenceFun(Gamma:Map, 'lambdaFun(Apatlist:K,, Ex:K), Guess:K) => typeInferenceFun(genGamma(Apatlist,Gamma,TypeIt), genLambda(Apatlist,Ex), guessType(TypeIt +Int 1)) ~> lambdaReturn ...</k>
          <typeIterator> TypeIt:Int => TypeIt +Int 2 </typeIterator>
 
@@ -664,7 +672,25 @@ module HASKELL-PREPROCESSING
     rule genLambda('apatVar(Vari:K), Ex:K) => Ex
     rule genLambda('apatCon(Vari:K,, Pattwo:K), Ex:K) => 'lambdaFun(Pattwo,, Ex)
 
-    rule uniFun(ListItem(uniPair(S:K,S)) Rest:List) => uniFun(Rest)
+    rule uniFun(ListItem(uniPair(S:K,S)) Rest:List,Sigma:Map) => uniFun(Rest,Sigma)  //delete rule
+
+    rule uniFun(ListItem(uniPair(S:K,T:K))) Rest:List,Sigma:Map) => uniFun(ListItem(uniPair(T,S)) Rest,Sigma) //orient rule
+         requires isFunType(T) andBool (notBool isFunType(S))
+
+    //rule uniFun(ListItem(uniPair(forAll(Svars:List,S:K),forAll(.List,T:K))) Rest:List,Sigma:Map) => uniFun(ListItem(uniPair(forAll(.List,T),forAll(Svars,S))) Rest,Sigma) //orient rule
+      //   requires Svars =/=K .List
+
+    //rule uniFun(ListItem(uniPair(guessType(S:Int),forAll(.List,T:K))) Rest:List,Sigma:Map) => uniFun(ListItem(uniPair(forAll(.List,T:K),guessType(S))) Rest,Sigma) //orient rule
+
+   // rule uniFun(ListItem(uniPair(forAll(.List,S:K),T:K)) Rest:List, Sigma:Map) => uniFun(uniSub('aexpQVar(Var),T,Rest), Sigma['aexpQVar(Var) <- T]) //eliminate rule
+   //      requires notChildVar('aexpQVar(Var:K),T)
+
+    rule uniFun(ListItem(guessType(S:Int),T:K)) Rest:List, Sigma:Map) => uniFun(uniSub(guessType(S),T,Rest), Sigma[guessType(S) <- T]) //eliminate rule
+         requires notChildVar(guessType(S),T)
+
+
+   // rule notChildVar('aexpQVar(Var:K),T)
+
 
     //T-Var
 //    rule typeInferenceFun('funApp(Eone:K,, Etwo:K), Alpha:Map, Beta:Map, Delta:Map, Gamma:Map,.K,.K) =>
