@@ -612,6 +612,8 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= guessType(Int)
     syntax KItem ::= lambdaReturn(K,K,K)
 
+    syntax Map ::= gammaSub(Map,Map) //substitution, gamma
+
     rule <k> performIndividualInferencing => inferenceShell(Code) ...</k>
          <tempModule> Mod:KItem </tempModule>
 
@@ -647,17 +649,21 @@ module HASKELL-PREPROCESSING
     //Gamma Proves x:phi(tau) if Gamma(x) = \forall alpha_1, ..., alpha_n . tau
     //where phi replaces all occurrences of alpha_1, ..., alpha_n by monotypes tau_1, ..., tau_n
 
-    rule <k> typeInferenceFun((Var |-> Type:K) Gamma:Map, 'aexpQVar(Var:K), Guess:K) => uniFun(ListItem(uniPair(Type,Guess))) ...</k> //Variable rule
+    rule <k> typeInferenceFun((Var |-> Type:K) Gamma:Map, 'aexpQVar(Var:K), Guess:KItem)
+          => uniFun(ListItem(uniPair(Type,Guess))) ...</k> //Variable rule
 
     //rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, (Gcon |-> Sigma:K) Beta:Map, Delta:Map, Gamma:Map,.K,.K) => Sigma //T-App
     //rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, Lol:Map, Delta:Map, Gamma:Map,.K,.K) => Sigma //T-App
     //     <tempBeta> (Gcon |-> Sigma:K) Beta:Map </tempBeta>
 
-    rule <k> typeInferenceFun(Gamma:Map, 'aexpGCon('conTyCon(Mid:K,, Gcon:K)), Guess:K) => uniFun(ListItem(uniPair(Type,Guess))) ...</k> //Constant rule
+    rule <k> typeInferenceFun(Gamma:Map, 'aexpGCon('conTyCon(Mid:K,, Gcon:K)), Guess:KItem)
+          => uniFun(ListItem(uniPair(Type,Guess))) ...</k> //Constant rule
          <tempBeta> (ModPlusType(Mid,Gcon) |-> Type:K) Beta:Map </tempBeta>
 
     //lambda rule
-    rule <k> typeInferenceFun(Gamma:Map, 'lambdaFun(Apatlist:K,, Ex:K), Guess:K) => typeInferenceFun(genGamma(Apatlist,Gamma,guessType(TypeIt)), genLambda(Apatlist,Ex), guessType(TypeIt +Int 1)) ~> lambdaReturn(Guess,guessType(TypeIt),guessType(TypeIt +Int 1)) ...</k>
+    rule <k> typeInferenceFun(Gamma:Map, 'lambdaFun(Apatlist:K,, Ex:K), Guess:KItem) 
+          => typeInferenceFun(genGamma(Apatlist,Gamma,guessType(TypeIt)), genLambda(Apatlist,Ex), guessType(TypeIt +Int 1))
+          ~> lambdaReturn(Guess,guessType(TypeIt),guessType(TypeIt +Int 1)) ...</k>
          <typeIterator> TypeIt:Int => TypeIt +Int 2 </typeIterator>
 
     rule <k> Sigma:Map ~> lambdaReturn(Tau:K, Tauone:K, Tautwo:K) 
@@ -665,6 +671,22 @@ module HASKELL-PREPROCESSING
 
     //rule <k> substi(S:Map) ~> lambdaReturn(Tau:K, Tauone:K, Tautwo:K) 
     //      => S[Tauone] ...</k>
+
+
+    syntax KItem ::= appliReturn(Map, K, K, Map)
+
+    //application rule
+    rule <k> typeInferenceFun(Gamma:Map, 'funApp(Eone:K,, Etwo:K), Guess:KItem)
+          => typeInferenceFun(Gamma, Eone, funtype(guessType(TypeIt),Guess))
+          ~> appliReturn(Gamma, Etwo, guessType(TypeIt),.Map) ...</k>
+         <typeIterator> TypeIt:Int => TypeIt +Int 1 </typeIterator>
+
+    rule <k> Sigmaone:Map ~> appliReturn(Gamma:Map, Etwo:KItem, guessType(TypeIt:Int), .Map)
+          => typeInferenceFun(gammaSub(Sigmaone, Gamma), Etwo, typeSub(Sigmaone, guessType(TypeIt)))
+          ~> appliReturn(.Map, .K, .K, Sigmaone) ...</k>
+
+    rule <k> Sigmatwo:Map ~> appliReturn(.Map, .K, .K, Sigmaone:Map)
+          => compose(Sigmatwo, Sigmaone) ...</k>
 
 
     rule genGamma('apatVar(Vari:K), Gamma:Map, Guess:K) => Gamma[Vari <- Guess]

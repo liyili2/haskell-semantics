@@ -5,4 +5,4 @@ module Test where
 <NEXTMODULE>
 module Simp5 where
 {data CusBool = True2 | False2
-;f y = (\x -> Simp5.True2)}
+;z y = (\x -> (\f -> (f x)))}
