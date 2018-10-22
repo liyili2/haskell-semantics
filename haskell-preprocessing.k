@@ -607,10 +607,10 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= inferenceShell(K) [function]//Input, AlphaMap, Beta, Delta, Gamma
     //syntax KItem ::= typeInferenceFun(K,Map,Map,Map,Map,K,K) [function]//Input, Alpha, Beta, Delta, Gamma
     syntax KItem ::= typeInferenceFun(Map,K,K) //Gamma, Expression, Guessed Type
-    syntax Map ::= genGamma(K,Map,Int) [function] //Apatlist, Gamma
+    syntax Map ::= genGamma(K,Map,K) [function] //Apatlist, Gamma Type
     syntax KItem ::= genLambda(K,K) [function]
     syntax KItem ::= guessType(Int)
-    syntax KItem ::= "lambdaReturn"
+    syntax KItem ::= lambdaReturn(K,K,K)
 
     rule <k> performIndividualInferencing => inferenceShell(Code) ...</k>
          <tempModule> Mod:KItem </tempModule>
@@ -657,12 +657,15 @@ module HASKELL-PREPROCESSING
          <tempBeta> (ModPlusType(Mid,Gcon) |-> Type:K) Beta:Map </tempBeta>
 
     //lambda rule
-    rule <k> typeInferenceFun(Gamma:Map, 'lambdaFun(Apatlist:K,, Ex:K), Guess:K) => typeInferenceFun(genGamma(Apatlist,Gamma,TypeIt), genLambda(Apatlist,Ex), guessType(TypeIt +Int 1)) ~> lambdaReturn ...</k>
+    rule <k> typeInferenceFun(Gamma:Map, 'lambdaFun(Apatlist:K,, Ex:K), Guess:K) => typeInferenceFun(genGamma(Apatlist,Gamma,guessType(TypeIt)), genLambda(Apatlist,Ex), guessType(TypeIt +Int 1)) ~> lambdaReturn(Guess,guessType(TypeIt),guessType(TypeIt +Int 1)) ...</k>
          <typeIterator> TypeIt:Int => TypeIt +Int 2 </typeIterator>
 
+    rule <k> substi(S:K,T:K) ~> lambdaReturn(Tau:K, Tauone:K, Tautwo:K) 
+          => compose(uniFun(ListItem(uniPair(typeSub(substi(S,T),Tau),typeSub(substi(S,T),funtype(Tauone,Tautwo))))),substi(S,T)) ...</k>
 
-    rule genGamma('apatVar(Vari:K), Gamma:Map, TypeIt:Int) => Gamma[Vari <- guessType(TypeIt)]
-    rule genGamma('apatCon(Vari:K,, Pattwo:K), Gamma:Map, TypeIt:Int) => Gamma[Vari <- guessType(TypeIt)]
+
+    rule genGamma('apatVar(Vari:K), Gamma:Map, Guess:K) => Gamma[Vari <- Guess]
+    rule genGamma('apatCon(Vari:K,, Pattwo:K), Gamma:Map, Guess:K) => Gamma[Vari <- Guess]
 
     rule genLambda('apatVar(Vari:K), Ex:K) => Ex
     rule genLambda('apatCon(Vari:K,, Pattwo:K), Ex:K) => 'lambdaFun(Pattwo,, Ex)
@@ -677,12 +680,14 @@ module HASKELL-PREPROCESSING
     syntax Bool ::= notChildVar(K,K) [function]
     syntax KItem ::= uniPair(K,K)
 
-    syntax List ::= uniSub(K,K) [function]
+    syntax List ::= uniSub(K,K) [function] //apply substitution to unification
 
-    syntax KItem ::= applySub(K,K) [function]
-    syntax KItem ::= concat(K,K)
+    syntax KItem ::= typeSub(K,K) [function] //apply substitution to type
+    syntax KItem ::= compose(K,K)
 
     syntax KItem ::= substi(K,K)
+
+    rule uniFun(.List) => substi(.K,.K) //substi(.K,.K) is id substitution
 
     rule uniFun(ListItem(uniPair(S:K,S)) Rest:List) => uniFun(Rest)  //delete rule
 
@@ -700,7 +705,7 @@ module HASKELL-PREPROCESSING
    //      requires notChildVar('aexpQVar(Var:K),T)
 
     rule uniFun(ListItem(uniPair(S:K,T:K)) Rest:List) 
-      => concat(substi(S,applySub(uniFun(uniSub(substi(S,T),Rest)),T)),uniFun(uniSub(substi(S,T),Rest))) //eliminate rule
+      => compose(substi(S,typeSub(uniFun(uniSub(substi(S,T),Rest)),T)),uniFun(uniSub(substi(S,T),Rest))) //eliminate rule
          requires isVarType(S) andBool notChildVar(S,T)
 
     rule isVarType(S:K) => true
@@ -710,6 +715,14 @@ module HASKELL-PREPROCESSING
     rule notChildVar(S:K,T:K) => true
 
     rule uniSub(Sub:K,.List) => .List
+    rule uniSub(substi(.K,.K),L:List) => L
+
+    rule typeSub(substi(.K,.K),Tau:K) => Tau
+
+    rule typeSub(substi(S:K,T:K),Tau:K) => Tau
+         requires S =/=K Tau
+
+    rule compose(Subone:K,substi(.K,.K)) => Subone
 
 
    // rule notChildVar('aexpQVar(Var:K),T)
