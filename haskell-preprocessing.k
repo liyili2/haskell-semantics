@@ -612,7 +612,7 @@ module HASKELL-PREPROCESSING
     syntax KItem ::= guessType(Int)
     syntax KItem ::= lambdaReturn(K,K,K)
 
-    syntax Map ::= gammaSub(Map,Map) //substitution, gamma
+    syntax Map ::= gammaSub(Map,Map,Map) [function]//substitution, gamma
 
     rule <k> performIndividualInferencing => inferenceShell(Code) ...</k>
          <tempModule> Mod:KItem </tempModule>
@@ -674,6 +674,7 @@ module HASKELL-PREPROCESSING
 
 
     syntax KItem ::= appliReturn(Map, K, K, Map)
+    syntax KItem ::= typeChildSub(Map, K) [function]
 
     //application rule
     rule <k> typeInferenceFun(Gamma:Map, 'funApp(Eone:K,, Etwo:K), Guess:KItem)
@@ -682,7 +683,7 @@ module HASKELL-PREPROCESSING
          <typeIterator> TypeIt:Int => TypeIt +Int 1 </typeIterator>
 
     rule <k> Sigmaone:Map ~> appliReturn(Gamma:Map, Etwo:KItem, guessType(TypeIt:Int), .Map)
-          => typeInferenceFun(gammaSub(Sigmaone, Gamma), Etwo, typeSub(Sigmaone, guessType(TypeIt)))
+          => typeInferenceFun(gammaSub(Sigmaone, Gamma, .Map), Etwo, typeSub(Sigmaone, guessType(TypeIt)))
           ~> appliReturn(.Map, .K, .K, Sigmaone) ...</k>
 
     rule <k> Sigmatwo:Map ~> appliReturn(.Map, .K, .K, Sigmaone:Map)
@@ -694,6 +695,18 @@ module HASKELL-PREPROCESSING
 
     rule genLambda('apatVar(Vari:K), Ex:K) => Ex
     rule genLambda('apatCon(Vari:K,, Pattwo:K), Ex:K) => 'lambdaFun(Pattwo,, Ex)
+
+
+    rule gammaSub(Sigma:Map, (Key:KItem |-> Type:KItem) Gamma:Map, Newgamma:Map)
+      => gammaSub(Sigma, Gamma, Newgamma[Key <- typeChildSub(Sigma, Type) ] )
+
+    rule gammaSub(Sigma:Map, .Map, Newgamma:Map)
+      => Newgamma
+
+    rule typeChildSub((guessType(TypeIt) |-> Type:KItem) Sigma:Map, guessType(TypeIt:Int)) => Type
+
+    rule typeChildSub(Sigma:Map, guessType(TypeIt:Int)) => guessType(TypeIt)
+         requires notBool (guessType(TypeIt) in keys(Sigma))
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
