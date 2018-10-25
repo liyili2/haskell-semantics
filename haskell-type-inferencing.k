@@ -7,6 +7,8 @@ module HASKELL-TYPE-INFERENCING
     imports HASKELL-CONFIGURATION
     imports HASKELL-PREPROCESSING
 
+    syntax KItem ::= "Bool" //Boolean
+
     // STEP 4 Type Inferencing
     syntax KItem ::= inferenceShell(K) [function]//Input, AlphaMap, Beta, Delta, Gamma
     //syntax KItem ::= typeInferenceFun(K,Map,Map,Map,Map,K,K) [function]//Input, Alpha, Beta, Delta, Gamma
@@ -85,6 +87,8 @@ module HASKELL-TYPE-INFERENCING
         requires notBool isKResult(Es)
    rule Es:KResult ~> typeInferenceFunAux(HOLE, C:K,A:K, B:K) => typeInferenceFun(Es, C, A, B)
 */     
+
+    //lambda rule
     rule <k> typeInferenceFun(.ElemList, Gamma:Map, 'lambdaFun(Apatlist:K,, Ex:K), Guess:KItem)
           => typeInferenceFunLambda(val(typeInferenceFun(.ElemList, genGamma(Apatlist,Gamma,guessType(TypeIt)), genLambda(Apatlist,Ex), guessType(TypeIt +Int 1))), .ElemList, Guess, guessType(TypeIt),guessType(TypeIt +Int 1)) ...</k>
          <typeIterator> TypeIt:Int => TypeIt +Int 2 </typeIterator>
@@ -99,7 +103,7 @@ module HASKELL-TYPE-INFERENCING
     //syntax KItem ::= appliReturn(Map, K, K, Map)
     syntax KItem ::= typeChildSub(Map, K) [function]
 
-   syntax KItem ::= typeInferenceFunAppli(ElemList, Map, K, K, Map) [strict(1)]
+    syntax KItem ::= typeInferenceFunAppli(ElemList, Map, K, K, Map) [strict(1)]
 
     //application rule
     rule <k> typeInferenceFun(.ElemList, Gamma:Map, 'funApp(Eone:K,, Etwo:K), Guess:KItem)
@@ -118,6 +122,30 @@ module HASKELL-TYPE-INFERENCING
 
 //    rule <k> Sigmatwo:Map ~> appliReturn(.Map, .K, .K, Sigmaone:Map)
 //          => compose(Sigmatwo, Sigmaone) ...</k>
+
+    syntax KItem ::= typeInferenceFunIfThen(ElemList, Map, K, K, K, Map, Map) [strict(1)]
+
+    //if_then_else rule
+    rule <k> typeInferenceFun(.ElemList, Gamma:Map, 'ifThenElse(Eone:K,, Optsem:K,, Etwo:K,, Optsemtwo:K,, Ethree:K), Guess:KItem)
+          => typeInferenceFunIfThen(val(typeInferenceFun(.ElemList, Gamma, Eone, Bool)), .ElemList, Gamma, Etwo, Ethree, Guess, .Map, .Map) ...</k>
+
+    rule <k> typeInferenceFunIfThen(valValue(mapBagResult(Sigmaone:Map)), .ElemList, Gamma:Map, Etwo:KItem, Ethree:KItem, Guess:KItem, .Map, .Map)
+          => typeInferenceFunIfThen(val(typeInferenceFun(.ElemList, gammaSub(Sigmaone, Gamma, .Map), Etwo, typeSub(Sigmaone, Guess))), .ElemList, Gamma, .K, Ethree, Guess, Sigmaone, .Map) ...</k>
+
+    rule <k> typeInferenceFunIfThen(valValue(mapBagResult(Sigmatwo:Map)), .ElemList, Gamma:Map, .K, Ethree:KItem, Guess:KItem, Sigmaone:Map, .Map)
+          => typeInferenceFunIfThen(val(typeInferenceFun(.ElemList, gammaSub(compose(Sigmatwo, Sigmaone), Gamma, .Map), Ethree, typeSub(compose(Sigmatwo, Sigmaone), Guess))), .ElemList, .Map, .K, .K, .K, Sigmaone, Sigmatwo) ...</k>
+
+    rule <k> typeInferenceFunIfThen(valValue(mapBagResult(Sigmathree:Map)), .ElemList, .Map, .K, .K, .K, Sigmaone:Map, Sigmatwo:Map)
+          => mapBagResult(compose(compose(Sigmathree, Sigmatwo), Sigmaone)) ...</k>
+
+    syntax KItem ::= typeInferenceFunLetIn(ElemList, Map, K, K) [strict(1)]
+    syntax KItem ::= grabLetDecl(K) [function]
+
+    //Haskell let in rule (let rec in exp + let in rule combined)
+    //beta, gamma |- let rec f1 x = e1 and f2 x = e2 and f3 x = e3 .... in e
+   // => beta, [f1 -> gen(tau1), f2 -> gen(tau2), f3 -> gen(tau3),....] + gamma |- let rec f1 x = e1 in let rec f2 x  = e2 in let rec f3 x = e3 in ..... in e
+    rule <k> typeInferenceFun(.ElemList, Gamma:Map, 'letIn(D:K,, E:K), Guess:KItem)
+          => typeInferenceFunLetIn(.ElemList, Gamma, 'letIn(grabLetDecl(D),, E), Guess) ...</k>
 
 
     rule genGamma('apatVar(Vari:K), Gamma:Map, Guess:K) => Gamma[Vari <- Guess]
@@ -139,6 +167,23 @@ module HASKELL-TYPE-INFERENCING
          requires notBool (guessType(TypeIt) in keys(Sigma))
 
     rule freshInstance(guessType(TypeIt:Int)) => guessType(TypeIt)
+
+    //GEN
+    //GEN(Gamma, Tau) => Forall alpha
+
+    syntax KItem ::= gen(Map, K, Map) [function]
+    syntax Set ::= freeVarsTy(K, Map) [function]
+    //syntax Set ::= freeVarsEnv(Map, Map) [function]
+    syntax KItem ::= setBag(Set)
+
+    //rule gen(Gamma:Map, Tau:KItem, Beta:Map) => forAll(setBag(freeVarsTy(Tau, Beta) -Set freeVarsEnv(Gamma, Beta)), Tau)
+
+    rule freeVarsTy(guessType(TypeIt:Int), Beta:Map) => SetItem(guessType(TypeIt:Int))
+    rule freeVarsTy(funtype(Tauone:KItem, Tautwo:KItem), Beta:Map) => freeVarsTy(Tauone, Beta) freeVarsTy(Tautwo, Beta)
+    rule freeVarsTy(Tau:KItem, Beta:Map) => .Set
+         requires Tau in values(Beta)
+    rule freeVarsTy(forAll(setBag(Para:Set), Tau:KItem), Beta:Map) => freeVarsTy(Tau, Beta) -Set Para
+    //rule freeVarsEnv(Gamma:Map, Beta:Map) => values(Beta)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
