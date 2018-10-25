@@ -26,7 +26,8 @@ module HASKELL-CONFIGURATION
                     <classes> .Map </classes> //type classes
                 </module>
               <classNameInMod> .Map </classNameInMod> //store all class names in modules. 
-              <typeNameInMod> .Map </typeNameInMod> //store all type names in modules. 
+              <typeNameInMod> .Map </typeNameInMod>
+                   //store all type names in modules. from module name to type name+arity
               <constrNameInMod> .Map </constrNameInMod> //store all constructor names in modules. 
               <importMap> .Map </importMap>
             </modules>

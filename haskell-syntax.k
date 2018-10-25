@@ -296,15 +296,15 @@ module HASKELL-SYNTAX
     syntax Type ::= BType
                   | BType "->" Type  [klabel('typeArrow)]
     syntax BType ::= AType
-                   | BType AType [klabel('baTypeCon)]
+                   | AType BType [klabel('baTypeCon)]
 
     syntax ATypeList ::= List{AType, ""} [klabel('atypeList)]
 
-    syntax AType ::= GTyCon                     [klabel('atypeGTyCon)]
-                   | TyVar                      [klabel('atypeTyVar)]
+    syntax AType ::= GTyCon                     
+                   | TyVar                      
                    | "(" TypeTuple ")"
                    | "[" Type "]"               [klabel('tyList)]
-                   | "(" Type ")"               [bracket]
+                   | "(" Type ")"              
     syntax TypeTuple ::= Type "," Type          [right,klabel('twoTypeTuple)]
                        | Type "," TypeTuple     [klabel('typeTupleCon)]
     syntax Types ::= List{Type, ","}

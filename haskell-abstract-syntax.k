@@ -1,6 +1,8 @@
 // abstract created and some useful helper functions
+requires "haskell-syntax.k"
 
 module HASKELL-ABSTRACT-SYNTAX
+       imports HASKELL-SYNTAX
 
         syntax KItem ::= "error"
 
@@ -42,6 +44,20 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= TList(K) //list of T objects for every new type introduced by data and newtype
     syntax KItem ::= TObject(K,K,K) //(type name, entire list of poly type vars, list of inner T pieces)
     syntax KItem ::= InnerTPiece(K,K,K,K,K) //(type constructor, poly type vars, argument sorts, entire constr block, type name)
+
+    //useful element, elemlist data structure
+    syntax Element ::= val(K) [strict] | ElemResult
+    syntax ElemResult ::= valValue(K)
+    syntax KResult ::= ElemResult
+    syntax ElemList ::= List{Element, ","} [strict]
+    rule val(K:KResult) => valValue(K) [structural]
+
+    //abstract syntax for type constrs
+    syntax KResult ::= TypeResult
+    syntax Type ::= TypeResult
+    syntax TypeResult ::= TyVar | modVar(TyVar)
+                        | typeConst(K, List) //type constror, list of typeResult
+    
 
     syntax KItem ::= tAlphaMap(K) //(AlphaMap) temp alphamap
 

@@ -186,9 +186,11 @@ module HASKELL-PREPROCESSING
          <module>... <moduleName> Mod </moduleName>
            <classes> M:Map
             => M[B <- typeClass(none, ListItem(C),
-                     classContentToList(Mod, D, TM))] </classes>
+                     classContentToList(Mod, B, D, TM, CM, IM))] </classes>
                 ...</module>
          <typeNameInMod> TM:Map </typeNameInMod>
+          <constrNameInMod> CM:Map </constrNameInMod>
+          <importMap> IM:Map </importMap>
 
     //rule getPreModule('module(I:ModuleName,L:K, J:K)) => preModule(J)
 
