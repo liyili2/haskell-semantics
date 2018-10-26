@@ -142,15 +142,15 @@ module HASKELL-TYPE-INFERENCING
     syntax KItem ::= grabLetDeclName(K, Int) [function]
     syntax KItem ::= grabLetDeclExp(K, Int) [function]
     syntax KItem ::= mapLookup(Map, K) [function]
-    syntax Map ::= makeDeclMap(K, Int) [function]
+    syntax Map ::= makeDeclMap(K, Int, Map) [function]
     syntax Map ::= applyGEN(Map, Map) [function]
 
     //Haskell let in rule (let rec in exp + let in rule combined)
     //gamma |- let rec f1 = e1 and f2 = e2 and f3 = e3 .... in e =>
     //beta, [f1 -> tau1, f2 -> tau2, f3 -> tau3,....] + gamma |- e1 : tau1 | sigma1,  [f1 -> simga1(tau1), f2 -> sigma1(tau2), f3 -> sigma1(tau3),....] + sigma1(gamma) |- e2 : sigma1(tau2) | sigma2  [f1 -> sigma2 o sigma1(tau1), f2 -> sigma2 o sigma1(tau2), f3 -> sigma2 o sigma1(tau3),....] + sigma2 o sigma1(gamma) |- e3 : sigma2 o sigma1(tau3) .....  [f1 -> gen(sigma_n o sigma2 o sigma1(tau1), sigma_n o sigma2 o sigma1(Gamma)), f2 -> gen(tau2), f3 -> gen(tau3),....] + gamma |- e : something
     rule <k> typeInferenceFun(.ElemList, Gamma:Map, 'letIn(D:K,, E:K), Guess:KItem)
-          => typeInferenceFunLetIn(.ElemList, Gamma, makeDeclMap(D, TypeIt), D, E, Guess, 0, TypeIt, .Map) ...</k>
-         <typeIterator> TypeIt:Int => TypeIt +Int 1 </typeIterator>
+          => typeInferenceFunLetIn(.ElemList, Gamma, makeDeclMap(D, TypeIt, .Map), D, E, Guess, 0, TypeIt, .Map) ...</k>
+         <typeIterator> TypeIt:Int => TypeIt +Int size(makeDeclMap(D, TypeIt, .Map)) </typeIterator>
 
     rule <k> typeInferenceFunLetIn(.ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map)
            => typeInferenceFunLetIn(val(typeInferenceFun(.ElemList, Gamma DeclMap, grabLetDeclExp(D, Iter +Int TypeIt), mapLookup(DeclMap, grabLetDeclName(D, Iter +Int TypeIt)))), .ElemList, Gamma, DeclMap, D, E, Guess, Iter, TypeIt, OldSigma) ...</k>
@@ -168,6 +168,10 @@ module HASKELL-TYPE-INFERENCING
     rule <k> typeInferenceFunLetIn(valValue(mapBagResult(Sigma:Map)), .ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map)
           => mapBagResult(compose(Sigma, OldSigma))...</k>
           requires Iter >=Int (size(DeclMap) -Int 1)
+
+
+    rule makeDeclMap('decls('declPatRhs('apatVar(Var:K),, Righthand:K),, Rest:K), TypeIt:Int, NewMap:Map) => makeDeclMap('decls(Rest), TypeIt +Int 1, NewMap[Var <- guessType(TypeIt)])
+    //rule makeDeclMap('decls('declPatRhs('apatVar(Var:K),, Righthand:K),, Rest:K), TypeIt:Int, NewMap:Map) => makeDeclMap('decls(Rest), TypeIt +Int 1, NewMap[Var <- guessType(TypeIt)])
 
 
     rule genGamma('apatVar(Vari:K), Gamma:Map, Guess:K) => Gamma[Vari <- Guess]
