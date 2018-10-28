@@ -138,41 +138,60 @@ module HASKELL-TYPE-INFERENCING
     rule <k> typeInferenceFunIfThen(valValue(mapBagResult(Sigmathree:Map)), .ElemList, .Map, .K, .K, .K, Sigmaone:Map, Sigmatwo:Map)
           => mapBagResult(compose(compose(Sigmathree, Sigmatwo), Sigmaone)) ...</k>
 
-    syntax KItem ::= typeInferenceFunLetIn(ElemList, Map, Map, K, K, K, Int, Int, Map) [strict(1)]
+    syntax KItem ::= typeInferenceFunLetIn(ElemList, Map, Map, K, K, K, Int, Int, Map, Map) [strict(1)]
     syntax KItem ::= grabLetDeclName(K, Int) [function]
     syntax KItem ::= grabLetDeclExp(K, Int) [function]
     syntax KItem ::= mapLookup(Map, K) [function]
     syntax Map ::= makeDeclMap(K, Int, Map) [function]
-    syntax Map ::= applyGEN(Map, Map) [function]
+    syntax Map ::= applyGEN(Map, Map, Map, Map) [function]
 
     //Haskell let in rule (let rec in exp + let in rule combined)
     //gamma |- let rec f1 = e1 and f2 = e2 and f3 = e3 .... in e =>
     //beta, [f1 -> tau1, f2 -> tau2, f3 -> tau3,....] + gamma |- e1 : tau1 | sigma1,  [f1 -> simga1(tau1), f2 -> sigma1(tau2), f3 -> sigma1(tau3),....] + sigma1(gamma) |- e2 : sigma1(tau2) | sigma2  [f1 -> sigma2 o sigma1(tau1), f2 -> sigma2 o sigma1(tau2), f3 -> sigma2 o sigma1(tau3),....] + sigma2 o sigma1(gamma) |- e3 : sigma2 o sigma1(tau3) .....  [f1 -> gen(sigma_n o sigma2 o sigma1(tau1), sigma_n o sigma2 o sigma1(Gamma)), f2 -> gen(tau2), f3 -> gen(tau3),....] + gamma |- e : something
     rule <k> typeInferenceFun(.ElemList, Gamma:Map, 'letIn(D:K,, E:K), Guess:KItem)
-          => typeInferenceFunLetIn(.ElemList, Gamma, makeDeclMap(D, TypeIt, .Map), D, E, Guess, 0, TypeIt, .Map) ...</k>
+          => typeInferenceFunLetIn(.ElemList, Gamma, makeDeclMap(D, TypeIt, .Map), D, E, Guess, 0, TypeIt, .Map, Beta) ...</k>
          <typeIterator> TypeIt:Int => TypeIt +Int size(makeDeclMap(D, TypeIt, .Map)) </typeIterator>
+         <tempBeta> Beta:Map </tempBeta>
 
-    rule <k> typeInferenceFunLetIn(.ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map)
-           => typeInferenceFunLetIn(val(typeInferenceFun(.ElemList, Gamma DeclMap, grabLetDeclExp(D, Iter +Int TypeIt), mapLookup(DeclMap, grabLetDeclName(D, Iter +Int TypeIt)))), .ElemList, Gamma, DeclMap, D, E, Guess, Iter, TypeIt, OldSigma) ...</k>
+    rule <k> typeInferenceFunLetIn(.ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map, Beta:Map)
+           => typeInferenceFunLetIn(val(typeInferenceFun(.ElemList, Gamma DeclMap, grabLetDeclExp(D, Iter), mapLookup(DeclMap, grabLetDeclName(D, Iter)))), .ElemList, Gamma, DeclMap, D, E, Guess, Iter, TypeIt, OldSigma, Beta) ...</k>
           //=> typeInferenceFunLetIn(val(typeInferenceFun(DeclMap, grabLetDeclExp(D, Iter +Int TypeIt), Guess)), .ElemList, Gamma, DeclMap, D, E, Guess, Iter, TypeIt, OldSigma) ...</k>
           requires Iter <Int (size(DeclMap) -Int 1)
 
-    rule <k> typeInferenceFunLetIn(valValue(mapBagResult(Sigma:Map)), .ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map)
-          => typeInferenceFunLetIn(.ElemList, gammaSub(Sigma,Gamma,.Map), gammaSub(Sigma, DeclMap,.Map), D, E, typeSub(Sigma, Guess), Iter +Int 1, TypeIt, compose(Sigma,OldSigma)) ...</k>
+    rule <k> typeInferenceFunLetIn(valValue(mapBagResult(Sigma:Map)), .ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map, Beta:Map)
+          => typeInferenceFunLetIn(.ElemList, gammaSub(Sigma,Gamma,.Map), gammaSub(Sigma, DeclMap,.Map), D, E, typeSub(Sigma, Guess), Iter +Int 1, TypeIt, compose(Sigma,OldSigma), Beta) ...</k>
           requires Iter <Int (size(DeclMap) -Int 1)
 
-    rule <k> typeInferenceFunLetIn(.ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map)
-          => typeInferenceFunLetIn(val(typeInferenceFun(.ElemList, Gamma applyGEN(Gamma, DeclMap), grabLetDeclExp(D, Iter +Int TypeIt), mapLookup(DeclMap, grabLetDeclName(D, Iter +Int TypeIt)))), .ElemList, Gamma, DeclMap, D, E, Guess, Iter +Int 1, TypeIt, OldSigma) ...</k>
+    rule <k> typeInferenceFunLetIn(.ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map, Beta:Map)
+          => typeInferenceFunLetIn(val(typeInferenceFun(.ElemList, Gamma applyGEN(Gamma, DeclMap, .Map, Beta), grabLetDeclExp(D, Iter), mapLookup(DeclMap, grabLetDeclName(D, Iter)))), .ElemList, Gamma, DeclMap, D, E, Guess, Iter +Int 1, TypeIt, OldSigma, Beta) ...</k>
           requires Iter >=Int (size(DeclMap) -Int 1)
 
-    rule <k> typeInferenceFunLetIn(valValue(mapBagResult(Sigma:Map)), .ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map)
+    rule <k> typeInferenceFunLetIn(valValue(mapBagResult(Sigma:Map)), .ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map, Beta:Map)
           => mapBagResult(compose(Sigma, OldSigma))...</k>
           requires Iter >=Int (size(DeclMap) -Int 1)
 
+    rule mapLookup((Name |-> Type:KItem) DeclMap:Map, Name:KItem) => Type
+    rule mapLookup(DeclMap:Map, Name:KItem) => Name
+         requires notBool(Name in keys(DeclMap))
 
-    rule makeDeclMap('decls('declPatRhs('apatVar(Var:K),, Righthand:K),, Rest:K), TypeIt:Int, NewMap:Map) => makeDeclMap('decls(Rest), TypeIt +Int 1, NewMap[Var <- guessType(TypeIt)])
-    //rule makeDeclMap('decls('declPatRhs('apatVar(Var:K),, Righthand:K),, Rest:K), TypeIt:Int, NewMap:Map) => makeDeclMap('decls(Rest), TypeIt +Int 1, NewMap[Var <- guessType(TypeIt)])
+    //rule makeDeclMap('decls(A:K), TypeIt:Int, NewMap:Map) => makeDeclMap(A, TypeIt +Int 1, NewMap)
+    rule makeDeclMap('decls(Dec:K), TypeIt:Int, NewMap:Map) => makeDeclMap(Dec, TypeIt, NewMap)
+    rule makeDeclMap('declsList('declPatRhs('apatVar(Var:K),, Righthand:K),, Rest:K), TypeIt:Int, NewMap:Map) => makeDeclMap('decls(Rest), TypeIt +Int 1, NewMap[Var <- guessType(TypeIt)])
+    rule makeDeclMap(.DeclsList, TypeIt:Int, NewMap:Map) => NewMap
 
+    rule grabLetDeclName('decls(Dec:K), Iter:Int) => grabLetDeclName(Dec, Iter)
+    rule grabLetDeclName('declsList(Dec:K,, Rest:K), Iter:Int) => grabLetDeclName(Rest, Iter -Int 1)
+         requires Iter >Int 0
+    rule grabLetDeclName('declsList('declPatRhs('apatVar(Var:K),, Righthand:K),, Rest:K), Iter:Int) => Var
+         requires Iter <=Int 0
+
+
+    rule grabLetDeclExp('decls(Dec:K), Iter:Int) => grabLetDeclExp(Dec, Iter)
+    rule grabLetDeclExp('declsList(Dec:K,, Rest:K), Iter:Int) => grabLetDeclExp(Rest, Iter -Int 1)
+         requires Iter >Int 0
+    rule grabLetDeclExp('declsList('declPatRhs('apatVar(Var:K),, Righthand:K),, Rest:K), Iter:Int) => grabLetDeclExp(Righthand, Iter)
+         requires Iter <=Int 0
+    rule grabLetDeclExp('eqExpOptDecls(Righthand:K,, Opt:K), Iter:Int) => 'eqExpOptDecls(Righthand,, Opt)
 
     rule genGamma('apatVar(Vari:K), Gamma:Map, Guess:K) => Gamma[Vari <- Guess]
     rule genGamma('apatCon(Vari:K,, Pattwo:K), Gamma:Map, Guess:K) => Gamma[Vari <- Guess]
@@ -194,6 +213,13 @@ module HASKELL-TYPE-INFERENCING
 
     rule freshInstance(guessType(TypeIt:Int)) => guessType(TypeIt)
 
+
+     rule applyGEN(Gamma:Map, (Key:KItem |-> Type:KItem) DeclMap:Map, NewMap:Map, Beta:Map)
+       => applyGEN(Gamma, DeclMap, NewMap[Key <- gen(Gamma, Type, Beta)], Beta)
+
+     rule applyGEN(Gamma:Map, .Map, NewMap:Map, Beta:Map)
+       => NewMap
+
     //GEN
     //GEN(Gamma, Tau) => Forall alpha
 
@@ -201,7 +227,7 @@ module HASKELL-TYPE-INFERENCING
     syntax Set ::= freeVarsTy(K, Map) [function]
     syntax Set ::= freeVarsEnv(Map, Map) [function]
     syntax KItem ::= setBag(Set)
-    syntax Set ::= listToSet(List) [function]
+    syntax Set ::= listToSet(List, Set) [function]
 
     rule gen(Gamma:Map, Tau:KItem, Beta:Map) => forAll(setBag(freeVarsTy(Tau, Beta) -Set freeVarsEnv(Gamma, Beta)), Tau)
 
@@ -210,7 +236,11 @@ module HASKELL-TYPE-INFERENCING
     rule freeVarsTy(Tau:KItem, Beta:Map) => .Set
          requires Tau in values(Beta)
     rule freeVarsTy(forAll(setBag(Para:Set), Tau:KItem), Beta:Map) => freeVarsTy(Tau, Beta) -Set Para
-    rule freeVarsEnv(Gamma:Map, Beta:Map) => listToSet(values(Beta))
+    rule freeVarsEnv(Gamma:Map, Beta:Map) => listToSet(values(Beta), .Set)
+
+
+    rule listToSet(ListItem(A:KItem) L:List, S:Set) => listToSet(L, SetItem(A) S)
+    rule listToSet(.List, S:Set) => S
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -264,7 +294,20 @@ module HASKELL-TYPE-INFERENCING
     rule typeSub(Sigma:Map,funtype(Tauone:KItem,Tautwo:KItem)) => funtype(typeSub(Sigma,Tauone),typeSub(Sigma,Tautwo))
     rule typeSub(Sigma:Map,Tau:KItem) => Tau [owise]
 
-    rule compose(Sigmaone:Map,Sigmatwo:Map) => updateMap(Sigmaone,Sigmatwo)
+    syntax Map ::= composeIn(Map, Map, K)
+
+    //rule compose(Sigmaone:Map,Sigmatwo:Map) => updateMap(Sigmaone,Sigmatwo)
+    //rule compose(Sigmaone:Map, (Keytwo:KItem |-> Valtwo:KItem) Sigmatwo:Map) => compose(Sigmaone[Keytwo <- Valtwo][Valtwo <- mapLookup(Sigmaone, Keytwo)], Sigmatwo)
+    //rule compose(Sigmaone:Map, (Key:KItem |-> Type:KItem) Sigmatwo:Map, .K) => compose(Sigmaone[Type <- mapLookup(Sigmaone, Key)][Key <- Type], Sigmatwo, mapLookup(Sigmaone, Key))
+    rule compose(Sigmaone:Map, (Key:KItem |-> Type:KItem) Sigmatwo:Map) => composeIn(Sigmaone, Sigmatwo, mapLookup(Sigmaone, Key))
+         requires (notBool (Type in values(Sigmaone))) andBool (Type =/=K mapLookup(Sigmaone, Key))
+    //rule compose(Sigmaone:Map, (Key:KItem |-> Type:KItem) Sigmatwo:Map) => compose(Sigmaone[Key <- Type][Type <- mapLookup(Sigmaone, Key)], Sigmatwo)
+    //     requires (notBool (Type in values(Sigmaone))) andBool (Type =/=K mapLookup(Sigmaone, Key))
+//    rule compose(Sigmaone:Map, (Keytwo:KItem |-> Valtwo:KItem) Sigmatwo:Map) => compose(Sigmaone[Valtwo <- mapLookup(Sigmaone, Keytwo)], Sigmatwo)
+//         requires (Valtwo in values(Sigmaone)) andBool (Valtwo =/=K mapLookup(Sigmaone, Keytwo))
+    //rule compose(Sigmaone:Map, (Keytwo:KItem |-> Valtwo:KItem) Sigmatwo:Map) => compose((Keytwo |-> Valtwo) Sigmaone, Sigmatwo)
+    // requires notBool (Keytwo in keys(Sigmaone))
+    rule compose(Sigmaone:Map, .Map) => Sigmaone
     // rule compose(substi(Sone:K,Tone:K),substi(Stwo:K,Ttwo:K)) => substi(typeSub(substi(Stwo,Ttwo),Sone),Tone)
 
 

@@ -160,7 +160,7 @@ module HASKELL-SYNTAX
     //define declaration.
     syntax OptDecls ::= "where" Decls | "" [onlyLabel, klabel('emptyOptDecls)]
     syntax Decls ::= "{" DeclsList "}" [klabel('decls)]
-    syntax DeclsList ::= List{Decl, ";"}
+    syntax DeclsList ::= List{Decl, ";"} [klabel('declsList)]
 
     syntax Decl ::= GenDecl
                   | FunLhs Rhs [klabel('declFunLhsRhs)]
