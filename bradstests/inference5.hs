@@ -5,4 +5,4 @@ module Test where
 <NEXTMODULE>
 module Simp5 where
 {data CusBool = True2 | False2
-;z y = let {id = \x -> x} in id id}
+;z y = let {id = \x -> x} in ((id id) Simp5.True2)}

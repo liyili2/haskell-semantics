@@ -294,10 +294,11 @@ module HASKELL-TYPE-INFERENCING
    // rule uniFun(ListItem(uniPair(forAll(.List,S:K),T:K)) Rest:List, Sigma:Map) => uniFun(uniSub('aexpQVar(Var),T,Rest), Sigma['aexpQVar(Var) <- T]) //eliminate rule
    //      requires notChildVar('aexpQVar(Var:K),T)
 
-    rule uniFun(ListItem(uniPair(funtype(A:K, B:K), funtype(C:K, D:K))) Rest:List) => uniFun(ListItem(uniPair(A:K, B:K)) ListItem(uniPair(C:K, D:K)) Rest:List) //decompose rule function type
+    rule uniFun(ListItem(uniPair(funtype(A:K, B:K), funtype(C:K, D:K))) Rest:List) => uniFun(ListItem(uniPair(A, C)) ListItem(uniPair(B, D)) Rest:List) //decompose rule function type
 
     rule uniFun(ListItem(uniPair(S:K,T:K)) Rest:List) 
       => compose((S |-> typeSub(uniFun(uniSub((S |-> T),Rest)),T)),uniFun(uniSub((S |-> T),Rest))) //eliminate rule
+    //  => compose(uniFun(uniSub((S |-> T),Rest)),(S |-> typeSub(uniFun(uniSub((S |-> T),Rest)),T))) //eliminate rule
          requires isVarType(S) andBool notChildVar(S,T)
 
     rule isVarType(S:K) => true
@@ -323,7 +324,7 @@ module HASKELL-TYPE-INFERENCING
 
     rule composeIn((Keyone |-> Typetwo:KItem) Sigmaone:Map, Sigmatwo:Map, NewMap:Map, Keyone:KItem, Typeone:KItem) => composeIn(Sigmaone, Sigmatwo, NewMap, Keyone, Typeone)
 
-    rule composeIn((Typeone |-> Typetwo:KItem) Sigmaone:Map, Sigmatwo:Map, NewMap:Map, Keyone:KItem, Typeone:KItem) => composeIn(Sigmaone, Sigmatwo, NewMap[Keyone <- Typetwo], .K, .K)
+    rule composeIn((Typeone |-> Typetwo:KItem) Sigmaone:Map, Sigmatwo:Map, NewMap:Map, Keyone:KItem, Typeone:KItem) => composeIn((Typeone |-> Typetwo) Sigmaone, Sigmatwo, NewMap[Keyone <- Typetwo], .K, .K)
          requires notBool(Keyone in keys(Sigmaone))
 
     rule composeIn(Sigmaone:Map, Sigmatwo:Map, NewMap:Map, Keyone:KItem, Typeone:KItem) => composeIn(Sigmaone, Sigmatwo, NewMap[Keyone <- Typeone], .K, .K) [owise]
