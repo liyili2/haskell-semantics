@@ -574,10 +574,15 @@ module HASKELL-PREPROCESSING
 //         makeBeta(TList(ListItem(TObject(ModName,A,B,InnerRest)) Rest),Beta)
 
     syntax KItem ::= betaParser(K,K,K) [function] //(Tree Piece,NewSyntax,Parameters,Constr)
-    syntax KItem ::= getTyVarsRHS(K,List) [function]
+    syntax Set ::= getTyVarsRHS(K,List) [function]
 
-    syntax KItem ::= forAll(K,K)
+    syntax KItem ::= forAll(Set,K)
     syntax KItem ::= funtype(K,K)
+
+    syntax Set ::= listToSet(List, Set) [function]
+
+    rule listToSet(ListItem(A:KItem) L:List, S:Set) => listToSet(L, SetItem(A) S)
+    rule listToSet(.List, S:Set) => S
 
 
 //if optbangAtypes, need to see if first variable is a typecon
@@ -594,7 +599,7 @@ module HASKELL-PREPROCESSING
 //    rule getTypeVars('atypeTyVar(A:K)) => ListItem(A)
 //    rule getTypeVars(.OptBangATypes) => .List
 
-    rule getTyVarsRHS(.OptBangATypes,Tylist:List) => Tylist
+    rule getTyVarsRHS(.OptBangATypes,Tylist:List) => listToSet(Tylist, .Set)
 
     rule <k> newBeta(M:Map)
              => .K ...</k>

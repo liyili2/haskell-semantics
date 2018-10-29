@@ -17,7 +17,8 @@ module HASKELL-TYPE-INFERENCING
     syntax KItem ::= genLambda(K,K) [function]
     syntax KItem ::= guessType(Int)
 //    syntax KItem ::= lambdaReturn(K,K,K)
-    syntax KItem ::= freshInstance(K) [function]
+    syntax KItem ::= freshInstance(K, Int) [function]
+    syntax Int ::= paramSize(K) [function]
 
 
     syntax KItem ::= mapBag(Map)
@@ -61,15 +62,17 @@ module HASKELL-TYPE-INFERENCING
     //where phi replaces all occurrences of alpha_1, ..., alpha_n by monotypes tau_1, ..., tau_n
 
     rule <k> typeInferenceFun(.ElemList, (Var |-> Type:K) Gamma:Map, 'aexpQVar(Var:K), Guess:KItem)
-          => mapBagResult(uniFun(ListItem(uniPair(Guess,freshInstance(Type))))) ...</k> //Variable rule
+          => mapBagResult(uniFun(ListItem(uniPair(Guess,freshInstance(Type, TypeIt))))) ...</k> //Variable rule
+         <typeIterator> TypeIt:Int => TypeIt +Int paramSize(Type) </typeIterator>
 
     //rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, (Gcon |-> Sigma:K) Beta:Map, Delta:Map, Gamma:Map,.K,.K) => Sigma //T-App
     //rule typeInferenceFun('aexpGCon(Gcon:K), Alpha:Map, Lol:Map, Delta:Map, Gamma:Map,.K,.K) => Sigma //T-App
     //     <tempBeta> (Gcon |-> Sigma:K) Beta:Map </tempBeta>
 
     rule <k> typeInferenceFun(.ElemList, Gamma:Map, 'aexpGCon('conTyCon(Mid:K,, Gcon:K)), Guess:KItem)
-          => mapBagResult(uniFun(ListItem(uniPair(Guess,freshInstance(Type))))) ...</k> //Constant rule
+          => mapBagResult(uniFun(ListItem(uniPair(Guess,freshInstance(Type, TypeIt))))) ...</k> //Constant rule
          <tempBeta> (ModPlusType(Mid,Gcon) |-> Type:K) Beta:Map </tempBeta>
+         <typeIterator> TypeIt:Int => TypeIt +Int paramSize(Type) </typeIterator>
 
     //lambda rule
 //    rule <k> typeInferenceFun(Gamma:Map, 'lambdaFun(Apatlist:K,, Ex:K), Guess:KItem) 
@@ -101,7 +104,7 @@ module HASKELL-TYPE-INFERENCING
 
 
     //syntax KItem ::= appliReturn(Map, K, K, Map)
-    syntax KItem ::= typeChildSub(Map, K) [function]
+    //syntax KItem ::= typeChildSub(Map, K) [function]
 
     syntax KItem ::= typeInferenceFunAppli(ElemList, Map, K, K, Map) [strict(1)]
 
@@ -156,19 +159,19 @@ module HASKELL-TYPE-INFERENCING
     rule <k> typeInferenceFunLetIn(.ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map, Beta:Map)
            => typeInferenceFunLetIn(val(typeInferenceFun(.ElemList, Gamma DeclMap, grabLetDeclExp(D, Iter), mapLookup(DeclMap, grabLetDeclName(D, Iter)))), .ElemList, Gamma, DeclMap, D, E, Guess, Iter, TypeIt, OldSigma, Beta) ...</k>
           //=> typeInferenceFunLetIn(val(typeInferenceFun(DeclMap, grabLetDeclExp(D, Iter +Int TypeIt), Guess)), .ElemList, Gamma, DeclMap, D, E, Guess, Iter, TypeIt, OldSigma) ...</k>
-          requires Iter <Int (size(DeclMap) -Int 1)
+          requires Iter <Int (size(DeclMap))
 
     rule <k> typeInferenceFunLetIn(valValue(mapBagResult(Sigma:Map)), .ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map, Beta:Map)
           => typeInferenceFunLetIn(.ElemList, gammaSub(Sigma,Gamma,.Map), gammaSub(Sigma, DeclMap,.Map), D, E, typeSub(Sigma, Guess), Iter +Int 1, TypeIt, compose(Sigma,OldSigma), Beta) ...</k>
-          requires Iter <Int (size(DeclMap) -Int 1)
+          requires Iter <Int (size(DeclMap))
 
     rule <k> typeInferenceFunLetIn(.ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map, Beta:Map)
-          => typeInferenceFunLetIn(val(typeInferenceFun(.ElemList, Gamma applyGEN(Gamma, DeclMap, .Map, Beta), grabLetDeclExp(D, Iter), mapLookup(DeclMap, grabLetDeclName(D, Iter)))), .ElemList, Gamma, DeclMap, D, E, Guess, Iter +Int 1, TypeIt, OldSigma, Beta) ...</k>
-          requires Iter >=Int (size(DeclMap) -Int 1)
+          => typeInferenceFunLetIn(val(typeInferenceFun(.ElemList, Gamma applyGEN(Gamma, DeclMap, .Map, Beta), E, Guess)), .ElemList, Gamma, DeclMap, D, E, Guess, Iter, TypeIt, OldSigma, Beta) ...</k>
+          requires Iter >=Int (size(DeclMap))
 
     rule <k> typeInferenceFunLetIn(valValue(mapBagResult(Sigma:Map)), .ElemList, Gamma:Map, DeclMap:Map, D:KItem, E:KItem, Guess:KItem, Iter:Int, TypeIt:Int, OldSigma:Map, Beta:Map)
           => mapBagResult(compose(Sigma, OldSigma))...</k>
-          requires Iter >=Int (size(DeclMap) -Int 1)
+          requires Iter >=Int (size(DeclMap))
 
     rule mapLookup((Name |-> Type:KItem) DeclMap:Map, Name:KItem) => Type
     rule mapLookup(DeclMap:Map, Name:KItem) => Name
@@ -201,17 +204,28 @@ module HASKELL-TYPE-INFERENCING
 
 
     rule gammaSub(Sigma:Map, (Key:KItem |-> Type:KItem) Gamma:Map, Newgamma:Map)
-      => gammaSub(Sigma, Gamma, Newgamma[Key <- typeChildSub(Sigma, Type) ] )
+        => gammaSub(Sigma, Gamma, Newgamma[Key <- typeSub(Sigma, Type) ] )
+    //  => gammaSub(Sigma, Gamma, Newgamma[Key <- typeChildSub(Sigma, Type) ] )
 
     rule gammaSub(Sigma:Map, .Map, Newgamma:Map)
       => Newgamma
 
-    rule typeChildSub((guessType(TypeIt) |-> Type:KItem) Sigma:Map, guessType(TypeIt:Int)) => Type
+    //rule typeChildSub((guessType(TypeIt) |-> Type:KItem) Sigma:Map, guessType(TypeIt:Int)) => Type
 
-    rule typeChildSub(Sigma:Map, guessType(TypeIt:Int)) => guessType(TypeIt)
-         requires notBool (guessType(TypeIt) in keys(Sigma))
+    //rule typeChildSub(Sigma:Map, guessType(TypeIt:Int)) => guessType(TypeIt)
+    //     requires notBool (guessType(TypeIt) in keys(Sigma))
 
-    rule freshInstance(guessType(TypeIt:Int)) => guessType(TypeIt)
+    rule freshInstance(guessType(TypeIt:Int), Iter:Int) => guessType(TypeIt)
+    rule freshInstance(forAll(.Set, B:K), Iter:Int) => B
+    rule freshInstance(forAll(SetItem(C:KItem) A:Set, B:K), Iter:Int) => freshInstance(forAll(A, freshInstanceInner(C, B, Iter)), Iter +Int 1)
+
+    syntax KItem ::= freshInstanceInner(K,K,Int) [function]
+
+    rule freshInstanceInner(Repl:KItem, funtype(A:K, B:K), Iter:Int) => funtype(freshInstanceInner(Repl,A,Iter),freshInstanceInner(Repl,B,Iter))
+    rule freshInstanceInner(Repl:KItem, Repl, Iter:Int) => guessType(Iter)
+
+    rule paramSize(forAll(A:Set, B:K)) => size(A)
+    rule paramSize(A:K) => 0 [owise]
 
 
      rule applyGEN(Gamma:Map, (Key:KItem |-> Type:KItem) DeclMap:Map, NewMap:Map, Beta:Map)
@@ -226,21 +240,25 @@ module HASKELL-TYPE-INFERENCING
     syntax KItem ::= gen(Map, K, Map) [function]
     syntax Set ::= freeVarsTy(K, Map) [function]
     syntax Set ::= freeVarsEnv(Map, Map) [function]
-    syntax KItem ::= setBag(Set)
-    syntax Set ::= listToSet(List, Set) [function]
+    //syntax KItem ::= setBag(Set)
+//    syntax Set ::= listToSet(List, Set) [function]
 
-    rule gen(Gamma:Map, Tau:KItem, Beta:Map) => forAll(setBag(freeVarsTy(Tau, Beta) -Set freeVarsEnv(Gamma, Beta)), Tau)
+
+    rule gen(Gamma:Map, forAll(Para:Set, Tau:KItem), Beta:Map) => forAll(freeVarsTy(forAll(Para:Set, Tau), Beta) -Set freeVarsEnv(Gamma, Beta), Tau)
+    rule gen(Gamma:Map, Tau:KItem, Beta:Map) => forAll(freeVarsTy(Tau, Beta) -Set freeVarsEnv(Gamma, Beta), Tau) [owise]
+
+    //rule gen(Gamma:Map, forAll(Para:Set, Tau:KItem), Beta:Map) => forAll(freeVarsTy(forAll(Para:Set, Tau), Beta) -Set freeVarsEnv(Gamma, Beta), Tau)
 
     rule freeVarsTy(guessType(TypeIt:Int), Beta:Map) => SetItem(guessType(TypeIt:Int))
     rule freeVarsTy(funtype(Tauone:KItem, Tautwo:KItem), Beta:Map) => freeVarsTy(Tauone, Beta) freeVarsTy(Tautwo, Beta)
     rule freeVarsTy(Tau:KItem, Beta:Map) => .Set
-         requires Tau in values(Beta)
-    rule freeVarsTy(forAll(setBag(Para:Set), Tau:KItem), Beta:Map) => freeVarsTy(Tau, Beta) -Set Para
+         requires (forAll(.Set, Tau)) in values(Beta)
+    rule freeVarsTy(forAll(Para:Set, Tau:KItem), Beta:Map) => freeVarsTy(Tau, Beta) -Set Para
     rule freeVarsEnv(Gamma:Map, Beta:Map) => listToSet(values(Beta), .Set)
 
 
-    rule listToSet(ListItem(A:KItem) L:List, S:Set) => listToSet(L, SetItem(A) S)
-    rule listToSet(.List, S:Set) => S
+//    rule listToSet(ListItem(A:KItem) L:List, S:Set) => listToSet(L, SetItem(A) S)
+//    rule listToSet(.List, S:Set) => S
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -276,6 +294,8 @@ module HASKELL-TYPE-INFERENCING
    // rule uniFun(ListItem(uniPair(forAll(.List,S:K),T:K)) Rest:List, Sigma:Map) => uniFun(uniSub('aexpQVar(Var),T,Rest), Sigma['aexpQVar(Var) <- T]) //eliminate rule
    //      requires notChildVar('aexpQVar(Var:K),T)
 
+    rule uniFun(ListItem(uniPair(funtype(A:K, B:K), funtype(C:K, D:K))) Rest:List) => uniFun(ListItem(uniPair(A:K, B:K)) ListItem(uniPair(C:K, D:K)) Rest:List) //decompose rule function type
+
     rule uniFun(ListItem(uniPair(S:K,T:K)) Rest:List) 
       => compose((S |-> typeSub(uniFun(uniSub((S |-> T),Rest)),T)),uniFun(uniSub((S |-> T),Rest))) //eliminate rule
          requires isVarType(S) andBool notChildVar(S,T)
@@ -288,26 +308,44 @@ module HASKELL-TYPE-INFERENCING
 
     rule uniSub(Sigma:Map,.List) => .List
     rule uniSub(.Map,L:List) => L
+    rule uniSub(Sigma:Map, Rest:List ListItem(uniPair(A:K, B:K))) => uniSub(Sigma, Rest) ListItem(uniPair(typeSub(Sigma, A), typeSub(Sigma, B)))
 
     //rule typeSub(substi(.Map),Tau:KItem) => Tau
     rule typeSub(Sigma:Map (Tau |-> Newtau:KItem),Tau:KItem) => typeSub(Sigma (Tau |-> Newtau),Newtau)
     rule typeSub(Sigma:Map,funtype(Tauone:KItem,Tautwo:KItem)) => funtype(typeSub(Sigma,Tauone),typeSub(Sigma,Tautwo))
     rule typeSub(Sigma:Map,Tau:KItem) => Tau [owise]
 
-    syntax Map ::= composeIn(Map, Map, K)
+    syntax Map ::= composeIn(Map, Map, Map, K, K) [function]
+
+    rule compose(Sigmaone:Map, Sigmatwo:Map) => composeIn(Sigmaone, Sigmatwo, .Map, .K, .K)
+
+    rule composeIn(Sigmaone:Map, (Key:KItem |-> Type:KItem) Sigmatwo:Map, NewMap:Map, .K, .K) => composeIn(Sigmaone, Sigmatwo, NewMap, Key, Type)
+
+    rule composeIn((Keyone |-> Typetwo:KItem) Sigmaone:Map, Sigmatwo:Map, NewMap:Map, Keyone:KItem, Typeone:KItem) => composeIn(Sigmaone, Sigmatwo, NewMap, Keyone, Typeone)
+
+    rule composeIn((Typeone |-> Typetwo:KItem) Sigmaone:Map, Sigmatwo:Map, NewMap:Map, Keyone:KItem, Typeone:KItem) => composeIn(Sigmaone, Sigmatwo, NewMap[Keyone <- Typetwo], .K, .K)
+         requires notBool(Keyone in keys(Sigmaone))
+
+    rule composeIn(Sigmaone:Map, Sigmatwo:Map, NewMap:Map, Keyone:KItem, Typeone:KItem) => composeIn(Sigmaone, Sigmatwo, NewMap[Keyone <- Typeone], .K, .K) [owise]
+
+    rule composeIn(Sigmaone:Map, .Map, NewMap:Map, .K, .K) => Sigmaone NewMap
+
+    //rule composeIn(Sigmaone:Map, .Map, .Map, .K, .K) => Sigmaone
+
+    //rule composeIn((Key:KItem |-> Type:KItem) Sigmaone:Map, .Map, NewMap:Map) => composeIn(Sigmaone, .Map, NewMap[Key <- mapLookup(Sigmaone, Type)])
 
     //rule compose(Sigmaone:Map,Sigmatwo:Map) => updateMap(Sigmaone,Sigmatwo)
     //rule compose(Sigmaone:Map, (Keytwo:KItem |-> Valtwo:KItem) Sigmatwo:Map) => compose(Sigmaone[Keytwo <- Valtwo][Valtwo <- mapLookup(Sigmaone, Keytwo)], Sigmatwo)
     //rule compose(Sigmaone:Map, (Key:KItem |-> Type:KItem) Sigmatwo:Map, .K) => compose(Sigmaone[Type <- mapLookup(Sigmaone, Key)][Key <- Type], Sigmatwo, mapLookup(Sigmaone, Key))
-    rule compose(Sigmaone:Map, (Key:KItem |-> Type:KItem) Sigmatwo:Map) => composeIn(Sigmaone, Sigmatwo, mapLookup(Sigmaone, Key))
-         requires (notBool (Type in values(Sigmaone))) andBool (Type =/=K mapLookup(Sigmaone, Key))
+    //rule compose(Sigmaone:Map, (Key:KItem |-> Type:KItem) Sigmatwo:Map) => composeIn(Sigmaone, Sigmatwo, mapLookup(Sigmaone, Key))
+    //     requires (notBool (Type in values(Sigmaone))) andBool (Type =/=K mapLookup(Sigmaone, Key))
     //rule compose(Sigmaone:Map, (Key:KItem |-> Type:KItem) Sigmatwo:Map) => compose(Sigmaone[Key <- Type][Type <- mapLookup(Sigmaone, Key)], Sigmatwo)
     //     requires (notBool (Type in values(Sigmaone))) andBool (Type =/=K mapLookup(Sigmaone, Key))
 //    rule compose(Sigmaone:Map, (Keytwo:KItem |-> Valtwo:KItem) Sigmatwo:Map) => compose(Sigmaone[Valtwo <- mapLookup(Sigmaone, Keytwo)], Sigmatwo)
 //         requires (Valtwo in values(Sigmaone)) andBool (Valtwo =/=K mapLookup(Sigmaone, Keytwo))
     //rule compose(Sigmaone:Map, (Keytwo:KItem |-> Valtwo:KItem) Sigmatwo:Map) => compose((Keytwo |-> Valtwo) Sigmaone, Sigmatwo)
     // requires notBool (Keytwo in keys(Sigmaone))
-    rule compose(Sigmaone:Map, .Map) => Sigmaone
+    //rule compose(Sigmaone:Map, .Map) => Sigmaone
     // rule compose(substi(Sone:K,Tone:K),substi(Stwo:K,Ttwo:K)) => substi(typeSub(substi(Stwo,Ttwo),Sone),Tone)
 
 
