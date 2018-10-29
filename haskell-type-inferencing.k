@@ -223,6 +223,7 @@ module HASKELL-TYPE-INFERENCING
 
     rule freshInstanceInner(Repl:KItem, funtype(A:K, B:K), Iter:Int) => funtype(freshInstanceInner(Repl,A,Iter),freshInstanceInner(Repl,B,Iter))
     rule freshInstanceInner(Repl:KItem, Repl, Iter:Int) => guessType(Iter)
+    rule freshInstanceInner(Repl:KItem, Target:KItem, Iter:Int) => Target [owise]
 
     rule paramSize(forAll(A:Set, B:K)) => size(A)
     rule paramSize(A:K) => 0 [owise]
