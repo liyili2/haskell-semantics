@@ -302,15 +302,17 @@ module HASKELL-SYNTAX
 
     syntax AType ::= GTyCon                     
                    | TyVar                      
-                   | "(" TypeTuple ")"
+                   | "(" TypeTuple ")"          [klabel('tupleCover)]
                    | "[" Type "]"               [klabel('tyList)]
-                   | "(" Type ")"              
+                   | "(" Type ")"               [bracket]           
     syntax TypeTuple ::= Type "," Type          [right,klabel('twoTypeTuple)]
                        | Type "," TypeTuple     [klabel('typeTupleCon)]
     syntax Types ::= List{Type, ","}
 
-    syntax GConCommas ::= "," | "," GConCommas
-    syntax GConCommon ::= "()" | "[]" | "(" GConCommas ")" //was incorrect syntax
+    syntax GConCommas ::= ","            [klabel('dotInTuple)]
+                       | "," GConCommas  [klabel('dotCon)]
+    syntax GConCommon ::= "()" [klabel('unitType)] | "[]"
+                        | "(" GConCommas ")"  [klabel('tupleFun)]//was incorrect syntax
     syntax GTyCon ::= QTyCon
                     | GConCommon
                     | "(->)"

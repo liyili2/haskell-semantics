@@ -20,23 +20,129 @@ module HASKELL-HELPER
    rule updateMapItem(M:Map, names(S:Set), A:K, V:K)
              => M (A |-> names(SetItem(V) S))
 
+   //find unique father of a given type name
+   syntax KItem ::= findFather(Map, K, Map, K, K) [function]
+                 //imports, mod, ty-map, t, hold1
+                  | findFatherAux(Map, K, K, Map, K) [function]
+                //imports, mod, mods, ty-map, t
+   rule findFather(IM:Map, Mod:K, TM:Map, T:K, .K) => none 
+        requires notBool Mod in keys(TM)
+   rule findFather(IM:Map, Mod:K, (Mod |-> X:K) TM:Map, T:K, .K)
+         => findFather(IM:Map, Mod:K, TM, T, X)
+   rule findFather(IM:Map, Mod:K, TM:Map, T:K, typeMap(X:Map)) => Mod
+        requires T in keys(X)
+   rule findFather(IM:Map (Mod |-> Fa:K), Mod:K, TM:Map, T:K, typeMap(X:Map))
+               => findFatherAux(IM, .K, Fa, TM, T)
+        requires notBool T in keys(X)
+   rule findFather(IM:Map, Mod:K, TM:Map, T:K, X:K) => none [owise]
+
+   rule findFatherAux(IM:Map, .K, names(.Set), TM:Map, T:K) => none
+   rule findFatherAux(IM:Map, .K, names(SetItem(A:K) S:Set), TM:Map, T:K)
+            => findFatherAux(IM, A, names(S), TM, T)
+   rule findFatherAux(IM:Map, A:KItem, names(S:Set), TM:Map, T:K)
+             => findFather(IM, A, TM, T, .K)
+        requires findFatherAux(IM, .K, names(S:Set), TM:Map, T) ==K none
+   rule findFatherAux(IM:Map, A:KItem, names(S:Set), TM:Map, T:K)
+             => findFatherAux(IM, .K, names(S:Set), TM:Map, T)
+        requires findFatherAux(IM, .K, names(S:Set), TM:Map, T) =/=K none
+                 andBool findFather(IM, A, TM, T, .K) ==K none
+
    //find the arity of a given op, if not then return none
+   syntax Int ::= countOnCommas(GConCommas) [function]
+   rule countOnCommas('dotInTuple(.KList)) => 1
+   rule countOnCommas('dotCon(C:GConCommas)) => 1 +Int countOnCommas(C)
+
+   syntax Bool ::= isFather(K, K, K, Map) [function]
+                 | isFatherAux(K, Set, Map) [function]
+   rule isFather(A:K, A:K, .K, M:Map) => true
+   rule isFather(A:K, B:K, .K, .Map) => false
+        requires A =/=K B
+   rule isFather(A:K, B:K, .K, M:Map (B |-> X:K))
+           => isFather(A, B, X, M)
+        requires A =/=K B
+   rule isFather(A:K, B:K, names(S:Set), M:Map)
+         => isFatherAux(A, S, M)
+   rule isFatherAux(A:K, .Set, M:Map) => false
+   rule isFatherAux(A:K, SetItem(B:K) S:Set, M:Map)
+           => isFather(A, B, .K, M) orBool isFatherAux(A, S, M)
+
+   syntax KItem ::= getArity(Map, K, K, K) [function]
+   rule getArity(M:Map (A |-> C), A:K, B:K, .K)
+             => getArity(M, A, B, C)
+   rule getArity(M:Map, A:K, B:K, typeMap((B |-> N:K) X:Map))
+           => N
+   rule getArity(M:Map, A:K, B:K, S:K) => none [owise]
+
    syntax KItem ::= findArity(K, K, Map, Map) [function]
                //mod, ty, ty-map, imports
+   rule findArity(Mod:K, 'tupleCover(T:TypeTuple), TM:Map, IM:Map) => 0
+   rule findArity(Mod:K, [T:Type], TM:Map, IM:Map) => 0
+   rule findArity(Mod:K, T:TyVar, TM:Map, IM:Map) => none
+   rule findArity(Mod:K, 'unitType(.KList), TM:Map, IM:Map) => 0
+   rule findArity(Mod:K, [], TM:Map, IM:Map) => 0
+   rule findArity(Mod:K, 'tupleFun(C:GConCommas), TM:Map, IM:Map) => countOnCommas(C) +Int 1
+   rule findArity(Mod:K, 'conTyCon(M1:K,, T:K), TM:Map, IM:Map)
+           => getArity(TM, M1, T, .K)
+        requires isFather(M1, Mod, .K, IM)
+   rule findArity(Mod:K, T:TyCon, TM:Map, IM:Map)
+           => getArity(TM, findFather(IM, Mod, TM, T, .K), T, .K)
+        requires findFather(IM, Mod, TM, T, .K) =/=K none
+   rule findArity(Mod:K, T:TyCon, TM:Map, IM:Map) => none [owise]
 
    //a helper function to transform concrete type to abstract type
+   syntax Int ::= typeTupleCount(TypeTuple) [function]
+   rule typeTupleCount('twoTypeTuple(A:K,, B:K)) => 2
+   rule typeTupleCount('typeTupleCon(A:K,, B:K)) => 1 +Int typeTupleCount(B)
+
+   syntax KItem ::= dealWithTuple(K) [function]
+   rule dealWithTuple('tupleFun(A:GConCommas)) => tupleType(countOnCommas(A))
+   rule dealWithTuple(A:K) => A [owise]
+
    syntax KItem ::= toAbsTypeInClass(K, Set, K, Map, Map) [function]
                   | toAbsTypeInClassApp(K, Set, K, List, Map,Map) [function]
            //module, type expression, type map, import map
                   | toAbsTypeInClassAppAux(K, Set, K, List, List, Map,Map) [function]
+   syntax List ::= toAbsTypeInClassTuple(K, Set, TypeTuple, Map, Map) [function]
 
    rule toAbsTypeInClass(Mod:K, S:Set, 'typeArrow(B:BType,, T:Type), TM:Map, IM:Map)
             => typeConst((->), ListItem(toAbsTypeInClass(Mod,S, B, TM, IM))
                              ListItem(toAbsTypeInClass(Mod,S, T, TM, IM)))
         requires toAbsTypeInClass(Mod,S, B, TM, IM) =/=K none
-              andBool toAbsTypeInClass(Mod,S, B, TM, IM) =/=K none
+              andBool toAbsTypeInClass(Mod,S, T, TM, IM) =/=K none
    rule toAbsTypeInClass(Mod:K, S:Set, 'baTypeCon(A:AType,, B:BType), TM:Map, IM:Map)
                 => toAbsTypeInClassApp(Mod, S, A, ListItem(B), TM, IM)
+   rule toAbsTypeInClass(Mod:K, S:Set, A:TyVar, TM:Map, IM:Map) => A
+        requires notBool A in S
+   rule toAbsTypeInClass(Mod:K, S:Set, A:TyVar, TM:Map, IM:Map) => modVar(A)
+        requires A in S
+   rule toAbsTypeInClass(Mod:K, S:Set, 'unitType(.KList), TM:Map, IM:Map)
+           => typeConst('unitType(.KList), .List)
+   rule toAbsTypeInClass(Mod:K, S:Set, 'tyList(B:K), TM:Map, IM:Map)
+           => typeConst([], ListItem(toAbsTypeInClass(Mod,S, B, TM, IM)))
+        requires toAbsTypeInClass(Mod,S, B, TM, IM) =/=K none
+   rule toAbsTypeInClass(Mod:K, S:Set, 'tupleCover(B:TypeTuple), TM:Map, IM:Map)
+           => typeConst(tupleType(typeTupleCount(B)),
+                         ListItem(toAbsTypeInClassTuple(Mod,S, B, TM, IM)))
+        requires size(toAbsTypeInClassTuple(Mod,S, B, TM, IM)) =/=K 0
+   rule toAbsTypeInClass(Mod:K, S:Set, 'conTyCon(A:K,,T:K), TM:Map, IM:Map)
+            => typeConst(T, .List)
+        requires isFather(A, Mod, .K, IM) andBool getArity(TM, A, T, .K) ==K 0
+
+   rule toAbsTypeInClass(Mod:K, S:Set, A:K, TM:Map, IM:Map) => none [owise]
+
+
+   rule toAbsTypeInClassTuple(Mod:K, S:Set, 'twoTypeTuple(A:K,,B:K), TM:Map, IM:Map)
+          => ListItem(toAbsTypeInClass(Mod,S, A, TM, IM))
+                  ListItem(toAbsTypeInClass(Mod,S, B, TM, IM))
+        requires toAbsTypeInClass(Mod,S, A, TM, IM) =/=K none
+              andBool toAbsTypeInClass(Mod,S, B, TM, IM) =/=K none
+   rule toAbsTypeInClassTuple(Mod:K, S:Set, 'typeTupleCon(A:K,,B:TypeTuple), TM:Map, IM:Map)
+          => ListItem(toAbsTypeInClass(Mod,S, A, TM, IM))
+                 toAbsTypeInClassTuple(Mod, S, B, TM, IM)
+        requires toAbsTypeInClass(Mod,S, A, TM, IM) =/=K none
+              andBool size(toAbsTypeInClassTuple(Mod, S, B, TM, IM)) =/=K 0
+   rule toAbsTypeInClassTuple(Mod:K, S:Set, A:TypeTuple, TM:Map, IM:Map) => .List [owise]
+
 
    rule toAbsTypeInClassApp(Mod:K, S:Set, 'baTypeCon(A:AType,, B:BType),
             L:List, TM:Map, IM:Map) 
@@ -49,7 +155,7 @@ module HASKELL-HELPER
            => typeConst(modVar(A), L)
         requires A in S
    rule toAbsTypeInClassAppAux(Mod:K, S:Set, A:K, .List, L:List, TM:Map, IM:Map)
-           => typeConst(A, L)
+           => typeConst(dealWithTuple(A), L)
         requires notBool A in S andBool findArity(Mod, A, TM, IM) ==K size(L)
    rule toAbsTypeInClassAppAux(Mod:K, S:Set, A:K, .List, L:List, TM:Map, IM:Map) => none
         requires notBool A in S andBool findArity(Mod, A, TM, IM) =/=K size(L)
@@ -64,6 +170,8 @@ module HASKELL-HELPER
            => toAbsTypeInClassAppAux(Mod, S, A, BL,
                       L ListItem(toAbsTypeInClass(Mod, S, C, TM, IM)), TM, IM)
         requires toAbsTypeInClass(Mod, S, C, TM, IM) =/=K none
+   rule toAbsTypeInClassAppAux(Mod:K, S:Set, A:K, BL:List, L:List, TM:Map, IM:Map)
+               => none   [owise]
 
    syntax Map ::= classContentToList(K, K, K, Map, Map, Map) [function]
                    //module, class, decls, type-map, constr-map, import-map

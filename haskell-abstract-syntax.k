@@ -57,6 +57,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax Type ::= TypeResult
     syntax TypeResult ::= TyVar | modVar(TyVar)
                         | typeConst(K, List) //type constror, list of typeResult
+    syntax KItem ::= tupleType(Int) // the abstract constr of tuple type
     
 
     syntax KItem ::= tAlphaMap(K) //(AlphaMap) temp alphamap
@@ -66,6 +67,8 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= dealWithClass(K)
 
     //useful abstract for module classes
+    syntax KItem ::= typeMap(Map) //store all type with their arity in a module.
+
     syntax KItem ::= names(Set) //store all names
     syntax KItem ::= fullName(K, K) //module name, item name
     syntax KItem ::= className(K, List) //name, list of type vars
