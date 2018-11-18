@@ -195,6 +195,37 @@ module HASKELL-HELPER
                 => (V |-> T) varAssignToList(Mod, Vs, T, TM)
 
 */
+   syntax KItem ::= getImports(Body) [function]
+   rule getImports('bodyimpandtop(A:ImpDecls,, B:TopDecls)) => A
+   rule getImports('bodyimpdecls(A:ImpDecls)) => A
+   rule getImports('bodytopdecls(A:TopDecls)) => .ImpDecls
+
+   syntax KItem ::= dealWithOpt(K) [function]
+   rule dealWithOpt('emptyQualified(.KList)) => .K
+   rule dealWithOpt('emptyOptAsModId(.KList)) => .K
+   rule dealWithOpt('emptyOptImpSpec(.KList)) => .K
+   rule dealWithOpt(A:K) => A [owise]
+
+   //a function to get a module without father
+   syntax KItem ::= findNoFatherMod(Map, K, K) [function]
+   rule findNoFatherMod(.Map, .K, .K) => none
+   rule findNoFatherMod((A:K |-> B:K) M:Map, .K, .K)
+         => findNoFatherMod(M, A, B)
+   rule findNoFatherMod(M:Map, A:K, names(.Set)) => A
+   rule findNoFatherMod(M:Map, A:K, names(S:Set))
+                => findNoFatherMod(M, .K, .K)
+        requires notBool (S <=Set .Set)
+
+   //delete a module instance in import map
+   syntax Map ::= deleteImport(Map, K, K, K) [function]
+   rule deleteImport(.Map, .K, .K, X:K) => .Map
+   rule deleteImport((A:K |-> B:K) M:Map, .K, .K, X:K)
+               => deleteImport(M, A, B, X)
+   rule deleteImport(M:Map, A:K, names(S:Set), A:K)
+            => deleteImport(M:Map, .K, .K, A:K)
+   rule deleteImport(M:Map, A:K, names(S:Set), X:K)
+          => (A |-> names(S -Set X)) deleteImport(M, .K, .K, X)
+        requires A =/=K X
 
 
 endmodule

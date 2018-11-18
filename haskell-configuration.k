@@ -14,6 +14,7 @@ module HASKELL-CONFIGURATION
             <tempAlpha> .K </tempAlpha>
             <tempAlphaMap> .Map </tempAlphaMap>
             <tempT> .K </tempT>
+            <tempExports> .Map </tempExports>
             <currModule> .K </currModule>
             <importTree> .List </importTree>
             <modules> //static information about a module
@@ -22,7 +23,8 @@ module HASKELL-CONFIGURATION
                     <moduleAlphaPlus> .K </moduleAlphaPlus>
                     <moduleBetaPlus> .K </moduleBetaPlus>
                     <moduleCompCode> .K </moduleCompCode>
-                    //<imports> .Set </imports>
+                    <exports> .Set </exports>
+                    <importElemMap> .Map </importElemMap>
                     <classes> .Map </classes> //type classes
                 </module>
               <classNameInMod> .Map </classNameInMod> //store all class names in modules. 

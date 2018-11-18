@@ -26,7 +26,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= callInit(K, K)
     //syntax KItem ::= initPreModule(K) [function]
     //syntax KItem ::= tChecker(K) [function]
-    syntax KItem ::= dealWithImports(K,K)
+    syntax KItem ::= dealWithImports(K)
     syntax KItem ::= dealWithImportsAux(K,K)
     syntax KItem ::= impObject(K,K)
     syntax KItem ::= "checkImportCycle"
@@ -37,6 +37,13 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= Module(K, K)
     syntax KItem ::= preModule(K,K) //(alpha, T)
 
+ 
+    //defaul name for the haskell module if not specified.
+    syntax KItem ::= "noname"
+    syntax KItem ::= "allExports"
+    syntax Set ::= toExports(K) //deal with exports
+    syntax KItem ::= importElem(K, K, K)
+                  //OptQualified, OptAsModId, OptImpSpec 
 
     syntax KItem ::= AList(K)
     syntax KItem ::= AObject(K,K) //(1st -> 2nd) map without idempotency

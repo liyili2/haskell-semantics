@@ -38,26 +38,85 @@ module HASKELL-PREPROCESSING
     rule convertToList(A:KItem ~> B:K) => ListItem(A) convertToList(B)
 */
 
-    rule <k> 'modListSingle('module(A:K,, B:K)) => dealWithImports(A,B) ...</k>
+    rule <k> 'modListSingle('module(A:K,, B:K)) => dealWithImports(getImports(B)) ...</k>
+         <currModule> _:K => A </currModule>
+    (.Bag =>
+          <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
+    	    <moduleName> A </moduleName>
+            <exports> SetItem(allExports) </exports>
+       ...</module>
+    )
 
+    rule <k> 'modList('module(A:K,, B:K),, C:K) => dealWithImports(getImports(B)) ~> C ...</k>
+         <currModule> _:K => A </currModule>
+    (.Bag =>
+          <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
+    	    <moduleName> A </moduleName>
+            <exports> SetItem(allExports) </exports>
+       ...</module>
+    )
+
+    rule <k> 'modListSingle('moduleBody(B:K)) => dealWithImports(getImports(B)) ...</k>
+         <currModule> _:K => noname </currModule>
+    (.Bag =>
+          <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
+    	    <moduleName> noname </moduleName>
+            <exports> SetItem(allExports) </exports>
+       ...</module>
+    )
+
+    rule <k> 'modList('moduleBody(B:K),, C:K) => dealWithImports(getImports(B)) ~> C ...</k>
+         <currModule> _:K => noname </currModule>
+    (.Bag =>
+          <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
+    	    <moduleName> noname </moduleName>
+            <exports> SetItem(allExports) </exports>
+       ...</module>
+    )
+
+    rule <k> 'modListSingle('moduleExp(A:K,, B:K,, D:K))
+               => dealWithImports(getImports(D)) ...</k>
+         <tempExports> M:Map => M[A <- B] </tempExports>
+         <currModule> _:K => A </currModule>
     (.Bag =>
           <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
     	    <moduleName> A </moduleName>
        ...</module>
     )
 
-    rule <k> 'modList('module(A:K,, B:K),, C:K) => dealWithImports(A,B) ~> C ...</k>
-
+    rule <k> 'modList('moduleExp(A:K,, B:K,, D:K),, C:K)
+                    => dealWithImports(getImports(D)) ~> C ...</k>
+         <tempExports> M:Map => M[A <- B] </tempExports>
+         <currModule> _:K => A </currModule>
     (.Bag =>
           <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
     	    <moduleName> A </moduleName>
-       ...</module>
-    )
+       ...</module> )
+
+    //declare toExports
+
+    rule dealWithImports(.ImpDecls) => .K
+    rule dealWithImports('impDecls('emptyOptCNameList(.KList),, Es:ImpDecls))
+             => dealWithImports(Es)
+
+    rule <k> dealWithImports('impDecls(import A:OptQualified
+                     N:ModId C:OptAsModId D:OptImpSpec,, Es:ImpDecls))
+               ...</k>
+         <currModule> Curr:K </currModule>
+             <module>...
+                  <moduleName> Curr </moduleName>
+                  <importElemMap> IM:Map => IM[N <-
+                 importElem(dealWithOpt(A), dealWithOpt(C), dealWithOpt(D))] </importElemMap>
+              ...</module>
+         <importMap> M:Map => updateMapItem(M, .K, Curr, N) </importMap>
+
+    //rule dealWithImports(Mod:K, 
 
 //    rule dealWithImports(Mod:K, A:K) => callInit(A)
 
 //    rule <k> dealWithImports(Mod:K, A:K) => callInit(A) ...</k>
 
+/*
     rule dealWithImports(Mod:K, 'bodyimpandtop(A:K,, B:K))
               => dealWithImportsAux(Mod, A) ~> callInit(Mod, B)
 
@@ -72,7 +131,7 @@ module HASKELL-PREPROCESSING
     rule <k> dealWithImportsAux(Mod:K, 'impDecls('impDecl(X:K,, V:K,, Y:K,, U:K),, As:ImpDecls))
                  => dealWithImportsAux(Mod, As) ...</k>
          <importMap> M:Map => updateMapItem(M, .K, Mod, V) </importMap>
-
+*/
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /*NEW TODO ALGORITHM
@@ -152,7 +211,7 @@ module HASKELL-PREPROCESSING
     rule countNames(Mod:K, 'bodytopdecls(I:K)) => countNames(Mod, I)
     rule countNames(Mod:K, .TopDecls) => .K
     rule <k> countNames(Mod:K, 'topdeclslist('class(A:K,, B:K,, C:K,, D:K),, Rest:K))
-               => ...</k>
+               => countNames(Mod, Rest) ...</k>
          <module>... <moduleName> Mod </moduleName>
                       <classes> M:Map => M[B <- none] </classes>
                 ...</module>
