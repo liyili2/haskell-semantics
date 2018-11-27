@@ -17,6 +17,7 @@ module HASKELL-CONFIGURATION
             <tempExports> .Map </tempExports>
             <currModule> .K </currModule>
             <importTree> .List </importTree>
+            <tempImports> .Map </tempImports>
             <modules> //static information about a module
                 <module multiplicity="*">
                     <moduleName> .K </moduleName>
@@ -33,6 +34,7 @@ module HASKELL-CONFIGURATION
               <constrNameInMod> .Map </constrNameInMod> //store all constructor names in modules. 
               <importMap> .Map </importMap>
             </modules>
+            <output stream="stdout" color="DodgerBlue"> .List </output>
         </T>
 
 endmodule

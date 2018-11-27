@@ -206,16 +206,6 @@ module HASKELL-HELPER
    rule dealWithOpt('emptyOptImpSpec(.KList)) => .K
    rule dealWithOpt(A:K) => A [owise]
 
-   //a function to get a module without father
-   syntax KItem ::= findNoFatherMod(Map, K, K) [function]
-   rule findNoFatherMod(.Map, .K, .K) => none
-   rule findNoFatherMod((A:K |-> B:K) M:Map, .K, .K)
-         => findNoFatherMod(M, A, B)
-   rule findNoFatherMod(M:Map, A:K, names(.Set)) => A
-   rule findNoFatherMod(M:Map, A:K, names(S:Set))
-                => findNoFatherMod(M, .K, .K)
-        requires notBool (S <=Set .Set)
-
    //delete a module instance in import map
    syntax Map ::= deleteImport(Map, K, K, K) [function]
    rule deleteImport(.Map, .K, .K, X:K) => .Map
@@ -224,8 +214,17 @@ module HASKELL-HELPER
    rule deleteImport(M:Map, A:K, names(S:Set), A:K)
             => deleteImport(M:Map, .K, .K, A:K)
    rule deleteImport(M:Map, A:K, names(S:Set), X:K)
-          => (A |-> names(S -Set X)) deleteImport(M, .K, .K, X)
+          => (A |-> names(S -Set SetItem(X))) deleteImport(M, .K, .K, X)
         requires A =/=K X
+
+   //select a module that has no father
+   syntax KItem ::= selectNoFather(K, K, Map) [function]
+   rule selectNoFather(.K, .K, .Map) => none
+   rule selectNoFather(.K, .K, (A:K |-> B:K) M:Map)
+         => selectNoFather(A, B, M)
+   rule selectNoFather(A:K, names(.Set), M:Map) => A
+   rule selectNoFather(A:K, names(SetItem(B:K) S:Set), M:Map)
+             => selectNoFather(.K, .K, M)
 
 
 endmodule

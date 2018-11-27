@@ -3,12 +3,14 @@ requires "haskell-syntax.k"
 requires "haskell-configuration.k"
 requires "haskell-abstract-syntax.k"
 requires "haskell-helper.k"
+requires "haskell-errors.k"
 
 module HASKELL-PREPROCESSING
     imports HASKELL-SYNTAX
     imports HASKELL-ABSTRACT-SYNTAX
     imports HASKELL-CONFIGURATION
     imports HASKELL-HELPER
+    imports HASKELL-ERRORS
 
 /*
     //USER DEFINED LIST
@@ -92,6 +94,23 @@ module HASKELL-PREPROCESSING
           <module>...   //DOT DOT DOT MEANS OVERWRITE ONLY SOME OF THE DEFAULTS
     	    <moduleName> A </moduleName>
        ...</module> )
+
+    //select a module that does not have father. 
+    rule <k> startPreprocessing => selectImport ...</k>
+         <tempImports> .Map => M </tempImports>
+         <importMap> M:Map </importMap>
+
+    rule <k> selectImport => .K ...</k>
+         <tempImports> M:Map => deleteImport(M, .K, .K,
+                                selectNoFather(.K, .K, M)) </tempImports>
+         <currModule> Curr:K => selectNoFather(.K, .K, M) </currModule>
+         requires selectNoFather(.K, .K, M) =/=K none
+ 
+    rule <k> selectImport => error(cyclicImports) ...</k>
+         <tempImports> M:Map </tempImports>
+         requires selectNoFather(.K, .K, M) ==K none
+
+    
 
     //declare toExports
 

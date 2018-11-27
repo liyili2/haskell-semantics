@@ -4,7 +4,12 @@ requires "haskell-syntax.k"
 module HASKELL-ABSTRACT-SYNTAX
        imports HASKELL-SYNTAX
 
-        syntax KItem ::= "error"
+    //error states
+    syntax KItem ::= "error"
+    syntax KItem ::= error(K) //error with message
+    syntax KItem ::= "cyclicImports"
+
+
 
     syntax KItem ::= "startChecks"
     syntax KItem ::= "checkNoSameKey"
@@ -44,6 +49,8 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax Set ::= toExports(K) //deal with exports
     syntax KItem ::= importElem(K, K, K)
                   //OptQualified, OptAsModId, OptImpSpec 
+    syntax KItem ::= "startPreprocessing"
+    syntax KItem ::= "selectImport"
 
     syntax KItem ::= AList(K)
     syntax KItem ::= AObject(K,K) //(1st -> 2nd) map without idempotency
