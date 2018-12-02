@@ -88,5 +88,16 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= className(K, List) //name, list of type vars
     syntax KItem ::= typeClass(K, List, Map) // father, type vars, contents
 
+    //expression syntax
+    //1 gendecls are signatures
+    syntax KItem ::= typeSig(List,K,K) //contexts, var, type
+    syntax KItem ::= fixitySig(K, Int, K) //fixity, precedence, op
+
+    //other declarations define function bodies
+    //rhs could be either one of pattern,exp, or 
+    //a list of guards 
+    syntax KItem ::= decl(Bool, K, List, List)
+              //irrefutable?, pattern, rhs, conditions
+    syntax KItem ::= guard(List, K) //patterns, exp
 
 endmodule
