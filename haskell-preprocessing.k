@@ -372,17 +372,24 @@ module HASKELL-PREPROCESSING
     rule keyCheck(AList(.List), TList(.List), D:Set, G:List) => lengthCheck(size(G),size(D))
 
 
-    syntax KItem ::= makeAlphaM(K,K) [function] //(Alpha, AlphaMap)
 
+    //deal with alpha map, deal with renaming of type name
+    rule <k> makeAlphaMap => makeAlphaM(S, .Map) ...</k>
+         <tempModule> S:K </tempModule>
+
+    rule <k> putAlphaMap(M:Map) => .K ...</k>
+         <tempAlphaMap> _:Map => M </tempAlphaMap>
+/*
     rule <k> makeAlphaMap
              => makeAlphaM(A, .Map) ...</k>
-         <tempAlpha> A:K </tempAlpha>
+         <tempAlpha> A:K </tempAlpha> 
 
     rule makeAlphaM(AList(ListItem(AObject(A:K,B:K)) C:List), M:Map) => makeAlphaM(AList(C), M[A <- B])
     rule makeAlphaM(AList(.List), M:Map) => tAlphaMap(M)
 
     rule <k> tAlphaMap(M:K) => .K ...</k>
          <tempAlphaMap> OldAlphaMap:K => M </tempAlphaMap>
+*/
 
 //    syntax KItem ::= tkeyCheck(K,K,K) [function] //(T,List of T,Set of T)
 

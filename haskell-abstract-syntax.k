@@ -8,8 +8,9 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "error"
     syntax KItem ::= error(K) //error with message
     syntax KItem ::= "cyclicImports"
-
-
+    syntax KItem ::= "typeVarNoInclusive"
+    syntax KItem ::= "repeatedNames"
+    syntax KItem ::= "cycleAlpha"
 
     syntax KItem ::= "startChecks"
     syntax KItem ::= "checkNoSameKey"
@@ -18,6 +19,8 @@ module HASKELL-ABSTRACT-SYNTAX
         //Make sure typeconstructors do not collide in T
     syntax KItem ::= "makeAlphaMap"
         //make map for alpha
+    syntax KItem ::= putAlphaMap(Map)
+
     syntax KItem ::= "checkAlphaNoLoops"
         //alpha check for no loops
         //check alpha to make sure that everything points to a T

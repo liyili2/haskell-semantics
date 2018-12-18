@@ -226,5 +226,85 @@ module HASKELL-HELPER
    rule selectNoFather(A:K, names(SetItem(B:K) S:Set), M:Map)
              => selectNoFather(.K, .K, M)
 
+   //functions to check if an adding edge will cause the graph to have cycle
+   syntax Bool ::= hasCycle(K, K, K, Map) [function] //target, source, next-targets, graph
+                 | hasCycleAux(K, Set, Map) [function]//target, next-targets, graph
+   rule hasCycle(A:K, B:K, .K, M:Map) => false
+        requires notBool B in keys(M)
+   rule hasCycle(A:K, B:K, .K, (B |-> N:K) M:Map)
+         => hasCycle(A, B, N, M)
+   rule hasCycle(A:K, B:K, names(S:Set), M:Map) => true
+        requires A in S
+   rule hasCycle(A:K, B:K, names(S:Set), M:Map)
+         => hasCycleAux(A, S, M)
+
+   rule hasCycleAux(A:K, .Set, M:Map) => false
+   rule hasCycleAux(A:K, SetItem(B:K) S:Set, M:Map)
+           => hasCycle(A, B, .K, M) orBool hasCycleAux(A, S, M)
+
+   //make a alpha map from the input 
+   //also check if the alpha has a cycle, and also check if the module has two same name type decls.
+   //also check if every type vars in a type decl is defined in the type vars of the type decl name.
+   /*syntax Bool ::= isAType(K) [function]
+   rule isAType(type A:SimpleType = B:Type) => true
+   rule isAType(_:K) => false [owise] */
+
+   syntax Set ::= getConstrNames(K) [function]
+   rule getConstrNames('simpleTypeCon(A:TyCon,, B:TyVars)) => SetItem(A)
+   rule getConstrNames(T:TyCon) => SetItem(T)
+   rule getConstrNames('conTyCon(A:ModId,,T:TyCon)) => .Set
+   rule getConstrNames('tupleCover(Ts:TypeTuple)) => getConstrNames(Ts)
+   rule getConstrNames('tyList(T:K)) => getConstrNames(T)
+   rule getConstrNames('group(T:K)) => getConstrNames(T)
+   rule getConstrNames('baTypeCon(T1:K,, T2:K)) => getConstrNames(T1) getConstrNames(T2) 
+   rule getConstrNames('typeArrow(T1:K,, T2:K)) => getConstrNames(T1) getConstrNames(T2) 
+   rule getConstrNames('twoTypeTuple(T1:K,, T2:K)) => getConstrNames(T1) getConstrNames(T2) 
+   rule getConstrNames('typeTupleCon(T1:K,, T2:K)) => getConstrNames(T1) getConstrNames(T2) 
+   rule getConstrNames(T:K) => .Set [owise]
+
+   syntax Set ::= getTypeNames(K) [function]
+   rule getTypeNames('simpleTypeCon(A:TyCon,, B:TyVars)) => getTypeNames(B)
+   rule getTypeNames(.TyVars) => .Set
+   rule getTypeNames('typeVars(A:K,, B:K)) => getTypeNames(A) getTypeNames(B)
+   rule getTypeNames(T:TyVar) => SetItem(T)
+   rule getTypeNames('conTyCon(A:ModId,,T:TyCon)) => .Set
+   rule getTypeNames('tupleCover(Ts:TypeTuple)) => getTypeNames(Ts)
+   rule getTypeNames('tyList(T:K)) => getTypeNames(T)
+   rule getTypeNames('group(T:K)) => getTypeNames(T)
+   rule getTypeNames('baTypeCon(T1:K,, T2:K)) => getTypeNames(T1) getTypeNames(T2) 
+   rule getTypeNames('typeArrow(T1:K,, T2:K)) => getTypeNames(T1) getTypeNames(T2) 
+   rule getTypeNames('twoTypeTuple(T1:K,, T2:K)) => getTypeNames(T1) getTypeNames(T2) 
+   rule getTypeNames('typeTupleCon(T1:K,, T2:K)) => getTypeNames(T1) getTypeNames(T2) 
+   rule getTypeNames(T:K) => .Set [owise]
+
+   syntax Map ::= addEdges(Set, Set) [function]
+   rule addEdges(A:K, SetItem(B:K) S:Set)
+          => (A |-> names(SetItem(B) S))
+
+   syntax KItem ::= getSingleton(Set) [function]
+   rule getSingleton(SetItem(A:K)) => A
+
+   syntax KItem ::= makeAlphaM(K, Map) [function] //(Alpha, AlphaMap)
+                  | makeAlphaMAux(TopDecl, Map, K) [function]
+   rule makeAlphaM('bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map)
+          => makeAlphaM(Ts, M)
+   rule makeAlphaM('bodyimpdecls(Is:ImpDecls), M:Map) => .K
+   rule makeAlphaM('bodytopdecls(Ts:TopDecls), M:Map) => makeAlphaM(Ts, M)
+   rule makeAlphaM(.TopDecls, M:Map) => putAlphaMap(M)
+   rule makeAlphaM('topdeclslist(A:TopDecl,, As:TopDecls), M:Map)
+              => makeAlphaMAux(A, M, As)
+
+   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K)
+            => makeAlphaM(As, addEdges(getConstrNames(A), getConstrNames(B)) M)
+        requires getTypeNames(B) <=Set getTypeNames(A)
+                  andBool getSingleton(getConstrNames(A)) in keys(M)
+                  andBool notBool hasCycleAux(getSingleton(getConstrNames(A)), getConstrNames(B), M)
+   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K) => error(typeVarNoInclusive)
+        requires notBool (getTypeNames(B) <=Set getTypeNames(A))
+   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K) => error(repeatedNames)
+        requires notBool getSingleton(getConstrNames(A)) in keys(M)
+   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K) => error(cycleAlpha)
+        requires hasCycleAux(getSingleton(getConstrNames(A)), getConstrNames(B), M)
+   rule makeAlphaMAux(A:TopDecl, M:Map, As:K) => makeAlphaM(As, M) [owise]
 
 endmodule

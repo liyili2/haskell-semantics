@@ -129,7 +129,7 @@ module HASKELL-SYNTAX
     syntax TopDecls ::= List{TopDecl, ";"} [klabel('topdeclslist)]
 
     syntax TopDecl ::= Decl [klabel('topdecldecl)]
-                     > "type" SimpleType "=" Type [klabel('type)]
+                     > "type" SimpleType "=" Type [klabel('atype)]
                      | "data" OptContext SimpleType OptConstrs OptDeriving  [klabel('data)]
                      | "newtype" OptContext SimpleType "=" NewConstr OptDeriving [klabel('newtype)]
                      | "class" OptContext ConId TyVar OptCDecls [klabel('class)]
@@ -293,7 +293,7 @@ module HASKELL-SYNTAX
                               //it must have at least one item
 
     //define type and simple type
-    syntax SimpleType  ::= TyCon TyVars  [klabel('simpleTypeCon)]
+    syntax SimpleType ::= TyCon TyVars  [klabel('simpleTypeCon)]
     syntax Type ::= BType
                   | BType "->" Type  [klabel('typeArrow)]
     syntax BType ::= AType
@@ -305,7 +305,7 @@ module HASKELL-SYNTAX
                    | TyVar                      
                    | "(" TypeTuple ")"          [klabel('tupleCover)]
                    | "[" Type "]"               [klabel('tyList)]
-                   | "(" Type ")"               [bracket]           
+                   | "(" Type ")"               [klabel('group)]           
     syntax TypeTuple ::= Type "," Type          [right,klabel('twoTypeTuple)]
                        | Type "," TypeTuple     [klabel('typeTupleCon)]
     syntax Types ::= List{Type, ","}
