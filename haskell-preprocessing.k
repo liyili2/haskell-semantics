@@ -374,7 +374,7 @@ module HASKELL-PREPROCESSING
 
 
     //deal with alpha map, deal with renaming of type name
-    rule <k> makeAlphaMap => makeAlphaM(S, .Map) ...</k>
+    rule <k> makeAlphaMap => makeAlphaM(S, .Map, .Map) ...</k>
          <tempModule> S:K </tempModule>
 
     rule <k> putAlphaMap(M:Map) => .K ...</k>

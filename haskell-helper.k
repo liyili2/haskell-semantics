@@ -284,27 +284,28 @@ module HASKELL-HELPER
    syntax KItem ::= getSingleton(Set) [function]
    rule getSingleton(SetItem(A:K)) => A
 
-   syntax KItem ::= makeAlphaM(K, Map) [function] //(Alpha, AlphaMap)
-                  | makeAlphaMAux(TopDecl, Map, K) [function]
-   rule makeAlphaM('bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map)
-          => makeAlphaM(Ts, M)
-   rule makeAlphaM('bodyimpdecls(Is:ImpDecls), M:Map) => .K
-   rule makeAlphaM('bodytopdecls(Ts:TopDecls), M:Map) => makeAlphaM(Ts, M)
-   rule makeAlphaM(.TopDecls, M:Map) => putAlphaMap(M)
-   rule makeAlphaM('topdeclslist(A:TopDecl,, As:TopDecls), M:Map)
-              => makeAlphaMAux(A, M, As)
+   syntax KItem ::= makeAlphaM(K, Map, Map) [function] //(Alpha, AlphaMap)
+                  | makeAlphaMAux(TopDecl, Map, K, Map) [function]
+   rule makeAlphaM('bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map, TM:Map)
+          => makeAlphaM(Ts, M, TM)
+   rule makeAlphaM('bodyimpdecls(Is:ImpDecls), M:Map, TM:Map) => .K
+   rule makeAlphaM('bodytopdecls(Ts:TopDecls), M:Map, TM:Map) => makeAlphaM(Ts, M, TM)
+   rule makeAlphaM(.TopDecls, M:Map, TM:Map) => putAlphaMap(TM)
+   rule makeAlphaM('topdeclslist(A:TopDecl,, As:TopDecls), M:Map, TM:Map)
+              => makeAlphaMAux(A, M, As, TM)
 
-   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K)
-            => makeAlphaM(As, addEdges(getConstrNames(A), getConstrNames(B)) M)
+   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K, TM:Map)
+            => makeAlphaM(As, addEdges(getConstrNames(A), getConstrNames(B)) M,
+                            (getConstrNames(A) |-> B) TM)
         requires getTypeNames(B) <=Set getTypeNames(A)
                   andBool getSingleton(getConstrNames(A)) in keys(M)
                   andBool notBool hasCycleAux(getSingleton(getConstrNames(A)), getConstrNames(B), M)
-   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K) => error(typeVarNoInclusive)
+   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K, TM:Map) => error(typeVarNoInclusive)
         requires notBool (getTypeNames(B) <=Set getTypeNames(A))
-   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K) => error(repeatedNames)
+   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K, TM:Map) => error(repeatedNames)
         requires notBool getSingleton(getConstrNames(A)) in keys(M)
-   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K) => error(cycleAlpha)
+   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K, TM:Map) => error(cycleAlpha)
         requires hasCycleAux(getSingleton(getConstrNames(A)), getConstrNames(B), M)
-   rule makeAlphaMAux(A:TopDecl, M:Map, As:K) => makeAlphaM(As, M) [owise]
+   rule makeAlphaMAux(A:TopDecl, M:Map, As:K, TM:Map) => makeAlphaM(As, M, TM) [owise]
 
 endmodule
