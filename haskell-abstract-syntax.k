@@ -73,7 +73,10 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KResult ::= TypeResult
     syntax Type ::= TypeResult
     syntax TypeResult ::= TyVar | modVar(TyVar)
-                        | typeConst(K, List) //type constror, list of typeResult
+                        | typeConst(K, List) //type constror or type var, list of typeResult
+    syntax KResult ::= fullName(K, K) //module name, type con
+    syntax ModId ::= "Prelude"
+
     syntax KItem ::= tupleType(Int) // the abstract constr of tuple type
     
 

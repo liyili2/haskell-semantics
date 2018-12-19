@@ -308,4 +308,17 @@ module HASKELL-HELPER
         requires hasCycleAux(getSingleton(getConstrNames(A)), getConstrNames(B), M)
    rule makeAlphaMAux(A:TopDecl, M:Map, As:K, TM:Map) => makeAlphaM(As, M, TM) [owise]
 
+   //turn type syntax to abstract syntax
+   syntax List ::= toTypeList(K) [function]
+   rule toTypeList(.TyVars) => .List
+   rule toTypeList('typeVars(X:TyVar,, A:TyVars))
+           => ListItem(X) toTypeList(A)
+
+   syntax KItem ::= toAbsType(K, K) [function] //current module name, type
+   rule toAbsType(S:K, 'simpleTypeCon(T:TyCon,, A:TyVars))
+            => typeConst(fullName(S,T), toTypeList(A))
+   rule toAbsType(S:K, A:TyCon) => typeConst(fullName(S,A), .List)
+   rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon))
+             => typeConst(fullName(N,A), .List)
+
 endmodule
