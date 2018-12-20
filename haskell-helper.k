@@ -363,4 +363,8 @@ module HASKELL-HELPER
    rule toAbsTypeTuple(S:K, 'typeTupleCon(A:K,, B:TypeTuple))
                      => ListItem(toAbsType(S, A)) toAbsTypeTuple(S, B)
 
+
+   //collecting preBetaMap info
+   syntax Map ::= makePreBetaMap(K, K, Map) [function]
+
 endmodule

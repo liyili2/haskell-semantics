@@ -21,6 +21,13 @@ module HASKELL-ABSTRACT-SYNTAX
         //make map for alpha
     syntax KItem ::= putAlphaMap(Map)
 
+    //preprocessing of beta map
+    syntax KItem ::= "makePreBetaMap"
+    syntax KResult ::= parKnown(K) //partial known for a guess of a kind
+    syntax KResult ::= "star" // kind inference base
+    syntax KResult ::= kindArrow(K, K) // kind inference arrow case
+
+    //preprocessing of validity checks
     syntax KItem ::= "checkAlphaNoLoops"
         //alpha check for no loops
         //check alpha to make sure that everything points to a T

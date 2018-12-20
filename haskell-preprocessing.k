@@ -380,7 +380,9 @@ module HASKELL-PREPROCESSING
     rule <k> putAlphaMap(M:Map) => .K ...</k>
          <tempAlphaMap> _:Map => M </tempAlphaMap>
 
-
+    //deal with beta map,
+    rule <k> makePreBetaMap => makePreBetaFun(S, .Map, .Map) ...</k>
+         <tempModule> S:K </tempModule>
 
 /*
     rule <k> makeAlphaMap
