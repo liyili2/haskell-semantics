@@ -76,7 +76,7 @@ module HASKELL-ABSTRACT-SYNTAX
                         | typeConst(K, List) //type constror or type var, list of typeResult
     syntax KResult ::= fullName(K, K) //module name, type con
     syntax ModId ::= "Prelude"
-
+    //built-in type cons
     syntax KItem ::= tupleType(Int) // the abstract constr of tuple type
     
 

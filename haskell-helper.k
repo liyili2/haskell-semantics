@@ -52,6 +52,11 @@ module HASKELL-HELPER
    rule countOnCommas('dotInTuple(.KList)) => 1
    rule countOnCommas('dotCon(C:GConCommas)) => 1 +Int countOnCommas(C)
 
+   syntax Int ::= countOnTypeTuple(TypeTuple) [function]
+   rule countOnTypeTuple('twoTypeTuple(A:K,, B:K)) => 2
+   rule countOnTypeTuple('typeTupleCon(A:K,, B:TypeTuple))
+            => 1 +Int countOnTypeTuple(B)
+
    syntax Bool ::= isFather(K, K, K, Map) [function]
                  | isFatherAux(K, Set, Map) [function]
    rule isFather(A:K, A:K, .K, M:Map) => true
@@ -315,10 +320,47 @@ module HASKELL-HELPER
            => ListItem(X) toTypeList(A)
 
    syntax KItem ::= toAbsType(K, K) [function] //current module name, type
+                  | toAbsTypeAux(K, K, List, K) [function]
+                          //curr-mod, type-con-name,type-args, unsolved
+   syntax List ::= toAbsTypeTuple(K, TypeTuple) [function]//curr-mod, type-tuple
+
    rule toAbsType(S:K, 'simpleTypeCon(T:TyCon,, A:TyVars))
             => typeConst(fullName(S,T), toTypeList(A))
+   rule toAbsType(S:K, A:TyVar) => A
    rule toAbsType(S:K, A:TyCon) => typeConst(fullName(S,A), .List)
    rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon))
              => typeConst(fullName(N,A), .List)
+   rule toAbsType(S:K,(->))
+             => typeConst(fullName(Prelude, (->)), .List)
+   rule toAbsType(S:K, 'typeArrow(A:K,, B:K))
+             => typeConst(fullName(Prelude, (->)),
+                         ListItem(toAbsType(S, A)) ListItem(toAbsType(S, B)))
+   rule toAbsType(S:K,[])
+             => typeConst(fullName(Prelude, []), .List)
+   rule toAbsType(S:K, 'tyList(A:K))
+             => typeConst(fullName(Prelude, []),
+                         ListItem(toAbsType(S, A)))
+   rule toAbsType(S:K, 'unitType(.KList))
+             => typeConst(fullName(Prelude, 'unitType(.KList)), .List)
+   rule toAbsType(S:K, 'tupleFun(Gs:GConCommas))
+             => typeConst(fullName(Prelude,
+                      tupleType(countOnCommas(Gs) +Int 1)), .List)
+   rule toAbsType(S:K, 'tupleCover(Ts:TypeTuple))
+             => typeConst(fullName(Prelude,
+                      tupleType(countOnTypeTuple(Ts))), toAbsTypeTuple(S, Ts))
+
+   rule toAbsType(S:K, 'group(T:K)) => toAbsType(S, T)
+   rule toAbsType(S:K, 'baTypeCon(T:K,, T1:K))
+          => toAbsTypeAux(S, toAbsType(S, T), .List, T1)
+
+   rule toAbsTypeAux(S:K, A:K, L:List, 'baTypeCon(T:K,, T1:K))
+           => toAbsTypeAux(S:K, A, L ListItem(toAbsType(S, T)), T1)
+   rule toAbsTypeAux(S:K, A:K, L:List, T:K)
+           => typeConst(A, L ListItem(toAbsType(S, T))) [owise]
+
+   rule toAbsTypeTuple(S:K, 'twoTypeTuple(A:K,, B:K))
+                     => ListItem(toAbsType(S, A)) ListItem(toAbsType(S, B))
+   rule toAbsTypeTuple(S:K, 'typeTupleCon(A:K,, B:TypeTuple))
+                     => ListItem(toAbsType(S, A)) toAbsTypeTuple(S, B)
 
 endmodule
