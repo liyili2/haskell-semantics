@@ -93,7 +93,7 @@ module HASKELL-SYNTAX
     syntax ExportList ::= List{Export, ","}
 
     syntax Export ::= QVar 
-                    | QTyCon OptCQList
+                    | QTyCon OptCQList 
                     | ModuleName
 
     //optional cname list
@@ -164,8 +164,8 @@ module HASKELL-SYNTAX
     syntax DeclsList ::= List{Decl, ";"}
 
     syntax Decl ::= GenDecl
-                  | FunLhs Rhs [klabel('declFunLhsRhs)]
-                  | Pat Rhs [klabel('declPatRhs)]
+                  | FunLhs Rhs [klabel('declFunLhsRhs), onlyLabel]
+                  | Pat Rhs [klabel('declPatRhs), onlyLabel]
 
     syntax OptCDecls ::= "where" CDecls [klabel('cdeclWhere)]
                        | "" [onlyLabel, klabel('emptyOptCDecls)]
@@ -237,7 +237,7 @@ module HASKELL-SYNTAX
     syntax AExp ::= QVar [klabel('aexpQVar)]
                   | GCon
                   | Literal
-                  > AExp AExp [left, klabel('funApp)]
+                  > AExp AExp [left, klabel('funApp), onlyLabel]
                   > QCon "{" FBindList "}"
                   | AExp "{" FBindList "}" //aexp cannot be qcon UNFINISHED
                           //Liyi: first, does not understand the syntax, it is the Qcon {FBindlist}
@@ -276,7 +276,7 @@ module HASKELL-SYNTAX
 
 
     syntax OptBangATypes ::= List{OptBangAType, " "} [klabel('optBangATypes)]
-    syntax OptBangAType ::= OptBang AType [klabel('optBangAType)]
+    syntax OptBangAType ::= OptBang AType [klabel('optBangAType), onlyLabel]
     syntax OptBang ::= "!" | "" [onlyLabel, klabel('emptyBang)]
 
     syntax OptContext ::= Context "=>" | "" [onlyLabel, klabel('emptyContext)]
@@ -285,7 +285,7 @@ module HASKELL-SYNTAX
 
     syntax Classes ::= List{Class, ","}
 
-    syntax SimpleClass ::= QTyCon TyVar  [klabel('classCon)]
+    syntax SimpleClass ::= QTyCon TyVar  [klabel('classCon), onlyLabel]
 
     syntax Class       ::= SimpleClass
                          | QTyCon "(" TyVar ATypeList ")"
@@ -293,11 +293,11 @@ module HASKELL-SYNTAX
                               //it must have at least one item
 
     //define type and simple type
-    syntax SimpleType ::= TyCon TyVars  [klabel('simpleTypeCon)]
+    syntax SimpleType ::= TyCon TyVars  [klabel('simpleTypeCon), onlyLabel]
     syntax Type ::= BType
                   | BType "->" Type  [klabel('typeArrow)]
     syntax BType ::= AType
-                   | AType BType [klabel('baTypeCon)]
+                   | AType BType [klabel('baTypeCon), onlyLabel]
 
     syntax ATypeList ::= List{AType, ""} [klabel('atypeList)]
 
@@ -306,8 +306,8 @@ module HASKELL-SYNTAX
                    | "(" TypeTuple ")"          [klabel('tupleCover)]
                    | "[" Type "]"               [klabel('tyList)]
                    | "(" Type ")"               [klabel('group)]           
-    syntax TypeTuple ::= Type "," Type          [right,klabel('twoTypeTuple)]
-                       | Type "," TypeTuple     [klabel('typeTupleCon)]
+    syntax TypeTuple ::= Type "," Type          [right,klabel('twoTypeTuple), onlyLabel]
+                       | Type "," TypeTuple     [klabel('typeTupleCon), onlyLabel]
     syntax Types ::= List{Type, ","}
 
     syntax GConCommas ::= ","            [klabel('dotInTuple)]
@@ -333,9 +333,9 @@ module HASKELL-SYNTAX
 
     syntax LPat ::= APat
                   | "-" IntFloat    [klabel('minusPat)]
-                  | GCon APatList  [klabel('lpatCon)]//arity gcon = k UNFINISHED
+                  | GCon APatList  [klabel('lpatCon), onlyLabel]//arity gcon = k UNFINISHED
 
-    syntax APatList ::= APat | APat APatList [klabel('apatCon)]
+    syntax APatList ::= APat | APat APatList [klabel('apatCon), onlyLabel]
 
     syntax APat ::= Var [klabel('apatVar)]
                   | Var "@" APat

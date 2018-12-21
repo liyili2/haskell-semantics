@@ -313,6 +313,33 @@ module HASKELL-HELPER
         requires hasCycleAux(getSingleton(getConstrNames(A)), getConstrNames(B), M)
    rule makeAlphaMAux(A:TopDecl, M:Map, As:K, TM:Map) => makeAlphaM(As, M, TM) [owise]
 
+
+   //collect a map for knowing the type name and its partial kind (not proved)
+   syntax Map ::= parKindEntry(SimpleType) [function]
+   syntax KItem ::= resolveKindEntry(TyVars) [function]
+   rule parKindEntry('simpleTypeCon(T:TyCon,, Vs:TyVars))
+                    => (T |-> parKnown(resolveKindEntry(Vs)))
+   rule resolveKindEntry(.TyVars) => star
+   rule resolveKindEntry('typeVars(A:TyVar,,B:TyVars))
+          => kindArrow(star, resolveKindEntry(B))
+
+   syntax KItem ::= collectTypes(K, Map) [function] // decls, store-kind-map
+   rule collectTypes('bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map)
+          => collectTypes(Ts, M)
+   rule collectTypes('bodyimpdecls(Is:ImpDecls), M:Map) => .K
+   rule collectTypes('bodytopdecls(Ts:TopDecls), M:Map) => collectTypes(Ts, M)
+   rule collectTypes(.TopDecls, M:Map) => putKindMap(M)
+   rule collectTypes('topdeclslist(type A:SimpleType = B:Type,, As:TopDecls), M:Map)
+              => collectTypes(As, (parKindEntry(A)) M)
+   rule collectTypes('topdeclslist(data Oc:OptContext A:SimpleType
+                        B:OptConstrs D:OptDeriving,, As:TopDecls), M:Map)
+              => collectTypes(As, (parKindEntry(A)) M)
+   rule collectTypes('topdeclslist(newtype Oc:OptContext A:SimpleType
+                       = B:NewConstr D:OptDeriving,, As:TopDecls), M:Map)
+              => collectTypes(As, (parKindEntry(A)) M)
+   rule collectTypes('topdeclslist(A:TopDecl,, As:TopDecls),
+                   M:Map) => collectTypes(As, M) [owise]
+
    //turn type syntax to abstract syntax
    syntax List ::= toTypeList(K) [function]
    rule toTypeList(.TyVars) => .List
@@ -365,6 +392,17 @@ module HASKELL-HELPER
 
 
    //collecting preBetaMap info
-   syntax Map ::= makePreBetaMap(K, K, Map) [function]
+   syntax Map ::= makePreBetaFun(K, K, Map) [function]
+   
+
+
+
+
+
+
+
+
+
+
 
 endmodule

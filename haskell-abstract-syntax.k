@@ -13,6 +13,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "cycleAlpha"
 
     syntax KItem ::= "startChecks"
+    syntax KItem ::= "nextChecks"
     syntax KItem ::= "checkNoSameKey"
         //Keys of alpha and keys of T should be unique
     syntax KItem ::= "checkTypeConsDontCollide"
@@ -20,6 +21,8 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "makeAlphaMap"
         //make map for alpha
     syntax KItem ::= putAlphaMap(Map)
+    syntax KItem ::= putKindMap(Map)
+    syntax KItem ::= "collectKindInfo"
 
     //preprocessing of beta map
     syntax KItem ::= "makePreBetaMap"
