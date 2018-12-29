@@ -283,7 +283,7 @@ module HASKELL-HELPER
    rule getTypeNames(T:K) => .Set [owise]
 
    syntax Map ::= addEdges(Set, Set) [function]
-   rule addEdges(A:K, SetItem(B:K) S:Set)
+   rule addEdges(SetItem(A:K), SetItem(B:K) S:Set)
           => (A |-> names(SetItem(B) S))
 
    syntax KItem ::= getSingleton(Set) [function]
@@ -301,7 +301,7 @@ module HASKELL-HELPER
 
    rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K, TM:Map)
             => makeAlphaM(As, addEdges(getConstrNames(A), getConstrNames(B)) M,
-                            (getConstrNames(A) |-> B) TM)
+                            (getSingleton(getConstrNames(A)) |-> B) TM)
         requires getTypeNames(B) <=Set getTypeNames(A)
                   andBool getSingleton(getConstrNames(A)) in keys(M)
                   andBool notBool hasCycleAux(getSingleton(getConstrNames(A)), getConstrNames(B), M)
@@ -315,30 +315,30 @@ module HASKELL-HELPER
 
 
    //collect a map for knowing the type name and its partial kind (not proved)
-   syntax Map ::= parKindEntry(SimpleType) [function]
+   syntax Map ::= parKindEntry(K, SimpleType) [function]//curr-mod, simple-type
    syntax KItem ::= resolveKindEntry(TyVars) [function]
-   rule parKindEntry('simpleTypeCon(T:TyCon,, Vs:TyVars))
-                    => (T |-> parKnown(resolveKindEntry(Vs)))
+   rule parKindEntry(S:K, 'simpleTypeCon(T:TyCon,, Vs:TyVars))
+            => (toAbsTypeCon(S,T) |-> parKnown(resolveKindEntry(Vs)))
    rule resolveKindEntry(.TyVars) => star
    rule resolveKindEntry('typeVars(A:TyVar,,B:TyVars))
           => kindArrow(star, resolveKindEntry(B))
 
-   syntax KItem ::= collectTypes(K, Map) [function] // decls, store-kind-map
-   rule collectTypes('bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map)
-          => collectTypes(Ts, M)
-   rule collectTypes('bodyimpdecls(Is:ImpDecls), M:Map) => .K
-   rule collectTypes('bodytopdecls(Ts:TopDecls), M:Map) => collectTypes(Ts, M)
-   rule collectTypes(.TopDecls, M:Map) => putKindMap(M)
-   rule collectTypes('topdeclslist(type A:SimpleType = B:Type,, As:TopDecls), M:Map)
-              => collectTypes(As, (parKindEntry(A)) M)
-   rule collectTypes('topdeclslist(data Oc:OptContext A:SimpleType
+   syntax KItem ::= collectTypes(K, K, Map) [function] //curr-mod, decls, store-kind-map
+   rule collectTypes(Mod:K, 'bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map)
+          => collectTypes(Mod:K, Ts, M)
+   rule collectTypes(Mod:K, 'bodyimpdecls(Is:ImpDecls), M:Map) => .K
+   rule collectTypes(Mod:K, 'bodytopdecls(Ts:TopDecls), M:Map) => collectTypes(Mod:K, Ts, M)
+   rule collectTypes(Mod:K, .TopDecls, M:Map) => putKindMap(M)
+   rule collectTypes(Mod:K, 'topdeclslist(type A:SimpleType = B:Type,, As:TopDecls), M:Map)
+              => collectTypes(Mod:K, As, (parKindEntry(Mod, A)) M)
+   rule collectTypes(Mod:K, 'topdeclslist(data Oc:OptContext A:SimpleType
                         B:OptConstrs D:OptDeriving,, As:TopDecls), M:Map)
-              => collectTypes(As, (parKindEntry(A)) M)
-   rule collectTypes('topdeclslist(newtype Oc:OptContext A:SimpleType
+              => collectTypes(Mod:K, As, (parKindEntry(Mod, A)) M)
+   rule collectTypes(Mod:K, 'topdeclslist(newtype Oc:OptContext A:SimpleType
                        = B:NewConstr D:OptDeriving,, As:TopDecls), M:Map)
-              => collectTypes(As, (parKindEntry(A)) M)
-   rule collectTypes('topdeclslist(A:TopDecl,, As:TopDecls),
-                   M:Map) => collectTypes(As, M) [owise]
+              => collectTypes(Mod:K, As, (parKindEntry(Mod, A)) M)
+   rule collectTypes(Mod:K, 'topdeclslist(A:TopDecl,, As:TopDecls),
+                   M:Map) => collectTypes(Mod:K, As, M) [owise]
 
    //turn type syntax to abstract syntax
    syntax List ::= toTypeList(K) [function]
@@ -346,10 +346,20 @@ module HASKELL-HELPER
    rule toTypeList('typeVars(X:TyVar,, A:TyVars))
            => ListItem(X) toTypeList(A)
 
+   //convert a type con to abs form (fullname)
+   syntax KItem ::= toAbsTypeCon(K, K) [function] //curr-mod-name, type-con
+   rule toAbsTypeCon(Mod:K, T:TyCon) => fullName(Mod, T)
+   rule toAbsTypeCon(Mod:K, 'conTyCon(Mod':K,, T:K)) => fullName(Mod', T)
+
    syntax KItem ::= toAbsType(K, K) [function] //current module name, type
                   | toAbsTypeAux(K, K, List, K) [function]
                           //curr-mod, type-con-name,type-args, unsolved
    syntax List ::= toAbsTypeTuple(K, TypeTuple) [function]//curr-mod, type-tuple
+                 | toAbsTypeList(K, ATypeList) [function]//curr-mod, typelist
+
+   rule toAbsTypeList(S:K, .ATypeList) => .List
+   rule toAbsTypeList(S:K, 'atypeList(A:AType,, B:ATypeList))
+           => ListItem(toAbsType(S, A)) toAbsTypeList(S, B)
 
    rule toAbsType(S:K, 'simpleTypeCon(T:TyCon,, A:TyVars))
             => typeConst(fullName(S,T), toTypeList(A))
@@ -375,6 +385,7 @@ module HASKELL-HELPER
    rule toAbsType(S:K, 'tupleCover(Ts:TypeTuple))
              => typeConst(fullName(Prelude,
                       tupleType(countOnTypeTuple(Ts))), toAbsTypeTuple(S, Ts))
+   rule toAbsType(S:K, A:K) => A [owise]
 
    rule toAbsType(S:K, 'group(T:K)) => toAbsType(S, T)
    rule toAbsType(S:K, 'baTypeCon(T:K,, T1:K))
@@ -392,17 +403,113 @@ module HASKELL-HELPER
 
 
    //collecting preBetaMap info
-   syntax Map ::= makePreBetaFun(K, K, Map) [function]
-   
+   /*
+    syntax OptConstrs  ::= "=" Constrs [klabel('nonemptyConstrs)] | "" [onlyLabel, klabel('emptyConstrs)]
+    syntax Constrs     ::= Constr [klabel('singleConstr)] | Constr "|" Constrs [klabel('multConstr)]
+    syntax Constr      ::= Con OptBangATypes [klabel('constrCon)] // (arity con  =  k, k ≥ 0) UNFINISHED
+                         | SubConstr ConOp SubConstr
+                         | Con "{" FieldDeclList "}"
+   */
 
+   syntax KItem ::= toAbsBangType(K, K, K) [function]
+                 //curr-mod-name, target-type, types
+   rule toAbsBangType(S:K, T:K, .OptBangATypes) => T
+   rule toAbsBangType(S:K, T:K, 'optBangATypes('optBangAType(Op:OptBang,, A:AType)
+        ,, As:OptBangATypes)) => typeConst((->), ListItem(toAbsType(S, A))
+                    ListItem(toAbsBangType(S:K, T:K, As)))
 
+   syntax List ::= expandRecordType(Vars, K) [function]
+   rule expandRecordType(A:Var, T:K) => ListItem(typeConst(recordAssign,
+                                   ListItem(tyVar(A)) ListItem(T)))
+   rule expandRecordType('varCon(A:Var,, As:Vars), T:K)
+           => ListItem(typeConst(recordAssign,
+                      ListItem(tyVar(A)) ListItem(T))) expandRecordType(As, T)
 
+   syntax List ::= toAbsBangTypeInRecord(K, K) [function]
+                 //curr-mod-name, types
+   rule toAbsBangTypeInRecord(S:K, .FieldDeclList) => .List
+   rule toAbsBangTypeInRecord(S:K, 'fieldCon(Vs:Vars :: ! A:AType
+           ,, Fs:FieldDeclList)) => expandRecordType(Vs,
+                       toAbsType(S, A)) toAbsBangTypeInRecord(S, Fs)
+   rule toAbsBangTypeInRecord(S:K, 'fieldCon('varAssign(Vs:Vars,, A:AType)
+           ,, Fs:FieldDeclList)) => expandRecordType(Vs,
+                       toAbsType(S, A)) toAbsBangTypeInRecord(S, Fs)
 
+   syntax Map ::= makeSinglePreBeta(K, K, K) [function]
+          //curr-mod-name, target-type, constrs/newconstr
+   //deal with constrs
+   rule makeSinglePreBeta(S:K, T:K, 'emptyConstrs(.KList)) => .Map
+   rule makeSinglePreBeta(S:K, T:K, 'nonemptyConstrs(Cs:Constrs))
+                => makeSinglePreBeta(S, T, Cs)
+   rule makeSinglePreBeta(S:K, T:K, 'constrCon(N:Con,, Ts:OptBangATypes))
+           => (N |-> toAbsBangType(S, T, Ts))
+   rule makeSinglePreBeta(S:K, T:K, N:Con { F:FieldDeclList })
+           => (N |-> typeConst((->), ListItem(typeConst(
+                         recordType, toAbsBangTypeInRecord(S, F))) ListItem(T)))
+   rule makeSinglePreBeta(S:K, T:K, 'multConstr(
+           'constrCon(N:Con,, Ts:OptBangATypes),, Cs:Constrs))
+           => (N |-> toAbsBangType(S, T, Ts)) makeSinglePreBeta(S, T, Cs)
+   rule makeSinglePreBeta(S:K, T:K, 'multConstr(N:Con { F:FieldDeclList },, Cs:Constrs))
+           => (N |-> typeConst((->), ListItem(typeConst(
+                         recordType, toAbsBangTypeInRecord(S, F))) ListItem(T)))
+            makeSinglePreBeta(S, T, Cs)
+   //deal with newConstr
+   rule makeSinglePreBeta(S:K, T:K, 'newConstrCon(N:Con,, A:AType))
+           => (N |-> typeConst((->), ListItem(toAbsType(S, A)) ListItem(T)))
+   rule makeSinglePreBeta(S:K, T:K, 'newConField(N:Con,, V:Var,, T':Type))
+           => (N |-> typeConst((->), ListItem(typeConst(
+                recordType, ListItem(typeConst(recordAssign,
+                 ListItem(tyVar(V)) ListItem(toAbsType(S, T')))))) ListItem(T)))
 
+   //functions to convert class name to abs form and convert context to a set of classes
 
+   syntax KItem ::= toAbsClass(K, Class) [function] //curr-mod-name, class
+   rule toAbsClass(Mod:K, 'classCon(T:QTyCon,, V:TyVar))
+                  => className(toAbsTypeCon(Mod, T), ListItem(V))
+   rule toAbsClass(Mod:K, 'multiClass(T:QTyCon,, A:TyVar,, As:ATypeList))
+                  => className(toAbsTypeCon(Mod, T), ListItem(A) toAbsTypeList(Mod, As))
 
+   syntax Set ::= contextToSet(K, K) [function] //curr-mod-name, class
+                | contextToSetAux(K, Classes) [function]//curr-mod, classes
+   rule contextToSet(S:K, 'emptyContext(.KList)) => .Set
+   rule contextToSet(S:K, C:Class =>) => SetItem(toAbsClass(S, C))
+   rule contextToSet(S:K, 'contextClass(Cs:Classes) =>)
+             => contextToSetAux(S, Cs)
+   rule contextToSetAux(S:K, .Classes) => .Set
+   rule contextToSetAux(S:K, 'classesCon(A:Class,, B:Classes))
+           => contextToSet(S, A) contextToSetAux(S, B)
 
+   syntax Set ::= derivingToSet(K, K) [function]//curr-mod, opt-deriving
+                | derivingToSetAux(K, DClassList) [function]//curr-mod, DClassList
+   rule derivingToSet(S:K, 'emptyDeriving(.KList)) => .Set
+   rule derivingToSet(S:K, deriving D:DClass) => SetItem(toAbsTypeCon(S, D))
+   rule derivingToSet(S:K, deriving (Ds:DClassList)) => derivingToSetAux(S, Ds)
+   rule derivingToSetAux(S:K, .DClassList) => .Set
+   rule derivingToSetAux(S:K, 'dclassCon(A:DClass,, B:DClassList))
+             => derivingToSet(S,A) derivingToSetAux(S, B)
 
+   syntax KItem ::= makePreBetaFun(K, K, Map) [function]
+                | makePreBetaFunAux(K, K, K, Map) [function]
 
+   rule makePreBetaFun(S:K, 'bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map)
+          => makePreBetaFun(S, Ts, M)
+   rule makePreBetaFun(S:K, 'bodyimpdecls(Is:ImpDecls), M:Map) => .K
+   rule makePreBetaFun(S:K, 'bodytopdecls(Ts:TopDecls), M:Map) => makePreBetaFun(S, Ts, M)
+   rule makePreBetaFun(S:K, .TopDecls, M:Map) => putPreBetaMap(M)
+   rule makePreBetaFun(S:K, 'topdeclslist(A:TopDecl,, As:TopDecls), M:Map)
+              => makePreBetaFunAux(S, A, As, M)
+
+   rule makePreBetaFunAux(S:K, 'data(Oc:K,,
+              'simpleTypeCon(N:K,, Ts:K),, Cons:K,, Od:K), As:K, M:Map)
+          =>  makePreBetaFun(S, As, (toAbsTypeCon(S, N)
+              |-> preBetaEntry(contextToSet(S, Oc), toTypeList(Ts),
+                  makeSinglePreBeta(S, toAbsType(S, N), Cons), derivingToSet(S, Od))) M)
+   rule makePreBetaFunAux(S:K, 'newtype(Oc:K,,
+              'simpleTypeCon(N:K,, Ts:K),, Cons:NewConstr,, Od:K), As:K, M:Map)
+          =>  makePreBetaFun(S, As, (toAbsTypeCon(S, N)
+              |-> preBetaEntry(contextToSet(S, Oc), toTypeList(Ts),
+                  makeSinglePreBeta(S, toAbsType(S, N), Cons), derivingToSet(S, Od))) M)
+   rule makePreBetaFunAux(S:K, A:TopDecl, As:K, TM:Map)
+                  => makePreBetaFun(S, As, TM) [owise]
 
 endmodule

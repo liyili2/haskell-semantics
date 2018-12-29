@@ -39,8 +39,9 @@ module HASKELL-PREPROCESSING
 
     //deal with alpha map, deal with renaming of type name
     //collect information for the type name and kind in the same module
-    rule <k> collectKindInfo => collectTypes(S, .Map) ...</k>
+    rule <k> collectKindInfo => collectTypes(Mod, S, .Map) ...</k>
          <tempModule> S:K </tempModule>
+         <currModule> Mod:K </currModule>
 
     rule <k> makeAlphaMap => makeAlphaM(S, .Map, .Map) ...</k>
          <tempModule> S:K </tempModule>
@@ -48,14 +49,18 @@ module HASKELL-PREPROCESSING
     rule <k> putAlphaMap(M:Map) => .K ...</k>
          <tempAlphaMap> _:Map => M </tempAlphaMap>
 
+    rule <k> putPreBetaMap(M:Map) => .K ...</k>
+         <tempBetaMap> _:Map => M </tempBetaMap>
+
     /*deal with beta map, three steps
       first step is to collect information of a data/newtype, and put them in a list 
       and create a pre-beta-map from type con name to the list.
       REMEMBER to turn type structure into an abstract form.
       second step is to do kind check on the input datatype
       third step, resolve the pre-beta-map to beta map for the module. */
-    rule <k> makePreBetaMap => makePreBetaFun(S, .Map, .Map) ...</k>
+    rule <k> makePreBetaMap => makePreBetaFun(Mod, S, .Map) ...</k>
          <tempModule> S:K </tempModule>
+         <currModule> Mod:K </currModule>
 
     rule <k> putKindMap(M:Map) => .K ...</k>
          <tempKindMap> _:Map => M </tempKindMap>

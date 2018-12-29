@@ -21,6 +21,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "makeAlphaMap"
         //make map for alpha
     syntax KItem ::= putAlphaMap(Map)
+    syntax KItem ::= putPreBetaMap(Map)
     syntax KItem ::= putKindMap(Map)
     syntax KItem ::= "collectKindInfo"
 
@@ -85,6 +86,11 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax TypeResult ::= TyVar | modVar(TyVar)
                         | typeConst(K, List) //type constror or type var, list of typeResult
     syntax KResult ::= fullName(K, K) //module name, type con
+    syntax KResult ::= preBetaEntry(Set, List, Map, Set)
+           //optContext, list_of_vars, Body, optDeriving
+    syntax TyVar ::= tyVar(K) //convert a var to a tyVar, every record label name is a type
+    syntax KResult ::= "recordType" | "recordAssign"
+            //two new type con names for records.
     syntax ModId ::= "Prelude"
     //built-in type cons
     syntax KItem ::= tupleType(Int) // the abstract constr of tuple type
@@ -100,8 +106,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= typeMap(Map) //store all type with their arity in a module.
 
     syntax KItem ::= names(Set) //store all names
-    syntax KItem ::= fullName(K, K) //module name, item name
-    syntax KItem ::= className(K, List) //name, list of type vars
+    syntax KItem ::= className(K, List) //name, list of type-vars
     syntax KItem ::= typeClass(K, List, Map) // father, type vars, contents
 
     //expression syntax

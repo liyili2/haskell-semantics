@@ -13,6 +13,7 @@ module HASKELL-CONFIGURATION
             <tempCode> .K </tempCode>
             <tempAlpha> .K </tempAlpha>
             <tempAlphaMap> .Map </tempAlphaMap>
+            <tempBetaMap> .Map </tempBetaMap>
             <tempKindMap> .Map </tempKindMap>
             <tempT> .K </tempT>
             <tempExports> .Map </tempExports>

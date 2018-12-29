@@ -46,15 +46,15 @@ module HASKELL-SYNTAX
     syntax TyVarTuple ::= TyVar "," TyVar      [klabel('twoTypeVarTuple)]
                         | TyVar "," TyVarTuple [klabel('typeVarTupleCon)]
 
-    syntax Con ::= ConId | "(" ConSym ")"   [klabel('conSymBracket)]
-    syntax Var ::= VarId | "(" VarSym ")"   [klabel('varSymBracket)]
-    syntax QVar ::= QVarId | "(" QConSym ")" [klabel('qVarBracket)]
-    syntax QCon ::= QTyCon | "(" GConSym ")"  [klabel('gConBracket)]
+    syntax Con ::= ConId | "(" ConSym ")"   [klabel('conSymBracket), onlyLabel]
+    syntax Var ::= VarId | "(" VarSym ")"   [klabel('varSymBracket), onlyLabel]
+    syntax QVar ::= QVarId | "(" QConSym ")" [klabel('qVarBracket), onlyLabel]
+    syntax QCon ::= QTyCon | "(" GConSym ")"  [klabel('gConBracket), onlyLabel]
 
-    syntax QConOp ::= GConSym | "`" QTyCon "`"    [klabel('qTyConQuote)]
-    syntax QVarOp ::= QVarSym | "`" QVarId "`"    [klabel('qVarIdQuote)]
-    syntax VarOp ::= VarSym   | "`" VarId "`"     [klabel('varIdQuote)]
-    syntax ConOp ::= ConSym   | "`" ConId "`"     [klabel('conIdQuote)]
+    syntax QConOp ::= GConSym | "`" QTyCon "`"    [klabel('qTyConQuote), onlyLabel]
+    syntax QVarOp ::= QVarSym | "`" QVarId "`"    [klabel('qVarIdQuote), onlyLabel]
+    syntax VarOp ::= VarSym   | "`" VarId "`"     [klabel('varIdQuote), onlyLabel]
+    syntax ConOp ::= ConSym   | "`" ConId "`"     [klabel('conIdQuote), onlyLabel]
 
     syntax GConSym ::= ":" | QConSym
     syntax Vars ::= Var
@@ -195,7 +195,7 @@ module HASKELL-SYNTAX
     syntax OptDeriving ::= Deriving | "" [onlyLabel, klabel('emptyDeriving)]
     syntax Deriving ::= "deriving" DClass
                       | "deriving" "(" DClassList ")"
-    syntax DClassList ::= List{DClass, ","}
+    syntax DClassList ::= List{DClass, ","}  [klabel('dclassCon)]
     syntax DClass ::= QTyCon
 
     syntax FunLhs ::= Var APatList
@@ -261,16 +261,16 @@ module HASKELL-SYNTAX
 
     //constr datatypes
     syntax OptConstrs  ::= "=" Constrs [klabel('nonemptyConstrs)] | "" [onlyLabel, klabel('emptyConstrs)]
-    syntax Constrs     ::= Constr [klabel('singleConstr)] | Constr "|" Constrs [klabel('multConstr)]
+    syntax Constrs     ::= Constr | Constr "|" Constrs [klabel('multConstr)]
     syntax Constr      ::= Con OptBangATypes [klabel('constrCon)] // (arity con  =  k, k ≥ 0) UNFINISHED
                          | SubConstr ConOp SubConstr
                          | Con "{" FieldDeclList "}"
 
-    syntax NewConstr   ::= Con AType [klabel('newConstrCon)]
-                         | Con "{" Var "::" Type "}"
+    syntax NewConstr   ::= Con AType [klabel('newConstrCon), onlyLabel]
+                         | Con "{" Var "::" Type "}"  [klabel('newConField), onlyLabel]
 
     syntax SubConstr   ::= BType | "!" AType
-    syntax FieldDeclList ::= List{FieldDecl, ","}
+    syntax FieldDeclList ::= List{FieldDecl, ","}  [klabel('fieldCon)]
     syntax FieldDecl ::= VarsType
                        | Vars "::" "!" AType
 
@@ -281,14 +281,14 @@ module HASKELL-SYNTAX
 
     syntax OptContext ::= Context "=>" | "" [onlyLabel, klabel('emptyContext)]
     syntax Context ::= Class
-                     | "(" Classes ")"
+                     | "(" Classes ")" [klabel('contextClass)]
 
-    syntax Classes ::= List{Class, ","}
+    syntax Classes ::= List{Class, ","}      [klabel('classesCon)]
 
     syntax SimpleClass ::= QTyCon TyVar  [klabel('classCon), onlyLabel]
 
-    syntax Class       ::= SimpleClass
-                         | QTyCon "(" TyVar ATypeList ")"
+    syntax Class ::= SimpleClass
+                   | QTyCon "(" TyVar ATypeList ")" [klabel('multiClass)]
                               //Liyi: a check in preprossing to check if the Atype list is empty
                               //it must have at least one item
 
