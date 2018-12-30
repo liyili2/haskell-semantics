@@ -20,4 +20,10 @@ module HASKELL-ERRORS
     rule <k> error(cycleAlpha) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have type delcarations having cycles in the renaming.")) </output>
 
+    rule <k> error(typeNotInScope) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type delcaration whose type cons might not be properly imported or created.")) </output>
+
+    rule <k> error(typeVarNotInScope) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type delcaration whose used type vars might not be properly declared in the title of the type.")) </output>
+
 endmodule

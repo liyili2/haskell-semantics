@@ -11,6 +11,8 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "typeVarNoInclusive"
     syntax KItem ::= "repeatedNames"
     syntax KItem ::= "cycleAlpha"
+    syntax KItem ::= "typeNotInScope"
+    syntax KItem ::= "typeVarNotInScope"
 
     syntax KItem ::= "startChecks"
     syntax KItem ::= "nextChecks"
@@ -32,6 +34,9 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KResult ::= kindArrow(K, K) // kind inference arrow case
 
     //preprocessing of validity checks
+    syntax KItem ::= "checkPreBetaInScope"
+        //check if the beta map generated for the module is within the scope
+
     syntax KItem ::= "checkAlphaNoLoops"
         //alpha check for no loops
         //check alpha to make sure that everything points to a T
@@ -94,7 +99,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax ModId ::= "Prelude"
     //built-in type cons
     syntax KItem ::= tupleType(Int) // the abstract constr of tuple type
-    
+    syntax KItem ::= "tupleTypeAll" // the abstract constr of tuple type in importing prelude
 
     syntax KItem ::= tAlphaMap(K) //(AlphaMap) temp alphamap
 

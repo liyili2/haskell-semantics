@@ -30,12 +30,14 @@ module HASKELL-PREPROCESSING
     rule startChecks => checkNoSameKey
                 ~> (checkTypeConsDontCollide
                 ~> (collectKindInfo
-                ~> nextChecks))
+                ~> (makeAlphaMap
+                ~> nextChecks)))
 
-    rule nextChecks => makeAlphaMap
+    rule nextChecks => makePreBetaMap
+                ~> (checkPreBetaInScope
                 ~> (checkAlphaNoLoops
                 ~> (checkArgSortsAreTargets
-                ~> checkParUsed))
+                ~> checkParUsed)))
 
     //deal with alpha map, deal with renaming of type name
     //collect information for the type name and kind in the same module
@@ -64,5 +66,12 @@ module HASKELL-PREPROCESSING
 
     rule <k> putKindMap(M:Map) => .K ...</k>
          <tempKindMap> _:Map => M </tempKindMap>
+
+    rule <k> checkPreBetaInScope
+               => isAllValidTypes(M, .K, .K, keys(KM))
+                  ~> isAllValidTypeVars(M, .K, .K) ...</k>
+         <tempBetaMap> M:Map </tempBetaMap>
+         <tempKindMap> KM:Map </tempKindMap>
+
 
 endmodule

@@ -6,6 +6,11 @@ module HASKELL-HELPER
     imports HASKELL-SYNTAX
     imports HASKELL-ABSTRACT-SYNTAX
 
+   //helper function to transfer a list to a set
+   syntax Set ::= listToSet(List) [function]
+   rule listToSet(.List) => .Set
+   rule listToSet(ListItem(A:K) L:List) => SetItem(A) listToSet(L)
+
    //boolean functions to determine if a term has no certain klabel
    syntax Bool ::= isBATypeCon(K) [function]
    rule isBATypeCon('baTypeCon(A:AType,, B:BType)) => true
@@ -121,12 +126,12 @@ module HASKELL-HELPER
    rule toAbsTypeInClass(Mod:K, S:Set, A:TyVar, TM:Map, IM:Map) => modVar(A)
         requires A in S
    rule toAbsTypeInClass(Mod:K, S:Set, 'unitType(.KList), TM:Map, IM:Map)
-           => typeConst('unitType(.KList), .List)
+           => typeConst(fullName(Prelude, 'unitType(.KList)), .List)
    rule toAbsTypeInClass(Mod:K, S:Set, 'tyList(B:K), TM:Map, IM:Map)
-           => typeConst([], ListItem(toAbsTypeInClass(Mod,S, B, TM, IM)))
+           => typeConst(fullName(Prelude, []), ListItem(toAbsTypeInClass(Mod,S, B, TM, IM)))
         requires toAbsTypeInClass(Mod,S, B, TM, IM) =/=K none
    rule toAbsTypeInClass(Mod:K, S:Set, 'tupleCover(B:TypeTuple), TM:Map, IM:Map)
-           => typeConst(tupleType(typeTupleCount(B)),
+           => typeConst(fullName(Prelude, tupleType(typeTupleCount(B))),
                          ListItem(toAbsTypeInClassTuple(Mod,S, B, TM, IM)))
         requires size(toAbsTypeInClassTuple(Mod,S, B, TM, IM)) =/=K 0
    rule toAbsTypeInClass(Mod:K, S:Set, 'conTyCon(A:K,,T:K), TM:Map, IM:Map)
@@ -160,7 +165,7 @@ module HASKELL-HELPER
            => typeConst(modVar(A), L)
         requires A in S
    rule toAbsTypeInClassAppAux(Mod:K, S:Set, A:K, .List, L:List, TM:Map, IM:Map)
-           => typeConst(dealWithTuple(A), L)
+           => typeConst(fullName(Prelude, dealWithTuple(A)), L)
         requires notBool A in S andBool findArity(Mod, A, TM, IM) ==K size(L)
    rule toAbsTypeInClassAppAux(Mod:K, S:Set, A:K, .List, L:List, TM:Map, IM:Map) => none
         requires notBool A in S andBool findArity(Mod, A, TM, IM) =/=K size(L)
@@ -415,14 +420,14 @@ module HASKELL-HELPER
                  //curr-mod-name, target-type, types
    rule toAbsBangType(S:K, T:K, .OptBangATypes) => T
    rule toAbsBangType(S:K, T:K, 'optBangATypes('optBangAType(Op:OptBang,, A:AType)
-        ,, As:OptBangATypes)) => typeConst((->), ListItem(toAbsType(S, A))
+        ,, As:OptBangATypes)) => typeConst(fullName(Prelude, (->)), ListItem(toAbsType(S, A))
                     ListItem(toAbsBangType(S:K, T:K, As)))
 
    syntax List ::= expandRecordType(Vars, K) [function]
-   rule expandRecordType(A:Var, T:K) => ListItem(typeConst(recordAssign,
+   rule expandRecordType(A:Var, T:K) => ListItem(typeConst(fullName(Prelude, recordAssign),
                                    ListItem(tyVar(A)) ListItem(T)))
    rule expandRecordType('varCon(A:Var,, As:Vars), T:K)
-           => ListItem(typeConst(recordAssign,
+           => ListItem(typeConst(fullName(Prelude, recordAssign),
                       ListItem(tyVar(A)) ListItem(T))) expandRecordType(As, T)
 
    syntax List ::= toAbsBangTypeInRecord(K, K) [function]
@@ -444,21 +449,21 @@ module HASKELL-HELPER
    rule makeSinglePreBeta(S:K, T:K, 'constrCon(N:Con,, Ts:OptBangATypes))
            => (N |-> toAbsBangType(S, T, Ts))
    rule makeSinglePreBeta(S:K, T:K, N:Con { F:FieldDeclList })
-           => (N |-> typeConst((->), ListItem(typeConst(
-                         recordType, toAbsBangTypeInRecord(S, F))) ListItem(T)))
+           => (N |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
+              fullName(Prelude, recordType), toAbsBangTypeInRecord(S, F))) ListItem(T)))
    rule makeSinglePreBeta(S:K, T:K, 'multConstr(
            'constrCon(N:Con,, Ts:OptBangATypes),, Cs:Constrs))
            => (N |-> toAbsBangType(S, T, Ts)) makeSinglePreBeta(S, T, Cs)
    rule makeSinglePreBeta(S:K, T:K, 'multConstr(N:Con { F:FieldDeclList },, Cs:Constrs))
-           => (N |-> typeConst((->), ListItem(typeConst(
-                         recordType, toAbsBangTypeInRecord(S, F))) ListItem(T)))
+           => (N |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
+              fullName(Prelude, recordType), toAbsBangTypeInRecord(S, F))) ListItem(T)))
             makeSinglePreBeta(S, T, Cs)
    //deal with newConstr
    rule makeSinglePreBeta(S:K, T:K, 'newConstrCon(N:Con,, A:AType))
-           => (N |-> typeConst((->), ListItem(toAbsType(S, A)) ListItem(T)))
+           => (N |-> typeConst(fullName(Prelude, (->)), ListItem(toAbsType(S, A)) ListItem(T)))
    rule makeSinglePreBeta(S:K, T:K, 'newConField(N:Con,, V:Var,, T':Type))
-           => (N |-> typeConst((->), ListItem(typeConst(
-                recordType, ListItem(typeConst(recordAssign,
+           => (N |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
+              fullName(Prelude, recordType), ListItem(typeConst(fullName(Prelude, recordAssign),
                  ListItem(tyVar(V)) ListItem(toAbsType(S, T')))))) ListItem(T)))
 
    //functions to convert class name to abs form and convert context to a set of classes
@@ -511,5 +516,74 @@ module HASKELL-HELPER
                   makeSinglePreBeta(S, toAbsType(S, N), Cons), derivingToSet(S, Od))) M)
    rule makePreBetaFunAux(S:K, A:TopDecl, As:K, TM:Map)
                   => makePreBetaFun(S, As, TM) [owise]
+
+   //a function to check if all used type cons are in the set, return .K or errors
+   //a typeConst contains a con that is a fullName (a real Con) or a typeVar
+   // that is scoped by the title of the data definition
+   syntax Bool ::= isTypeValid(K, Set) [function]
+                 | isTypeValidCore(K, Set) [function]
+                 | isTypeValidInList(List, Set) [function]
+   rule isTypeValid(typeConst(A:K, B:List), S:Set)
+         => isTypeValidCore(A, S) andBool isTypeValidInList(B, S)
+   rule isTypeValid(A:K, S:Set) => true [owise]
+
+   rule isTypeValidCore(fullName(A:K, tupleType(X:Int)), S:Set)
+             => (fullName(Prelude, tupleTypeAll)) in S
+   rule isTypeValidCore(A:K, S:Set) => A in S [owise]
+
+   rule isTypeValidInList(.List, S:Set) => true
+   rule isTypeValidInList(ListItem(A:K) L:List, S:Set)
+             => isTypeValid(A, S) andBool isTypeValidInList(L, S)
+
+   syntax KItem ::= isAllValidTypes(Map, K, K, Set) [function]
+                  | isValidTypes(Map, Map, K, K, Set) [function]
+   rule isAllValidTypes(.Map, .K, .K, S:Set) => .K
+   rule isAllValidTypes((A:K |-> B:K) M:Map, .K, .K, S:Set)
+          => isAllValidTypes(M, A, B, S)
+   rule isAllValidTypes(M, A:K, preBetaEntry(Os:Set,
+             L:List, Body:Map, Oc:Set), S:Set)
+          => isValidTypes(M, Body, .K, .K, listToSet(L) S)
+ 
+   rule isValidTypes(M:Map, .Map, .K, .K, S:Set) => isAllValidTypes(M, .K, .K, S)
+   rule isValidTypes(M:Map, (A:K |-> B:K) BM:Map, .K, .K, S:Set)
+             => isValidTypes(M, BM, A, B, S)
+   rule isValidTypes(M:Map, BM:Map, A:KItem, T:Type, S:Set)
+                   => isValidTypes(M, BM, .K, .K, S)
+        requires isTypeValid(T, S)
+   rule isValidTypes(M:Map, BM:Map, A:KItem, T:Type, S:Set)
+                   => error(typeNotInScope)
+        requires notBool isTypeValid(T, S)
+
+   //a function to check if all typeVar in a data definition is within scope
+   syntax Bool ::= isTypeVarValid(K, Set) [function]
+                 | isTypeVarValidInList(List, Set) [function]
+   rule isTypeVarValid(typeConst(A:K, B:List), S:Set)
+         => isTypeValidInList(B, S)
+   rule isTypeVarValid(T:TyVar, S:Set) => T in S
+   rule isTypeVarValid(A:K, S:Set) => true [owise]
+
+   rule isTypeVarValidInList(.List, S:Set) => true
+   rule isTypeVarValidInList(ListItem(A:K) L:List, S:Set)
+             => isTypeVarValid(A, S) andBool isTypeVarValidInList(L, S)
+
+   syntax KItem ::= isAllValidTypeVars(Map, K, K) [function]
+                  | isValidTypeVars(Map, Map, K, K, Set) [function]
+
+   rule isAllValidTypeVars(.Map, .K, .K) => .K
+   rule isAllValidTypeVars((A:K |-> B:K) M:Map, .K, .K)
+            => isAllValidTypeVars(M, A, B)
+   rule isAllValidTypeVars(M:Map, A:K, preBetaEntry(Os:Set,
+             L:List, Body:Map, Oc:Set))
+            => isValidTypeVars(M, Body, .K, .K, listToSet(L))
+   rule isValidTypeVars(M:Map, .Map, .K, .K, S:Set) => isAllValidTypeVars(M, .K, .K)
+   rule isValidTypeVars(M:Map, (A:K |-> B:K) BM:Map, .K, .K, S:Set)
+           => isValidTypeVars(M:Map, BM, A, B, S)
+   rule isValidTypeVars(M:Map, BM:Map, A:KItem, B:Type, S:Set)
+           => isValidTypeVars(M, BM, .K, .K, S)
+        requires isTypeVarValid(B, S)
+   rule isValidTypeVars(M:Map, BM:Map, A:KItem, B:Type, S:Set)
+                  => error(typeVarNotInScope)
+        requires notBool isTypeVarValid(B, S)
+
 
 endmodule
