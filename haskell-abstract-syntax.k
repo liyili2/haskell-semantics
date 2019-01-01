@@ -31,7 +31,9 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "makePreBetaMap"
     syntax KResult ::= parKnown(K) //partial known for a guess of a kind
     syntax KResult ::= "star" // kind inference base
+    syntax KResult ::= "kindVar" //unknown kind
     syntax KResult ::= kindArrow(K, K) // kind inference arrow case
+    //syntax KResult ::= 
 
     //preprocessing of validity checks
     syntax KItem ::= "checkPreBetaInScope"
@@ -90,6 +92,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax Type ::= TypeResult
     syntax TypeResult ::= TyVar | modVar(TyVar)
                         | typeConst(K, List) //type constror or type var, list of typeResult
+                        | curryTypes(List, K) //only in the top level
     syntax KResult ::= fullName(K, K) //module name, type con
     syntax KResult ::= preBetaEntry(Set, List, Map, Set)
            //optContext, list_of_vars, Body, optDeriving

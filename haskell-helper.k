@@ -359,6 +359,7 @@ module HASKELL-HELPER
    syntax KItem ::= toAbsType(K, K) [function] //current module name, type
                   | toAbsTypeAux(K, K, List, K) [function]
                           //curr-mod, type-con-name,type-args, unsolved
+                  | toAbsTypeAuxAux(K, List) [function] //type-con, args
    syntax List ::= toAbsTypeTuple(K, TypeTuple) [function]//curr-mod, type-tuple
                  | toAbsTypeList(K, ATypeList) [function]//curr-mod, typelist
 
@@ -399,7 +400,11 @@ module HASKELL-HELPER
    rule toAbsTypeAux(S:K, A:K, L:List, 'baTypeCon(T:K,, T1:K))
            => toAbsTypeAux(S:K, A, L ListItem(toAbsType(S, T)), T1)
    rule toAbsTypeAux(S:K, A:K, L:List, T:K)
-           => typeConst(A, L ListItem(toAbsType(S, T))) [owise]
+           => toAbsTypeAuxAux(A, L ListItem(toAbsType(S, T))) [owise]
+
+   rule toAbsTypeAuxAux(typeConst(X:K, L:List), L1:List)
+             => typeConst(X:K, L L1)
+   rule toAbsTypeAuxAux(A:K, L:List) => typeConst(A, L) [owise]
 
    rule toAbsTypeTuple(S:K, 'twoTypeTuple(A:K,, B:K))
                      => ListItem(toAbsType(S, A)) ListItem(toAbsType(S, B))
@@ -416,12 +421,11 @@ module HASKELL-HELPER
                          | Con "{" FieldDeclList "}"
    */
 
-   syntax KItem ::= toAbsBangType(K, K, K) [function]
-                 //curr-mod-name, target-type, types
-   rule toAbsBangType(S:K, T:K, .OptBangATypes) => T
-   rule toAbsBangType(S:K, T:K, 'optBangATypes('optBangAType(Op:OptBang,, A:AType)
-        ,, As:OptBangATypes)) => typeConst(fullName(Prelude, (->)), ListItem(toAbsType(S, A))
-                    ListItem(toAbsBangType(S:K, T:K, As)))
+   syntax List ::= toAbsBangType(K, K) [function]
+                 //curr-mod-name, types
+   rule toAbsBangType(S:K, .OptBangATypes) => .List
+   rule toAbsBangType(S:K, 'optBangATypes('optBangAType(Op:OptBang,, A:AType)
+        ,, As:OptBangATypes)) => ListItem(toAbsType(S, A)) toAbsBangType(S:K, As)
 
    syntax List ::= expandRecordType(Vars, K) [function]
    rule expandRecordType(A:Var, T:K) => ListItem(typeConst(fullName(Prelude, recordAssign),
@@ -447,20 +451,20 @@ module HASKELL-HELPER
    rule makeSinglePreBeta(S:K, T:K, 'nonemptyConstrs(Cs:Constrs))
                 => makeSinglePreBeta(S, T, Cs)
    rule makeSinglePreBeta(S:K, T:K, 'constrCon(N:Con,, Ts:OptBangATypes))
-           => (N |-> toAbsBangType(S, T, Ts))
+           => (N |-> curryTypes(toAbsBangType(S, Ts), T))
    rule makeSinglePreBeta(S:K, T:K, N:Con { F:FieldDeclList })
            => (N |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
               fullName(Prelude, recordType), toAbsBangTypeInRecord(S, F))) ListItem(T)))
    rule makeSinglePreBeta(S:K, T:K, 'multConstr(
            'constrCon(N:Con,, Ts:OptBangATypes),, Cs:Constrs))
-           => (N |-> toAbsBangType(S, T, Ts)) makeSinglePreBeta(S, T, Cs)
+           => (N |-> curryTypes(toAbsBangType(S, Ts), T)) makeSinglePreBeta(S, T, Cs)
    rule makeSinglePreBeta(S:K, T:K, 'multConstr(N:Con { F:FieldDeclList },, Cs:Constrs))
            => (N |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
               fullName(Prelude, recordType), toAbsBangTypeInRecord(S, F))) ListItem(T)))
             makeSinglePreBeta(S, T, Cs)
    //deal with newConstr
    rule makeSinglePreBeta(S:K, T:K, 'newConstrCon(N:Con,, A:AType))
-           => (N |-> typeConst(fullName(Prelude, (->)), ListItem(toAbsType(S, A)) ListItem(T)))
+           => (N |-> curryTypes(ListItem(toAbsType(S, A)), T))
    rule makeSinglePreBeta(S:K, T:K, 'newConField(N:Con,, V:Var,, T':Type))
            => (N |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
               fullName(Prelude, recordType), ListItem(typeConst(fullName(Prelude, recordAssign),
