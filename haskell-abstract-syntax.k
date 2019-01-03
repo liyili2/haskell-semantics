@@ -17,6 +17,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "typeConKindNumError"
     syntax KItem ::= "typeVarKindBad"
     syntax KItem ::= "typeVarKindNumError"
+    syntax KItem ::= "kindUnifierFail"
 
     syntax KItem ::= "startChecks"
     syntax KItem ::= "nextChecks"
@@ -92,6 +93,8 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KResult ::= ElemResult
     syntax ElemList ::= List{Element, ","} [strict]
     rule val(K:KResult) => valValue(K) [structural]
+
+    syntax KResult ::= resultSet(Set)
 
     //abstract syntax for type constrs
     syntax KResult ::= TypeResult

@@ -670,7 +670,27 @@ module HASKELL-HELPER
            => kindInferenceAux(N, S, Tus A, L, L', B)
    rule kindInferenceAuxAux(L:List, L'L:List, Tus:Set, error(X:K)) => error(X)
 
-/*
+   //a function to check and remove unifiers that have no variables.
+   syntax Bool ::= hasVar(K) [function]
+   rule hasVar(star) => false
+   rule hasVar(kindVar(X:Int)) => true
+   rule hasVar(kindArrow(A:K, B:K)) => hasVar(A) orBool hasVar(B)
+
+   syntax KItem ::= checkAndRemoveNoVarTerms(K, Set, Set) [function]
+   rule checkAndRemoveNoVarTerms(.K, .Set, S:Set) => resultSet(S)
+   rule checkAndRemoveNoVarTerms(.K, SetItem(A:K) S:Set, S1:Set)
+           => checkAndRemoveNoVarTerms(A, S, S1)
+   rule checkAndRemoveNoVarTerms(kindTuple(A:K, B:K), S:Set, S1:Set)
+           => checkAndRemoveNoVarTerms(.K, S, S1 SetItem(kindTuple(A, B)))
+        requires hasVar(A) orBool hasVar(B)
+   rule checkAndRemoveNoVarTerms(kindTuple(A:K, A:K), S:Set, S1:Set)
+           => checkAndRemoveNoVarTerms(.K, S, S1)
+        requires notBool hasVar(A)
+   rule checkAndRemoveNoVarTerms(kindTuple(A:K, B:K), S:Set, S1:Set)
+           => error(kindUnifierFail)
+        requires notBool hasVar(A) andBool notBool hasVar(B) andBool A =/=K B
+
+/*        requires hasVar(A) orBool hasVar(B)
 
    rule kindInference(typeConst(fullName(X:K, Y:K), B:List),
                  C:K, (fullName(X:K, Y:K) |-> D:K) M:Map)

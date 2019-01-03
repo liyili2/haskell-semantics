@@ -38,4 +38,7 @@ module HASKELL-ERRORS
     rule <k> error(typeVarKindNumError) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type delcaration having a type variable that has wrong number of arguments.")) </output>
 
+    rule <k> error(kindUnifierFail) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type delcaration that uses a type variable or type con in the wrong position causing kind inference failure.")) </output>
+
 endmodule
