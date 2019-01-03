@@ -589,5 +589,123 @@ module HASKELL-HELPER
                   => error(typeVarNotInScope)
         requires notBool isTypeVarValid(B, S)
 
+   //kind inference function
+   syntax Bool ::= isTheKind(K, K, K, Map) [function]
+   rule isTheKind(A:K, B:K, .K, M:Map) => false
+        requires notBool A in keys(M)
+   rule isTheKind(A:K, B:K, .K, (A |-> C:K) M:Map)
+          => isTheKind(A, B, C, M)
+   rule isTheKind(A:K, B:K, B:K, M:Map) => true
+   rule isTheKind(A:K, B:K, C:K, M:Map) => false [owise]
+
+   syntax Bool ::= isParKnown(K) [function]
+   rule isParKnown(parKnown(A:K)) => true
+   rule isParKnown(_:K) => false [owise]
+
+   syntax Int ::= countKindLength(K) [function]
+   rule countKindLength(parKnown(X:K)) => countKindLength(X)
+   rule countKindLength(kindArrow(X:K, Y:K)) => 1 +Int countKindLength(Y)
+   rule countKindLength(A:K) => 0 [owise]
+
+   syntax List ::= formListKind(K) [function]
+   rule formListKind(kindArrow(A:K, B:K)) => ListItem(A) formListKind(B)
+   rule formListKind(parKnown(X:K)) => formListKind(X)
+   rule formListKind(A:K) => .List [owise]
+
+   syntax KItem ::= removeWraper(K) [function]
+   rule removeWraper(parKnown(A:K)) => A
+   rule removeWraper(A:K) => A [owise]
+
+   //kind inference rule -- generate kind unifiers
+   syntax KItem ::= kindInference(Int, Set, K, K, Map) [function]
+               //counter, kind-var-set, exp, assume kind, kind env
+                  | kindInferenceAux(Int, Set, Set, List, List, Map) [function]
+               //counter, kind-var-set, kind-unifiers, args, arg-types, kind env.
+                  | kindInferenceAuxAux(List, List, Set, K) [function]
+                  | kindInferenceTyVar(Int, Set, K, K, Int, List, Map) [function]
+               //counter, kind-var-set, con-type, assume-type, arg-length, args, kind env
+
+   rule kindInference(N:Int, S:Set, fullName(A:K, B:K), star, M:Map)
+          => returnKind(N, S, .Set, M)
+   rule kindInference(N:Int, S:Set, fullName(A:K, B:K), C:K, M:Map)
+          => error(typeConKindBad)
+        requires notBool isTheKind(fullName(A:K, B:K), star, .K, M)
+   rule kindInference(N:Int, S:Set, fullName(A:K, B:K), C:K, M:Map)
+          => returnKind(N, S, SetItem(kindTuple(C, star)), M)
+        requires C =/=K star andBool isTheKind(fullName(A:K, B:K), star, .K, M)
+
+   rule kindInference(N:Int, S:Set, A:TyVar, C:K, (A |-> D:K) M:Map)
+             => returnKind(N, S, SetItem(kindTuple(C,D)), (A |-> D:K) M)
+   rule kindInference(N:Int, S:Set, A:TyVar, C:K, M:Map)
+             => error(typeVarNotInScope)
+        requires notBool A in keys(M)
+
+   rule kindInference(N:Int, S:Set, typeConst(fullName(X:K, Y:K), B:List),
+                 C:K, (fullName(X:K, Y:K) |-> D:K) M:Map)
+          => kindInferenceAux(N, S, SetItem(kindTuple(C, removeWraper(D))),
+                  B, formListKind(D), (fullName(X:K, Y:K) |-> D:K) M:Map)
+        requires size(B) ==K countKindLength(D)
+   rule kindInference(N:Int, S:Set, typeConst(fullName(X:K, Y:K), B:List),
+                 C:K, (fullName(X:K, Y:K) |-> D:K) M:Map)
+          => error(typeConKindNumError)
+        requires size(B) =/=K countKindLength(D)
+   rule kindInference(N:Int, S:Set, typeConst(X:TyVar, B:List),
+                 C:K, (X |-> D:K) M:Map)
+          => kindInferenceTyVar(N, S, C, D, size(B), B, (X |-> D:K) M:Map)
+
+   rule kindInferenceTyVar(N:Int, S:Set, C:K, D:K, 0, B:List, M:Map)
+         => kindInferenceAux(N, S, SetItem(kindTuple(C, D)), B, formListKind(C), M)
+   rule kindInferenceTyVar(N:Int, S:Set, C:K, D:K, I:Int, B:List, M:Map)
+         => kindInferenceTyVar(N +Int 1, SetItem(kindVar(N)) S,
+                       kindArrow(kindVar(N), C), D, I -Int 1, B, M)
+        requires I >Int 0
+
+   rule kindInferenceAux(N:Int, S:Set, Tus:Set, .List, .List, M:Map)
+                    => returnKind(N, S, Tus, M)
+   rule kindInferenceAux(N:Int, S:Set, Tus:Set, ListItem(A:K) L:List,
+                  ListItem(A':K) L':List, M:Map)
+          => kindInferenceAuxAux(L, L', Tus, kindInference(N,
+                             S, A, A', M))
+   rule kindInferenceAuxAux(L:List, L':List, Tus:Set, returnKind(N:Int, S:Set, A:Set, B:Map))
+           => kindInferenceAux(N, S, Tus A, L, L', B)
+   rule kindInferenceAuxAux(L:List, L'L:List, Tus:Set, error(X:K)) => error(X)
+
+/*
+
+   rule kindInference(typeConst(fullName(X:K, Y:K), B:List),
+                 C:K, (fullName(X:K, Y:K) |-> D:K) M:Map)
+          => kindInferenceAux(B, .List, (fullName(X:K, Y:K) |-> D:K) M:Map)
+        requires size(B) ==K countKindLength(D)
+   rule kindInference(typeConst(fullName(X:K, Y:K), B:List),
+                 C:K, (fullName(X:K, Y:K) |-> D:K) M:Map)
+          => error(typeConKindNumError)
+        requires size(B) =/=K countKindLength(D)
+
+
+   rule kindInference(typeConst(X:TyVar, B:List),
+                 C:K, (X |-> D:K) M:Map)
+          => kindInferenceAux(B, .List, (X |-> D:K) M:Map)
+        requires size(B) ==K countKindLength(D)
+
+   rule kindInference(typeConst(X:TyVar, B:List),
+                 C:K, M:Map)
+          => kindInferenceAux(B, .List, M:Map)
+        requires size(B) ==K 
+
+   rule kindInference(typeConst(X:TyVar, B:List),
+                 C:K, (X |-> D:K) M:Map)
+          => error(typeVarKindNumError)
+        requires size(B) =/=K countKindLength(D)
+
+   rule kindInferenceAux(.List, L:List, M:Map)
+                    => returnKind(formListKind(L), M)
+   rule kindInferenceAux(ListItem(A:K) L:List, L1:List, M:Map)
+          => kindInferenceAuxAux(L, L1, kindInference(A, kindVar, M))
+   rule kindInferenceAuxAux(L:List, L1:List, returnKind(A:K, B:Map))
+           => kindInferenceAux(L, L1 ListItem(A), B)
+   rule kindInferenceAuxAux(L:List, L1:List, error(X:K)) => error(X)
+
+   */
+
 
 endmodule

@@ -26,4 +26,16 @@ module HASKELL-ERRORS
     rule <k> error(typeVarNotInScope) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type delcaration whose used type vars might not be properly declared in the title of the type.")) </output>
 
+    rule <k> error(typeConKindBad) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type delcaration having a type con that appears in the wrong position or has bad number of arguments.")) </output>
+
+    rule <k> error(typeConKindNumError) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type delcaration having a type con that has wrong number of arguments.")) </output>
+
+    rule <k> error(typeVarKindBad) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type delcaration having a type variable that appears in the wrong position or has bad number of arguments.")) </output>
+
+    rule <k> error(typeVarKindNumError) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type delcaration having a type variable that has wrong number of arguments.")) </output>
+
 endmodule

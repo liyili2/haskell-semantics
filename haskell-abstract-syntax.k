@@ -13,6 +13,10 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "cycleAlpha"
     syntax KItem ::= "typeNotInScope"
     syntax KItem ::= "typeVarNotInScope"
+    syntax KItem ::= "typeConKindBad"
+    syntax KItem ::= "typeConKindNumError"
+    syntax KItem ::= "typeVarKindBad"
+    syntax KItem ::= "typeVarKindNumError"
 
     syntax KItem ::= "startChecks"
     syntax KItem ::= "nextChecks"
@@ -31,9 +35,11 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "makePreBetaMap"
     syntax KResult ::= parKnown(K) //partial known for a guess of a kind
     syntax KResult ::= "star" // kind inference base
-    syntax KResult ::= "kindVar" //unknown kind
+    syntax KResult ::= kindVar(Int) //unknown kind
     syntax KResult ::= kindArrow(K, K) // kind inference arrow case
-    //syntax KResult ::= 
+    syntax KItem ::= returnKind(Int, Set, Set, Map)
+             //return-var-count, var-set, return set of kind unifier and env for kind inference
+    syntax KItem ::= kindTuple(K, K)
 
     //preprocessing of validity checks
     syntax KItem ::= "checkPreBetaInScope"
