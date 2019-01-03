@@ -690,42 +690,67 @@ module HASKELL-HELPER
            => error(kindUnifierFail)
         requires notBool hasVar(A) andBool notBool hasVar(B) andBool A =/=K B
 
-/*        requires hasVar(A) orBool hasVar(B)
+   //functions to implement the unification in kind
+   syntax Bool ::= isKindArrow(K) [function]
+   rule isKindArrow(kindArrow(A:K, B:K)) => true
+   rule isKindArrow(A:K) => false [owise]
+   
+   syntax Bool ::= isKindVar(K) [function]
+   rule isKindVar(kindVar(A:Int)) => true
+   rule isKindVar(A:K) => false [owise]
 
-   rule kindInference(typeConst(fullName(X:K, Y:K), B:List),
-                 C:K, (fullName(X:K, Y:K) |-> D:K) M:Map)
-          => kindInferenceAux(B, .List, (fullName(X:K, Y:K) |-> D:K) M:Map)
-        requires size(B) ==K countKindLength(D)
-   rule kindInference(typeConst(fullName(X:K, Y:K), B:List),
-                 C:K, (fullName(X:K, Y:K) |-> D:K) M:Map)
-          => error(typeConKindNumError)
-        requires size(B) =/=K countKindLength(D)
+   syntax Bool ::= occurInKind(K, K) [function]
+   rule occurInKind(A:K, A:K) => true
+   rule occurInKind(A:K, kindArrow(X:K, Y:K))
+          => occurInKind(A, X) orBool occurInKind(A, Y)
+   rule occurInKind(A:K, B:K) => false [owise]
 
+   syntax KItem ::= replaceKindInTerm(K, K, K) [function]
+   rule replaceKindInTerm(A:K, B:K, A:K) => B
+   rule replaceKindInTerm(A:K, B:K, kindArrow(X:K, Y:K))
+          => kindArrow(replaceKindInTerm(A, B, X), replaceKindInTerm(A, B, Y))
+   rule replaceKindInTerm(A:K, B:K, X:K) => X [owise]
 
-   rule kindInference(typeConst(X:TyVar, B:List),
-                 C:K, (X |-> D:K) M:Map)
-          => kindInferenceAux(B, .List, (X |-> D:K) M:Map)
-        requires size(B) ==K countKindLength(D)
+   syntax Set ::= replaceKindInSet(K, K, K, Set) [function]
+   rule replaceKindInSet(A:K, B:K, .K, .Set) => .Set
+   rule replaceKindInSet(A:K, B:K, .K, SetItem(X:K) S:Set)
+        => replaceKindInSet(A, B, X, S)
+   rule replaceKindInSet(A:K, B:K, kindTuple(X:K, Y:K), S:Set)
+        => SetItem(kindTuple(X, replaceKindInTerm(A, B, Y))) replaceKindInSet(A, B, .K, S)
 
-   rule kindInference(typeConst(X:TyVar, B:List),
-                 C:K, M:Map)
-          => kindInferenceAux(B, .List, M:Map)
-        requires size(B) ==K 
+   syntax Map ::= replaceKindInMap(K, K, K, K, Map) [function]
+   rule replaceKindInMap(A:K, B:K, .K, .K, .Map) => .Map
+   rule replaceKindInMap(A:K, B:K, .K, .K, (X:K |-> Y:K) S:Map)
+        => replaceKindInMap(A, B, X, Y, S)
+   rule replaceKindInMap(A:K, B:K, X:KItem, Y:KItem, S:Map)
+        => (X |-> replaceKindInTerm(A, B, Y)) replaceKindInMap(A, B, .K, .K, S)
 
-   rule kindInference(typeConst(X:TyVar, B:List),
-                 C:K, (X |-> D:K) M:Map)
-          => error(typeVarKindNumError)
-        requires size(B) =/=K countKindLength(D)
-
-   rule kindInferenceAux(.List, L:List, M:Map)
-                    => returnKind(formListKind(L), M)
-   rule kindInferenceAux(ListItem(A:K) L:List, L1:List, M:Map)
-          => kindInferenceAuxAux(L, L1, kindInference(A, kindVar, M))
-   rule kindInferenceAuxAux(L:List, L1:List, returnKind(A:K, B:Map))
-           => kindInferenceAux(L, L1 ListItem(A), B)
-   rule kindInferenceAuxAux(L:List, L1:List, error(X:K)) => error(X)
-
-   */
+   syntax KItem ::= unifInKind(K, Set, Set, Map) [function]
+        //curr-tuple, post-tuple, pre-tuple, assignments
+   rule unifInKind(.K, .Set, .Set, M:Map) => resultMap(M)
+   rule unifInKind(.K, SetItem(A:K) S1:Set, .Set, M:Map)
+             => error(kindUnifierFail)
+   rule unifInKind(.K, S1:Set, SetItem(A:K) S:Set, M:Map)
+             => unifInKind(A, S1, S, M)
+   rule unifInKind(kindTuple(A:K, A:K), S1:Set, S:Set, M:Map)
+         => unifInKind(.K, S1, S, M)
+   rule unifInKind(kindTuple(kindArrow(A:K, B:K),
+                kindArrow(A1:K, B1:K)), S1:Set, S:Set, M:Map)
+         => unifInKind(.K, .Set, SetItem(kindTuple(A, A1)) SetItem(kindTuple(B, B1)) S1 S, M)
+   rule unifInKind(kindTuple(A:K, B:K), S1:Set, S:Set, M:Map)
+         => error(kindUnifierFail)
+        requires (A ==K star andBool isKindArrow(B))
+                orBool (B ==K star andBool isKindArrow(A))
+   rule unifInKind(kindTuple(A:K, B:K), S1:Set, S:Set, M:Map)
+         => unifInKind(kindTuple(B, A), S1:Set, S:Set, M:Map)
+        requires isKindVar(B) andBool notBool isKindVar(A)
+   rule unifInKind(kindTuple(kindVar(A:Int), B:K), S1:Set, S:Set, M:Map)
+         => unifInKind(.K, .Set, replaceKindInSet(kindVar(A:Int), B, .K, S1 S),
+             replaceKindInMap(kindVar(A:Int), B, .K, .K, M))
+        requires notBool occurInKind(kindVar(A:Int), B)
+   rule unifInKind(kindTuple(kindVar(A:Int), B:K), S1:Set, S:Set, M:Map)
+         => error(kindUnifierFail)
+        requires occurInKind(kindVar(A:Int), B)
 
 
 endmodule

@@ -95,6 +95,7 @@ module HASKELL-ABSTRACT-SYNTAX
     rule val(K:KResult) => valValue(K) [structural]
 
     syntax KResult ::= resultSet(Set)
+    syntax KResult ::= resultMap(Map)
 
     //abstract syntax for type constrs
     syntax KResult ::= TypeResult
