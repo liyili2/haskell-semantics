@@ -20,6 +20,8 @@ module HASKELL-CONFIGURATION
             <currModule> .K </currModule>
             <importTree> .List </importTree>
             <tempImports> .Map </tempImports>
+            <kindVarCounter> 0 </kindVarCounter>
+            <kindVarSet> .Set </kindVarSet>
             <modules> //static information about a module
                 <module multiplicity="*">
                     <moduleName> .K </moduleName>

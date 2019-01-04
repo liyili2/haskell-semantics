@@ -21,11 +21,14 @@ module HASKELL-ABSTRACT-SYNTAX
 
     syntax KItem ::= "startChecks"
     syntax KItem ::= "nextChecks"
+    syntax KItem ::= "nextNextChecks"
     syntax KItem ::= "checkNoSameKey"
         //Keys of alpha and keys of T should be unique
     syntax KItem ::= "checkTypeConsDontCollide"
         //Make sure typeconstructors do not collide in T
     syntax KItem ::= "makeAlphaMap"
+        //make map for alpha
+    syntax KItem ::= "genKindMap"
         //make map for alpha
     syntax KItem ::= putAlphaMap(Map)
     syntax KItem ::= putPreBetaMap(Map)
@@ -38,8 +41,8 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KResult ::= "star" // kind inference base
     syntax KResult ::= kindVar(Int) //unknown kind
     syntax KResult ::= kindArrow(K, K) // kind inference arrow case
-    syntax KItem ::= returnKind(Int, Set, Set, Map)
-             //return-var-count, var-set, return set of kind unifier and env for kind inference
+    syntax KItem ::= returnKind(Int, Set, Set)
+             //return-var-count, var-set, return set of kind unifier
     syntax KItem ::= kindTuple(K, K)
 
     //preprocessing of validity checks
@@ -96,6 +99,8 @@ module HASKELL-ABSTRACT-SYNTAX
 
     syntax KResult ::= resultSet(Set)
     syntax KResult ::= resultMap(Map)
+    syntax KResult ::= resultTyVarKind(Int, Set, Map)
+                         //new-count, new-kind-vars, new-kind-map
 
     //abstract syntax for type constrs
     syntax KResult ::= TypeResult

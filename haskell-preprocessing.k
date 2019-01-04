@@ -35,9 +35,12 @@ module HASKELL-PREPROCESSING
 
     rule nextChecks => makePreBetaMap
                 ~> (checkPreBetaInScope
-                ~> (checkAlphaNoLoops
+                ~> (genKindMap
+                ~> (nextNextChecks)))
+
+    rule nextNextChecks => checkAlphaNoLoops
                 ~> (checkArgSortsAreTargets
-                ~> checkParUsed)))
+                ~> checkParUsed)
 
     //deal with alpha map, deal with renaming of type name
     //collect information for the type name and kind in the same module
@@ -67,11 +70,26 @@ module HASKELL-PREPROCESSING
     rule <k> putKindMap(M:Map) => .K ...</k>
          <tempKindMap> _:Map => M </tempKindMap>
 
+    //TODO: add dealing with kind inference for alpha map, and fix the generation of kind map
+    rule <k> genKindMap => kindInfer(N, S, .K, .K, BM, M, .Set) ...</k>
+         <tempBetaMap> BM:Map </tempBetaMap>
+         <tempKindMap> M:Map </tempKindMap>
+         <kindVarCounter> N:Int </kindVarCounter>
+         <kindVarSet> S:Set </kindVarSet>
+
+    rule <k> resultTyVarKind(N:Int, S:Set, M:Map) => .K ...</k>
+         <tempKindMap> _:Map => M </tempKindMap>
+         <kindVarCounter> _:Int => N </kindVarCounter>
+         <kindVarSet> _:Set => S </kindVarSet>
+
     rule <k> checkPreBetaInScope
                => isAllValidTypes(M, .K, .K, keys(KM))
                   ~> isAllValidTypeVars(M, .K, .K) ...</k>
          <tempBetaMap> M:Map </tempBetaMap>
          <tempKindMap> KM:Map </tempKindMap>
+
+
+   
 
 
 endmodule

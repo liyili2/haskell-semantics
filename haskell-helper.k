@@ -616,26 +616,102 @@ module HASKELL-HELPER
    rule removeWraper(parKnown(A:K)) => A
    rule removeWraper(A:K) => A [owise]
 
+   //kind inference top rule
+   syntax KItem ::= genTyVarKind(Int, Set, K, Map, List) [function]
+   rule genTyVarKind(N:Int, S:Set, A:K, M:Map, .List) => resultTyVarKind(N, S, M)
+   rule genTyVarKind(N:Int, S:Set, kindArrow(X:K, Y:K), M:Map, ListItem(A:K) L:List)
+           => genTyVarKind(N +Int 1, SetItem(kindVar(N)) S, Y, (A |-> X) M, L)
+
+   syntax Bool ::= isCurryType(K) [function]
+   rule isCurryType(curryTypes(A:List, B:K)) => true
+   rule isCurryType(A:K) => false [owise]
+
+   syntax Set ::= toKindTupleSet(Map) [function]
+   rule toKindTupleSet(.Map) => .Set
+   rule toKindTupleSet((A:K |-> B:K) M:Map)
+           => SetItem(kindTuple(A,B)) toKindTupleSet(M)
+
+   syntax KItem ::= kindInfer(Int, Set, K, K, Map, Map, Set) [function]
+         //counter, kind-var-set, name, entry, beta, kind env, gen-kind-tuples
+                  | kindInferAux(K, K, Set, Map, Map, Map, Set) [function]
+                     //result-type-var-kind, curr-ty-name,
+                    // kindtuples, body map, beta, kind-map, gen-kind,tuples
+                  | kindInferSec(K, K, Map, Map, Set) [function]
+                   //name, execution, beta, kind-env
+                  | kindInferThird(Int, Set, K, K, Map, Map, Set) [function]
+                  | kindInferLast(Int, Set, K, K, Map, Map, Set) [function]
+                  | kindNext(Int, Set, K, Map, Map, Set) [function]
+                  | kindNextList(Int, Set, K, List, Map, Map, Set) [function]
+                  | kindInferFinal(Int, Set, K, Map) [function]
+
+   rule kindInferFinal(N:Int, S:Set, resultMap(M:Map), KM:Map)
+        => resultTyVarKind(N, S, replaceAllKindInMap(M, KM))
+
+   rule kindInfer(N:Int, S:Set, .K, .K, .Map, KM:Map, Tu:Set)
+             => kindInferFinal(N, S, unifInKind(.K, .Set, Tu, .Map), KM)
+   rule kindInfer(N:Int, S:Set, .K, .K, (A:K |-> B:K) BM:Map, KM:Map, Tu:Set)
+          => kindInfer(N, S, A, B, BM, KM, Tu)
+   rule kindInfer(N:Int, S:Set, A:K, preBetaEntry(Oc:Set,
+                Vl:List, Body:Map, Od:Set), BM:Map, (A |-> T:K) KM:Map, Tu:Set)
+          => kindInferAux(genTyVarKind(N, S, removeWraper(T),
+                          .Map, Vl), A, .Set, Body, BM, (A |-> T:K) KM, Tu)
+
+   rule kindInferAux(resultTyVarKind(N:Int, S:Set, M:Map),
+                      A:K,  Tus:Set, Body:Map, BM:Map, KM:Map, Tu:Set)
+             => kindInferSec(A, kindNext(N, S, .K, Body, KM M, Tus), BM, KM, Tu)
+
+   rule kindInferSec(A:K, returnKind(N:Int, S:Set, Tus:Set), BM:Map, KM:Map, Tu:Set)
+             => kindInferThird(N, S, A, checkAndRemoveNoVarTerms(
+                                     .K, Tus, .Set), BM:Map, KM:Map, Tu)
+   rule kindInferSec(A:K, error(X:K), BM:Map, KM:Map, Tu:Set) => error(X)
+   rule kindInferThird(N:K, S:Set, A:K, error(X:K), BM:Map, KM:Map, Tu:Set) => error(X)
+   rule kindInferThird(N:K, S1:Set, A:K, resultSet(S:Set), BM:Map, KM:Map, Tu:Set)
+            => kindInferLast(N, S1, A, unifInKind(.K, .Set, S, .Map), BM, KM, Tu)
+
+   rule kindInferLast(N:Int, S:Set, A:K, error(X:K), BM:Map, KM:Map, Tu:Set) => error(X)
+   rule kindInferLast(N:Int, S:Set, A:K, resultMap(TuM:Map), BM:Map, KM:Map, Tu:Set)
+           => kindInfer(N, S, .K, .K, BM, KM, toKindTupleSet(TuM) Tu)
+
+   rule kindNext(N:Int, S:Set, .K, .Map, M:Map, Tus:Set) => returnKind(N, S, Tus)
+   rule kindNext(N:Int, S:Set, .K, (A:K |-> B:K) Body:Map, M:Map, Tus:Set)
+          => kindNext(N:Int, S:Set, B, Body, M, Tus)
+   rule kindNext(N:Int, S:Set, curryTypes(L:List, T:K), Body:Map, M:Map, Tus:Set)
+          => kindNextList(N, S, .K, L, Body, M, Tus)
+   rule kindNext(N:Int, S:Set, T:KItem, Body:Map, M:Map, Tus:Set)
+          => kindNextList(N, S, .K, ListItem(T), Body, M, Tus)
+        requires notBool isCurryType(T)
+
+   rule kindNextList(N:Int, S:Set, .K, .List, Body:Map, M:Map, Tus:Set)
+            => kindNext(N, S, .K, Body, M, Tus)
+   rule kindNextList(N:Int, S:Set, .K, ListItem(A:K) L:List, Body:Map, M:Map, Tus:Set)
+           => kindNextList(N, S, kindInference(N, S, A, star, M), L, Body, M, Tus)
+   rule kindNextList(N:Int, S:Set, error(X:K), L:List, Body:Map, M:Map, Tus:Set)
+           => error(X)
+   rule kindNextList(N:Int, S:Set, returnKind(N1:Int, S1:Set, Tu1:Set),
+              L:List, Body:Map, M:Map, Tus:Set)
+          => kindNextList(N1, S1, .K, L, Body, M, Tus Tu1)
+
+
    //kind inference rule -- generate kind unifiers
    syntax KItem ::= kindInference(Int, Set, K, K, Map) [function]
                //counter, kind-var-set, exp, assume kind, kind env
                   | kindInferenceAux(Int, Set, Set, List, List, Map) [function]
                //counter, kind-var-set, kind-unifiers, args, arg-types, kind env.
-                  | kindInferenceAuxAux(List, List, Set, K) [function]
+                  | kindInferenceAuxAux(List, List, Set, K, Map) [function]
                   | kindInferenceTyVar(Int, Set, K, K, Int, List, Map) [function]
                //counter, kind-var-set, con-type, assume-type, arg-length, args, kind env
 
    rule kindInference(N:Int, S:Set, fullName(A:K, B:K), star, M:Map)
-          => returnKind(N, S, .Set, M)
+          => returnKind(N, S, .Set)
    rule kindInference(N:Int, S:Set, fullName(A:K, B:K), C:K, M:Map)
           => error(typeConKindBad)
         requires notBool isTheKind(fullName(A:K, B:K), star, .K, M)
    rule kindInference(N:Int, S:Set, fullName(A:K, B:K), C:K, M:Map)
-          => returnKind(N, S, SetItem(kindTuple(C, star)), M)
+          => returnKind(N, S, SetItem(kindTuple(C, star)))
         requires C =/=K star andBool isTheKind(fullName(A:K, B:K), star, .K, M)
 
    rule kindInference(N:Int, S:Set, A:TyVar, C:K, (A |-> D:K) M:Map)
-             => returnKind(N, S, SetItem(kindTuple(C,D)), (A |-> D:K) M)
+             => returnKind(N, S, SetItem(kindTuple(C,D)))
    rule kindInference(N:Int, S:Set, A:TyVar, C:K, M:Map)
              => error(typeVarNotInScope)
         requires notBool A in keys(M)
@@ -661,14 +737,14 @@ module HASKELL-HELPER
         requires I >Int 0
 
    rule kindInferenceAux(N:Int, S:Set, Tus:Set, .List, .List, M:Map)
-                    => returnKind(N, S, Tus, M)
+                    => returnKind(N, S, Tus)
    rule kindInferenceAux(N:Int, S:Set, Tus:Set, ListItem(A:K) L:List,
                   ListItem(A':K) L':List, M:Map)
           => kindInferenceAuxAux(L, L', Tus, kindInference(N,
-                             S, A, A', M))
-   rule kindInferenceAuxAux(L:List, L':List, Tus:Set, returnKind(N:Int, S:Set, A:Set, B:Map))
+                             S, A, A', M), M)
+   rule kindInferenceAuxAux(L:List, L':List, Tus:Set, returnKind(N:Int, S:Set, A:Set), B:Map)
            => kindInferenceAux(N, S, Tus A, L, L', B)
-   rule kindInferenceAuxAux(L:List, L'L:List, Tus:Set, error(X:K)) => error(X)
+   rule kindInferenceAuxAux(L:List, L'L:List, Tus:Set, error(X:K), B:Map) => error(X)
 
    //a function to check and remove unifiers that have no variables.
    syntax Bool ::= hasVar(K) [function]
@@ -724,6 +800,11 @@ module HASKELL-HELPER
         => replaceKindInMap(A, B, X, Y, S)
    rule replaceKindInMap(A:K, B:K, X:KItem, Y:KItem, S:Map)
         => (X |-> replaceKindInTerm(A, B, Y)) replaceKindInMap(A, B, .K, .K, S)
+
+   syntax Map ::= replaceAllKindInMap(Map, Map) [function]
+   rule replaceAllKindInMap(.Map, M:Map) => M
+   rule replaceAllKindInMap((A:K |-> B:K) RM:Map, M:Map)
+          => replaceAllKindInMap(RM, replaceKindInMap(A, B, .K, .K, M))
 
    syntax KItem ::= unifInKind(K, Set, Set, Map) [function]
         //curr-tuple, post-tuple, pre-tuple, assignments
