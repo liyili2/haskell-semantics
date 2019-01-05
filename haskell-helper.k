@@ -294,62 +294,93 @@ module HASKELL-HELPER
    syntax KItem ::= getSingleton(Set) [function]
    rule getSingleton(SetItem(A:K)) => A
 
-   syntax KItem ::= makeAlphaM(K, Map, Map) [function] //(Alpha, AlphaMap)
-                  | makeAlphaMAux(TopDecl, Map, K, Map) [function]
-   rule makeAlphaM('bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map, TM:Map)
-          => makeAlphaM(Ts, M, TM)
-   rule makeAlphaM('bodyimpdecls(Is:ImpDecls), M:Map, TM:Map) => .K
-   rule makeAlphaM('bodytopdecls(Ts:TopDecls), M:Map, TM:Map) => makeAlphaM(Ts, M, TM)
-   rule makeAlphaM(.TopDecls, M:Map, TM:Map) => putAlphaMap(TM)
-   rule makeAlphaM('topdeclslist(A:TopDecl,, As:TopDecls), M:Map, TM:Map)
-              => makeAlphaMAux(A, M, As, TM)
+   syntax KItem ::= makeAlphaM(K, K, Map, Map) [function] //curr-mod, (Alpha, AlphaMap)
+                  | makeAlphaMAux(K, TopDecl, Map, K, Map) [function]
+                   //curr-mod, top-decl, checking map, checking-point, store-map
+   rule makeAlphaM(Mod:K, 'bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map, TM:Map)
+          => makeAlphaM(Mod:K, Ts, M, TM)
+   rule makeAlphaM(Mod:K, 'bodyimpdecls(Is:ImpDecls), M:Map, TM:Map) => .K
+   rule makeAlphaM(Mod:K, 'bodytopdecls(Ts:TopDecls), M:Map, TM:Map)
+                  => makeAlphaM(Mod:K, Ts, M, TM)
+   rule makeAlphaM(Mod:K, .TopDecls, M:Map, TM:Map) => putAlphaMap(TM)
+   rule makeAlphaM(Mod:K, 'topdeclslist(A:TopDecl,, As:TopDecls), M:Map, TM:Map)
+              => makeAlphaMAux(Mod:K, A, M, As, TM)
 
-   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K, TM:Map)
-            => makeAlphaM(As, addEdges(getConstrNames(A), getConstrNames(B)) M,
-                            (getSingleton(getConstrNames(A)) |-> B) TM)
+   rule makeAlphaMAux(Mod:K, type A:SimpleType = B:Type, M:Map, As:K, TM:Map)
+            => makeAlphaM(Mod:K, As, addEdges(getConstrNames(A), getConstrNames(B)) M,
+                            (getSingleton(getConstrNames(A))
+                                 |-> alphaTuple(getTyVarList(A), toAbsType(Mod, B))) TM)
         requires getTypeNames(B) <=Set getTypeNames(A)
                   andBool getSingleton(getConstrNames(A)) in keys(M)
-                  andBool notBool hasCycleAux(getSingleton(getConstrNames(A)), getConstrNames(B), M)
-   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K, TM:Map) => error(typeVarNoInclusive)
+                  andBool notBool hasCycleAux(
+                               getSingleton(getConstrNames(A)), getConstrNames(B), M)
+   rule makeAlphaMAux(Mod:K, type A:SimpleType = B:Type,
+                               M:Map, As:K, TM:Map) => error(typeVarNoInclusive)
         requires notBool (getTypeNames(B) <=Set getTypeNames(A))
-   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K, TM:Map) => error(repeatedNames)
+   rule makeAlphaMAux(Mod:K, type A:SimpleType = B:Type,
+                               M:Map, As:K, TM:Map) => error(repeatedNames)
         requires notBool getSingleton(getConstrNames(A)) in keys(M)
-   rule makeAlphaMAux(type A:SimpleType = B:Type, M:Map, As:K, TM:Map) => error(cycleAlpha)
+   rule makeAlphaMAux(Mod:K, type A:SimpleType = B:Type,
+                            M:Map, As:K, TM:Map) => error(cycleAlpha)
         requires hasCycleAux(getSingleton(getConstrNames(A)), getConstrNames(B), M)
-   rule makeAlphaMAux(A:TopDecl, M:Map, As:K, TM:Map) => makeAlphaM(As, M, TM) [owise]
+   rule makeAlphaMAux(Mod:K, A:TopDecl, M:Map, As:K, TM:Map)
+                           => makeAlphaM(Mod:K, As, M, TM) [owise]
 
 
    //collect a map for knowing the type name and its partial kind (not proved)
-   syntax Map ::= parKindEntry(K, SimpleType) [function]//curr-mod, simple-type
-   syntax KItem ::= resolveKindEntry(TyVars) [function]
-   rule parKindEntry(S:K, 'simpleTypeCon(T:TyCon,, Vs:TyVars))
-            => (toAbsTypeCon(S,T) |-> parKnown(resolveKindEntry(Vs)))
-   rule resolveKindEntry(.TyVars) => star
-   rule resolveKindEntry('typeVars(A:TyVar,,B:TyVars))
-          => kindArrow(star, resolveKindEntry(B))
+   syntax KItem ::= parKindEntry(Int, Set, K, SimpleType) [function]
+           //counter, kind-var-set, curr-mod, simple-type
+                  | parKindEntryAux(K, K, K) [function]
+                    //curr-mod, simple-type, resultTyVarKind
 
-   syntax KItem ::= collectTypes(K, K, Map) [function] //curr-mod, decls, store-kind-map
-   rule collectTypes(Mod:K, 'bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map)
-          => collectTypes(Mod:K, Ts, M)
-   rule collectTypes(Mod:K, 'bodyimpdecls(Is:ImpDecls), M:Map) => .K
-   rule collectTypes(Mod:K, 'bodytopdecls(Ts:TopDecls), M:Map) => collectTypes(Mod:K, Ts, M)
-   rule collectTypes(Mod:K, .TopDecls, M:Map) => putKindMap(M)
-   rule collectTypes(Mod:K, 'topdeclslist(type A:SimpleType = B:Type,, As:TopDecls), M:Map)
-              => collectTypes(Mod:K, As, (parKindEntry(Mod, A)) M)
-   rule collectTypes(Mod:K, 'topdeclslist(data Oc:OptContext A:SimpleType
+   rule parKindEntry(N:Int, S:Set, Curr:K, 'simpleTypeCon(T:TyCon,, Vs:TyVars))
+            => parKindEntryAux(Curr, T, resolveKindEntry(N, S, Vs, .List))
+   rule parKindEntryAux(Curr:K, T:K, resultTyVarKindList(N:Int, S:Set, L:List))
+            => resultTyVarKindMap(N, S, (toAbsTypeCon(Curr,T) |-> listToKind(L)))
+
+   syntax KItem ::= listToKind(List) [function]
+   rule listToKind(.List) => star
+   rule listToKind(ListItem(A:K) L:List) => kindArrow(A, listToKind(L))
+
+   syntax KItem ::= resolveKindEntry(Int, Set, TyVars, List) [function]
+           //counter, kind-var-set, tyVars, result
+   rule resolveKindEntry(N:Int, S:Set, .TyVars, T:List) => resultTyVarKindList(N, S, T)
+   rule resolveKindEntry(N:Int, S:Set, 'typeVars(A:TyVar,,B:TyVars), T:List)
+          => resolveKindEntry(N +Int 1, S SetItem(kindVar(N)), B, T ListItem(kindVar(N)))
+
+   syntax KItem ::= collectTypes(Int, Set, K, K, Map) [function]
+             //couonter, kind-var=set, curr-mod, decls, store-kind-map
+                  | collectTypesAux(K, K, K, Map) [function]
+               //curr-mod, decls, return-tyvar-kind, store-kind-map
+   rule collectTypes(N:Int, S:Set, Mod:K, 'bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map)
+          => collectTypes(N, S, Mod:K, Ts, M)
+   rule collectTypes(N:Int, S:Set, Mod:K, 'bodyimpdecls(Is:ImpDecls), M:Map) => .K
+   rule collectTypes(N:Int, S:Set, Mod:K, 'bodytopdecls(
+                 Ts:TopDecls), M:Map) => collectTypes(N,S, Mod:K, Ts, M)
+   rule collectTypes(N:Int, S:Set, Mod:K, .TopDecls, M:Map) => resultTyVarKindMap(N, S, M)
+   rule collectTypes(N:Int, S:Set, Mod:K,
+            'topdeclslist(type A:SimpleType = B:Type,, As:TopDecls), M:Map)
+              => collectTypesAux(Mod:K, As, parKindEntry(N, S, Mod, A), M)
+   rule collectTypes(N:Int, S:Set, Mod:K, 'topdeclslist(data Oc:OptContext A:SimpleType
                         B:OptConstrs D:OptDeriving,, As:TopDecls), M:Map)
-              => collectTypes(Mod:K, As, (parKindEntry(Mod, A)) M)
-   rule collectTypes(Mod:K, 'topdeclslist(newtype Oc:OptContext A:SimpleType
+              => collectTypesAux(Mod:K, As, parKindEntry(N, S, Mod, A), M)
+   rule collectTypes(N:Int, S:Set, Mod:K, 'topdeclslist(newtype Oc:OptContext A:SimpleType
                        = B:NewConstr D:OptDeriving,, As:TopDecls), M:Map)
-              => collectTypes(Mod:K, As, (parKindEntry(Mod, A)) M)
-   rule collectTypes(Mod:K, 'topdeclslist(A:TopDecl,, As:TopDecls),
-                   M:Map) => collectTypes(Mod:K, As, M) [owise]
+              => collectTypesAux(Mod:K, As, parKindEntry(N,S, Mod, A), M)
+   rule collectTypes(N:Int, S:Set, Mod:K, 'topdeclslist(A:TopDecl,, As:TopDecls),
+                   M:Map) => collectTypes(N, S, Mod:K, As, M) [owise]
+   rule collectTypesAux(Mod:K, As:K, resultTyVarKindMap(N:Int, S:Set, NM:Map), M:Map)
+          => collectTypes(N, S, Mod, As, NM M)
 
    //turn type syntax to abstract syntax
    syntax List ::= toTypeList(K) [function]
    rule toTypeList(.TyVars) => .List
    rule toTypeList('typeVars(X:TyVar,, A:TyVars))
            => ListItem(X) toTypeList(A)
+
+   syntax List ::= getTyVarList(K) [function]
+   rule getTyVarList('simpleTypeCon(A:TyCon,, B:TyVars))
+           => toTypeList(B)
 
    //convert a type con to abs form (fullname)
    syntax KItem ::= toAbsTypeCon(K, K) [function] //curr-mod-name, type-con
@@ -548,6 +579,13 @@ module HASKELL-HELPER
              L:List, Body:Map, Oc:Set), S:Set)
           => isValidTypes(M, Body, .K, .K, listToSet(L) S)
  
+   rule isAllValidTypes(M, A:K, alphaTuple(L:List, Body:K), S:Set)
+          => isAllValidTypes(M, .K, .K, listToSet(L) S)
+        requires isTypeValid(Body, listToSet(L) S)
+   rule isAllValidTypes(M, A:K, alphaTuple(L:List, Body:K), S:Set)
+          => error(typeNotInScope)
+        requires notBool isTypeValid(Body, listToSet(L) S)
+
    rule isValidTypes(M:Map, .Map, .K, .K, S:Set) => isAllValidTypes(M, .K, .K, S)
    rule isValidTypes(M:Map, (A:K |-> B:K) BM:Map, .K, .K, S:Set)
              => isValidTypes(M, BM, A, B, S)
@@ -579,6 +617,13 @@ module HASKELL-HELPER
    rule isAllValidTypeVars(M:Map, A:K, preBetaEntry(Os:Set,
              L:List, Body:Map, Oc:Set))
             => isValidTypeVars(M, Body, .K, .K, listToSet(L))
+   rule isAllValidTypeVars(M:Map, A:K, alphaTuple(L:List, Body:K))
+            => isAllValidTypeVars(M, .K, .K)
+        requires isTypeVarValid(Body, listToSet(L))
+   rule isAllValidTypeVars(M:Map, A:K, alphaTuple(L:List, Body:K))
+            => error(typeVarNotInScope)
+        requires notBool isTypeVarValid(Body, listToSet(L))
+
    rule isValidTypeVars(M:Map, .Map, .K, .K, S:Set) => isAllValidTypeVars(M, .K, .K)
    rule isValidTypeVars(M:Map, (A:K |-> B:K) BM:Map, .K, .K, S:Set)
            => isValidTypeVars(M:Map, BM, A, B, S)
@@ -598,29 +643,19 @@ module HASKELL-HELPER
    rule isTheKind(A:K, B:K, B:K, M:Map) => true
    rule isTheKind(A:K, B:K, C:K, M:Map) => false [owise]
 
-   syntax Bool ::= isParKnown(K) [function]
-   rule isParKnown(parKnown(A:K)) => true
-   rule isParKnown(_:K) => false [owise]
-
    syntax Int ::= countKindLength(K) [function]
-   rule countKindLength(parKnown(X:K)) => countKindLength(X)
    rule countKindLength(kindArrow(X:K, Y:K)) => 1 +Int countKindLength(Y)
    rule countKindLength(A:K) => 0 [owise]
 
    syntax List ::= formListKind(K) [function]
    rule formListKind(kindArrow(A:K, B:K)) => ListItem(A) formListKind(B)
-   rule formListKind(parKnown(X:K)) => formListKind(X)
    rule formListKind(A:K) => .List [owise]
 
-   syntax KItem ::= removeWraper(K) [function]
-   rule removeWraper(parKnown(A:K)) => A
-   rule removeWraper(A:K) => A [owise]
-
    //kind inference top rule
-   syntax KItem ::= genTyVarKind(Int, Set, K, Map, List) [function]
-   rule genTyVarKind(N:Int, S:Set, A:K, M:Map, .List) => resultTyVarKind(N, S, M)
-   rule genTyVarKind(N:Int, S:Set, kindArrow(X:K, Y:K), M:Map, ListItem(A:K) L:List)
-           => genTyVarKind(N +Int 1, SetItem(kindVar(N)) S, Y, (A |-> X) M, L)
+   syntax KItem ::= genTyVarKind(K, Map, List) [function]
+   rule genTyVarKind(A:K, M:Map, .List) => resultMap(M)
+   rule genTyVarKind(kindArrow(X:K, Y:K), M:Map, ListItem(A:K) L:List)
+           => genTyVarKind(Y, (A |-> X) M, L)
 
    syntax Bool ::= isCurryType(K) [function]
    rule isCurryType(curryTypes(A:List, B:K)) => true
@@ -633,9 +668,12 @@ module HASKELL-HELPER
 
    syntax KItem ::= kindInfer(Int, Set, K, K, Map, Map, Set) [function]
          //counter, kind-var-set, name, entry, beta, kind env, gen-kind-tuples
-                  | kindInferAux(K, K, Set, Map, Map, Map, Set) [function]
-                     //result-type-var-kind, curr-ty-name,
-                    // kindtuples, body map, beta, kind-map, gen-kind,tuples
+                  | kindInferAux(Int, Set, K, K, Map, Map, Map, Set) [function]
+                     //counter, kind-var-set, result-type-var-kind, curr-ty-name,
+                    //body map, beta, kind-map, gen-kind,tuples
+                  | kindInferAuxAlpha(Int, Set, K, K, K, Map, Map, Set) [function]
+                     //counter, kind-var-set, result-type-var-kind, curr-ty-name,
+                    //body, beta, kind-map, gen-kind,tuples
                   | kindInferSec(K, K, Map, Map, Set) [function]
                    //name, execution, beta, kind-env
                   | kindInferThird(Int, Set, K, K, Map, Map, Set) [function]
@@ -645,7 +683,7 @@ module HASKELL-HELPER
                   | kindInferFinal(Int, Set, K, Map) [function]
 
    rule kindInferFinal(N:Int, S:Set, resultMap(M:Map), KM:Map)
-        => resultTyVarKind(N, S, replaceAllKindInMap(M, KM))
+        => resultTyVarKindMap(N, S, replaceAllKindInMap(M, KM))
 
    rule kindInfer(N:Int, S:Set, .K, .K, .Map, KM:Map, Tu:Set)
              => kindInferFinal(N, S, unifInKind(.K, .Set, Tu, .Map), KM)
@@ -653,12 +691,20 @@ module HASKELL-HELPER
           => kindInfer(N, S, A, B, BM, KM, Tu)
    rule kindInfer(N:Int, S:Set, A:K, preBetaEntry(Oc:Set,
                 Vl:List, Body:Map, Od:Set), BM:Map, (A |-> T:K) KM:Map, Tu:Set)
-          => kindInferAux(genTyVarKind(N, S, removeWraper(T),
-                          .Map, Vl), A, .Set, Body, BM, (A |-> T:K) KM, Tu)
+          => kindInferAux(N, S, genTyVarKind(T,
+                          .Map, Vl), A, Body, BM, (A |-> T:K) KM, Tu)
+   rule kindInfer(N:Int, S:Set, A:K, alphaTuple(Vl:List, Body:K),
+                 BM:Map, (A |-> T:K) KM:Map, Tu:Set)
+          => kindInferAuxAlpha(N, S, genTyVarKind(T,
+                          .Map, Vl), A, Body, BM, (A |-> T:K) KM, Tu)
 
-   rule kindInferAux(resultTyVarKind(N:Int, S:Set, M:Map),
-                      A:K,  Tus:Set, Body:Map, BM:Map, KM:Map, Tu:Set)
-             => kindInferSec(A, kindNext(N, S, .K, Body, KM M, Tus), BM, KM, Tu)
+   rule kindInferAuxAlpha(N:Int, S:Set, resultMap(M:Map), A:K,
+                 Body:K, BM:Map, KM:Map, Tu:Set)
+          => kindInferSec(A, kindNext(N, S, Body, .Map, KM M, .Set), BM, KM, Tu)
+
+   rule kindInferAux(N:Int, S:Set, resultMap(M:Map),
+                      A:K, Body:Map, BM:Map, KM:Map, Tu:Set)
+             => kindInferSec(A, kindNext(N, S, .K, Body, KM M, .Set), BM, KM, Tu)
 
    rule kindInferSec(A:K, returnKind(N:Int, S:Set, Tus:Set), BM:Map, KM:Map, Tu:Set)
              => kindInferThird(N, S, A, checkAndRemoveNoVarTerms(
@@ -718,7 +764,7 @@ module HASKELL-HELPER
 
    rule kindInference(N:Int, S:Set, typeConst(fullName(X:K, Y:K), B:List),
                  C:K, (fullName(X:K, Y:K) |-> D:K) M:Map)
-          => kindInferenceAux(N, S, SetItem(kindTuple(C, removeWraper(D))),
+          => kindInferenceAux(N, S, SetItem(kindTuple(C, D)),
                   B, formListKind(D), (fullName(X:K, Y:K) |-> D:K) M:Map)
         requires size(B) ==K countKindLength(D)
    rule kindInference(N:Int, S:Set, typeConst(fullName(X:K, Y:K), B:List),

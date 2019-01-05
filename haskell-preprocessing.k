@@ -38,18 +38,20 @@ module HASKELL-PREPROCESSING
                 ~> (genKindMap
                 ~> (nextNextChecks)))
 
-    rule nextNextChecks => checkAlphaNoLoops
-                ~> (checkArgSortsAreTargets
+    rule nextNextChecks => (checkArgSortsAreTargets
                 ~> checkParUsed)
 
     //deal with alpha map, deal with renaming of type name
     //collect information for the type name and kind in the same module
-    rule <k> collectKindInfo => collectTypes(Mod, S, .Map) ...</k>
+    rule <k> collectKindInfo => collectTypes(N, S, Mod, TM, .Map) ...</k>
+         <tempModule> TM:K </tempModule>
+         <currModule> Mod:K </currModule>
+         <kindVarCounter> N:Int </kindVarCounter>
+         <kindVarSet> S:Set </kindVarSet>
+
+    rule <k> makeAlphaMap => makeAlphaM(Mod, S, .Map, .Map) ...</k>
          <tempModule> S:K </tempModule>
          <currModule> Mod:K </currModule>
-
-    rule <k> makeAlphaMap => makeAlphaM(S, .Map, .Map) ...</k>
-         <tempModule> S:K </tempModule>
 
     rule <k> putAlphaMap(M:Map) => .K ...</k>
          <tempAlphaMap> _:Map => M </tempAlphaMap>
@@ -67,27 +69,25 @@ module HASKELL-PREPROCESSING
          <tempModule> S:K </tempModule>
          <currModule> Mod:K </currModule>
 
-    rule <k> putKindMap(M:Map) => .K ...</k>
-         <tempKindMap> _:Map => M </tempKindMap>
-
     //TODO: add dealing with kind inference for alpha map, and fix the generation of kind map
-    rule <k> genKindMap => kindInfer(N, S, .K, .K, BM, M, .Set) ...</k>
+    rule <k> genKindMap => kindInfer(N, S, .K, .K, AM BM, M, .Set) ...</k>
          <tempBetaMap> BM:Map </tempBetaMap>
+         <tempAlphaMap> AM:Map </tempAlphaMap>
          <tempKindMap> M:Map </tempKindMap>
          <kindVarCounter> N:Int </kindVarCounter>
          <kindVarSet> S:Set </kindVarSet>
 
-    rule <k> resultTyVarKind(N:Int, S:Set, M:Map) => .K ...</k>
+    rule <k> resultTyVarKindMap(N:Int, S:Set, M:Map) => .K ...</k>
          <tempKindMap> _:Map => M </tempKindMap>
          <kindVarCounter> _:Int => N </kindVarCounter>
          <kindVarSet> _:Set => S </kindVarSet>
 
     rule <k> checkPreBetaInScope
-               => isAllValidTypes(M, .K, .K, keys(KM))
-                  ~> isAllValidTypeVars(M, .K, .K) ...</k>
+               => isAllValidTypes(AM M, .K, .K, keys(KM))
+                  ~> isAllValidTypeVars(AM M, .K, .K) ...</k>
          <tempBetaMap> M:Map </tempBetaMap>
          <tempKindMap> KM:Map </tempKindMap>
-
+         <tempAlphaMap> AM:Map </tempAlphaMap>
 
    
 

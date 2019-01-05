@@ -32,26 +32,25 @@ module HASKELL-ABSTRACT-SYNTAX
         //make map for alpha
     syntax KItem ::= putAlphaMap(Map)
     syntax KItem ::= putPreBetaMap(Map)
-    syntax KItem ::= putKindMap(Map)
     syntax KItem ::= "collectKindInfo"
 
     //preprocessing of beta map
     syntax KItem ::= "makePreBetaMap"
-    syntax KResult ::= parKnown(K) //partial known for a guess of a kind
     syntax KResult ::= "star" // kind inference base
     syntax KResult ::= kindVar(Int) //unknown kind
     syntax KResult ::= kindArrow(K, K) // kind inference arrow case
     syntax KItem ::= returnKind(Int, Set, Set)
              //return-var-count, var-set, return set of kind unifier
     syntax KItem ::= kindTuple(K, K)
+    syntax KItem ::= alphaTuple(List, K) //list-of-vars, type
 
     //preprocessing of validity checks
     syntax KItem ::= "checkPreBetaInScope"
         //check if the beta map generated for the module is within the scope
 
-    syntax KItem ::= "checkAlphaNoLoops"
+    /*syntax KItem ::= "checkAlphaNoLoops"
         //alpha check for no loops
-        //check alpha to make sure that everything points to a T
+        //check alpha to make sure that everything points to a T */
     syntax KItem ::= "checkArgSortsAreTargets"
            //Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
     syntax KItem ::= "checkParUsed"
@@ -99,8 +98,10 @@ module HASKELL-ABSTRACT-SYNTAX
 
     syntax KResult ::= resultSet(Set)
     syntax KResult ::= resultMap(Map)
-    syntax KResult ::= resultTyVarKind(Int, Set, Map)
+    syntax KResult ::= resultTyVarKindMap(Int, Set, Map)
                          //new-count, new-kind-vars, new-kind-map
+    syntax KResult ::= resultTyVarKindList(Int, Set, List)
+                         //new-count, new-kind-vars, new-kind-in-list
 
     //abstract syntax for type constrs
     syntax KResult ::= TypeResult
