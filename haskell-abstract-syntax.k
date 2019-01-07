@@ -33,6 +33,10 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= putAlphaMap(Map)
     syntax KItem ::= putPreBetaMap(Map)
     syntax KItem ::= "collectKindInfo"
+    syntax KItem ::= putClassMapSet(Map, Set)
+    syntax KItem ::= putTypeClass(K, Set, K, K, K)
+               //module, class contexts (super classes),
+              // class name, class type-var, putClassMapSet
 
     //preprocessing of beta map
     syntax KItem ::= "makePreBetaMap"
@@ -109,6 +113,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax TypeResult ::= TyVar | modVar(TyVar)
                         | typeConst(K, List) //type constror or type var, list of typeResult
                         | curryTypes(List, K) //only in the top level
+                        | forall(Set, K)
     syntax KResult ::= fullName(K, K) //module name, type con
     syntax KResult ::= preBetaEntry(Set, List, Map, Set)
            //optContext, list_of_vars, Body, optDeriving
@@ -131,7 +136,7 @@ module HASKELL-ABSTRACT-SYNTAX
 
     syntax KItem ::= names(Set) //store all names
     syntax KItem ::= className(K, List) //name, list of type-vars
-    syntax KItem ::= typeClass(K, List, Map) // father, type vars, contents
+    syntax KItem ::= typeClass(Set, K, Map) // father, type var, contents
 
     //expression syntax
     //1 gendecls are signatures

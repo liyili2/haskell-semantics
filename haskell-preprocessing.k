@@ -69,7 +69,7 @@ module HASKELL-PREPROCESSING
          <tempModule> S:K </tempModule>
          <currModule> Mod:K </currModule>
 
-    //TODO: add dealing with kind inference for alpha map, and fix the generation of kind map
+    //finish
     rule <k> genKindMap => kindInfer(N, S, .K, .K, AM BM, M, .Set) ...</k>
          <tempBetaMap> BM:Map </tempBetaMap>
          <tempAlphaMap> AM:Map </tempAlphaMap>
@@ -89,7 +89,19 @@ module HASKELL-PREPROCESSING
          <tempKindMap> KM:Map </tempKindMap>
          <tempAlphaMap> AM:Map </tempAlphaMap>
 
-   
 
+    //deal with type classes. type classes ast gen
+    rule putTypeClass(Mod:K, S:Set, N:K, T:K, error(X:K)) => error(X)
+
+    rule <k> putTypeClass(Mod:K, S:Set, N:K, T:K,
+                putClassMapSet(Methods:Map, Names:Set)) ...</k>
+         <classMethodNames> _:Set => Names </classMethodNames>
+         (.Bag => <class>
+                     <classModule> Mod </classModule>
+                     <className> N </className>
+                     <classTypeVar> T </classTypeVar>
+                     <classContext> S </classContext>
+                     <classMethods> Methods </classMethods>
+                  </class>)
 
 endmodule

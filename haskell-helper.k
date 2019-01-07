@@ -879,5 +879,16 @@ module HASKELL-HELPER
          => error(kindUnifierFail)
         requires occurInKind(kindVar(A:Int), B)
 
+   //a function to compile type classes to ast form
+   syntax KItem ::= toAstTypeClass(K, K, K, Map, Set) [function]
+             //curr-mod, type-class-var, OptCDecls, gen-class-map, exist-ty-con-set
+
+   rule toAstTypeClass(Mod:K, V:K, 'emptyOptCDecls(.KList), M:Map, S:Set)
+                   => putClassMapSet(M, S)
+   rule toAstTypeClass(Mod:K, V:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)), M:Map, S:Set)
+           => toAstTypeClass(Mod,V, Cs, M, S)
+   rule toAstTypeClass(Mod:K, V:K, .CDeclsList, M:Map, S:Set) => putClassMapSet(M, S)
+   rule 
+
 
 endmodule

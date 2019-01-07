@@ -30,14 +30,22 @@ module HASKELL-CONFIGURATION
                     <moduleCompCode> .K </moduleCompCode>
                     <exports> .Set </exports>
                     <importElemMap> .Map </importElemMap>
-                    <classes> .Map </classes> //type classes
                 </module>
-              <classNameInMod> .Map </classNameInMod> //store all class names in modules. 
               <typeNameInMod> .Map </typeNameInMod>
                    //store all type names in modules. from module name to type name+arity
               <constrNameInMod> .Map </constrNameInMod> //store all constructor names in modules. 
               <importMap> .Map </importMap>
             </modules>
+            <classes>
+              <classMethodNames> .Set </classMethodNames> //store all class method names in modules.
+              <class multiplicity="*">
+                <classModule> .K </classModule>
+                <className> .K </className>
+                <classTypeVar> .K </classTypeVar>
+                <classContext> .Set </classContext>
+                <classMethods> .Map </classMethods>
+              </class>
+            </classes>
             <output stream="stdout" color="DodgerBlue"> .List </output>
         </T>
 
