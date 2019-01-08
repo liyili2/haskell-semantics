@@ -41,4 +41,10 @@ module HASKELL-ERRORS
     rule <k> error(kindUnifierFail) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type delcaration that uses a type variable or type con in the wrong position causing kind inference failure.")) </output>
 
+    rule <k> error(ambiguousTypeVar) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type class whose method does not define the type var for the type class, so it is an ambiguous type variable.")) </output>
+
+    rule <k> error(classVarCollipse) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type class whose method name copplipses with the type variables or the methods names.")) </output>
+
 endmodule

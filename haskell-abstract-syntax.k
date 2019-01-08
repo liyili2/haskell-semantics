@@ -18,6 +18,8 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "typeVarKindBad"
     syntax KItem ::= "typeVarKindNumError"
     syntax KItem ::= "kindUnifierFail"
+    syntax KItem ::= "ambiguousTypeVar"
+    syntax KItem ::= "classVarCollipse"
 
     syntax KItem ::= "startChecks"
     syntax KItem ::= "nextChecks"
@@ -113,7 +115,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax TypeResult ::= TyVar | modVar(TyVar)
                         | typeConst(K, List) //type constror or type var, list of typeResult
                         | curryTypes(List, K) //only in the top level
-                        | forall(Set, K)
+                        | forall(Set, K) //set of vars, type
     syntax KResult ::= fullName(K, K) //module name, type con
     syntax KResult ::= preBetaEntry(Set, List, Map, Set)
            //optContext, list_of_vars, Body, optDeriving
@@ -136,7 +138,10 @@ module HASKELL-ABSTRACT-SYNTAX
 
     syntax KItem ::= names(Set) //store all names
     syntax KItem ::= className(K, List) //name, list of type-vars
-    syntax KItem ::= typeClass(Set, K, Map) // father, type var, contents
+    syntax KItem ::= typeClass(Set, K, Map)
+        // father, type var, contents,
+    syntax KItem ::= methodDef(List, K, List) //list of constraint, Type, list of patterns
+        // father, type var, contents,
 
     //expression syntax
     //1 gendecls are signatures

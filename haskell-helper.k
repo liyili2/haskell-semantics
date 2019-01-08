@@ -11,6 +11,10 @@ module HASKELL-HELPER
    rule listToSet(.List) => .Set
    rule listToSet(ListItem(A:K) L:List) => SetItem(A) listToSet(L)
 
+   syntax List ::= setToList(Set) [function]
+   rule setToList(.Set) => .List
+   rule setToList(SetItem(A:K) L:Set) => ListItem(A) setToList(L)
+
    //boolean functions to determine if a term has no certain klabel
    syntax Bool ::= isBATypeCon(K) [function]
    rule isBATypeCon('baTypeCon(A:AType,, B:BType)) => true
@@ -287,6 +291,19 @@ module HASKELL-HELPER
    rule getTypeNames('typeTupleCon(T1:K,, T2:K)) => getTypeNames(T1) getTypeNames(T2) 
    rule getTypeNames(T:K) => .Set [owise]
 
+   syntax Set ::= getFreeTypeVars(K) [function]
+                | getFreeTypeVarsInList(List) [function]
+   rule getFreeTypeVars(T:TyVar) => SetItem(T)
+   rule getFreeTypeVars(typeConst(A:K, B:List))
+          => getFreeTypeVars(A) getFreeTypeVarsInList(B)
+   rule getFreeTypeVars(curryTypes(A:List, B:K))
+         => getFreeTypeVarsInList(A) getFreeTypeVars(A)
+   rule getFreeTypeVars(forall(A:Set, B:K))
+            => getFreeTypeVars(B) -Set A
+   rule getFreeTypeVarsInList(.List) => .Set
+   rule getFreeTypeVarsInList(ListItem(A:K) L:List)
+            => getFreeTypeVars(A) getFreeTypeVarsInList(L)
+
    syntax Map ::= addEdges(Set, Set) [function]
    rule addEdges(SetItem(A:K), SetItem(B:K) S:Set)
           => (A |-> names(SetItem(B) S))
@@ -386,6 +403,10 @@ module HASKELL-HELPER
    syntax KItem ::= toAbsTypeCon(K, K) [function] //curr-mod-name, type-con
    rule toAbsTypeCon(Mod:K, T:TyCon) => fullName(Mod, T)
    rule toAbsTypeCon(Mod:K, 'conTyCon(Mod':K,, T:K)) => fullName(Mod', T)
+
+   syntax KItem ::= toAbsTypeWithAll(K, Set) [function]
+   rule toAbsTypeWithAll(T:K, .Set) => T
+   rule toAbsTypeWithAll(T:K, S:Set) => forall(S, T) [owise]
 
    syntax KItem ::= toAbsType(K, K) [function] //current module name, type
                   | toAbsTypeAux(K, K, List, K) [function]
@@ -879,16 +900,75 @@ module HASKELL-HELPER
          => error(kindUnifierFail)
         requires occurInKind(kindVar(A:Int), B)
 
-   //a function to compile type classes to ast form
+   //functions to compile type classes to ast form
+   syntax Set ::= getTypeVarsInClass(K, Set) [function]
+   rule getTypeVarsInClass(.K, .Set) => .Set
+   rule getTypeVarsInClass(.K, SetItem(A:K) S:Set)
+            => getTypeVarsInClass(A, S)
+   rule getTypeVarsInClass(className(A:K, ListItem(C:K) B:List), S:Set)
+            => SetItem(C) getTypeVarsInClass(.K, S)
+
    syntax KItem ::= toAstTypeClass(K, K, K, Map, Set) [function]
              //curr-mod, type-class-var, OptCDecls, gen-class-map, exist-ty-con-set
+                  | toAstTypeClassAux(K, K, K, CDeclsList, Map, Set) [function]
+            //curr-mod, type-class-var, CDecl,CDeclsList, gen-class-map, exist-ty-con-set
+                  | toAstTypeClassList(K, K, K, List, K, CDeclsList, Map, Set, Set) [function]
+            //curr-mod, type-class-var, vars, contexts, type,CDeclsList, gen-class-map,
+            // exist-ty-con-set, exist-var-set
 
    rule toAstTypeClass(Mod:K, V:K, 'emptyOptCDecls(.KList), M:Map, S:Set)
                    => putClassMapSet(M, S)
    rule toAstTypeClass(Mod:K, V:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)), M:Map, S:Set)
            => toAstTypeClass(Mod,V, Cs, M, S)
    rule toAstTypeClass(Mod:K, V:K, .CDeclsList, M:Map, S:Set) => putClassMapSet(M, S)
-   rule 
+   rule toAstTypeClass(Mod:K, V:K, 'cdeclCon(A:CDecl,, B:CDeclsList),
+                     M:Map, S:Set)
+         => toAstTypeClassAux(Mod, V:K, A, B, M, S)
+
+   rule toAstTypeClassAux(Mod:K, V:K, 'emptyGenDecl(.KList), B:CDeclsList, M, S)
+          => toAstTypeClass(Mod, V, B, M, S)
+   rule toAstTypeClassAux(Mod:K, V:K, 'varAssign(X:Vars,, T:Type),
+                B:CDeclsList, M:Map, S:Set)
+           => toAstTypeClassList(Mod, V, X, .List, toAbsTypeWithAll(
+                 toAbsType(Mod, T), getFreeTypeVars(toAbsType(Mod, T))), B, M,
+                  S, getFreeTypeVars(toAbsType(Mod, T)))
+        requires V in getFreeTypeVars(toAbsType(Mod, T))
+   rule toAstTypeClassAux(Mod:K, V:K, 'varAssign(X:Vars,, T:Type),
+                B:CDeclsList, M:Map, S:Set)
+           => error(ambiguousTypeVar)
+        requires notBool V in getFreeTypeVars(toAbsType(Mod, T))
+
+   rule toAstTypeClassAux(Mod:K, V:K, 'genAssignContext(X:Vars,, C:Context,, T:Type),
+                B:CDeclsList, M:Map, S:Set)
+           => toAstTypeClassList(Mod, V, X, setToList(contextToSet(Mod, C)), toAbsTypeWithAll(
+                 toAbsType(Mod, T), getFreeTypeVars(toAbsType(Mod, T))), B, M,
+                  S, getFreeTypeVars(toAbsType(Mod, T)))
+        requires V in getFreeTypeVars(toAbsType(Mod, T))
+                  andBool getTypeVarsInClass(.K, contextToSet(Mod, C))
+                                     <=Set getFreeTypeVars(toAbsType(Mod, T))
+   rule toAstTypeClassAux(Mod:K, V:K, 'genAssignContext(X:Vars,, C:Context,, T:Type),
+                B:CDeclsList, M:Map, S:Set)
+           => error(ambiguousTypeVar)
+        requires (notBool V in getFreeTypeVars(toAbsType(Mod, T)))
+                   orBool (notBool getTypeVarsInClass(.K, contextToSet(Mod, C))
+                                     <=Set getFreeTypeVars(toAbsType(Mod, T)))
+
+
+   rule toAstTypeClassList(Mod:K, V:K, X:Var, Cons:List, T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
+           => toAstTypeClass(Mod, V, C, (X |-> methodDef(Cons, T, .List)) M, SetItem(X) S)
+        requires notBool X in (SetItem(V) S S1)
+   rule toAstTypeClassList(Mod:K, V:K, X:Var, Cons:List, T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
+           => error(classVarCollipse)
+        requires X in (SetItem(V) S S1)
+   rule toAstTypeClassList(Mod:K, V:K, 'varCon(X:Var,, Xs:Vars), Cons:List,
+                  T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
+           => toAstTypeClassList(Mod, V, Xs, Cons:List, T, C,
+                  (X |-> methodDef(Cons, T, .List)) M, SetItem(X) S, S1)
+        requires notBool X in (SetItem(V) S S1)
+   rule toAstTypeClassList(Mod:K, V:K, 'varCon(X:Var,, Xs:Vars), Cons:List,
+             T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
+           => error(classVarCollipse)
+        requires X in (SetItem(V) S S1)
 
 
 endmodule
