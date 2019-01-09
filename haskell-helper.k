@@ -20,6 +20,28 @@ module HASKELL-HELPER
    rule isBATypeCon('baTypeCon(A:AType,, B:BType)) => true
    rule isBATypeCon(A:K) => false [owise]
 
+   //a function to pill varid/varop
+   syntax KItem ::= pillVar(K) [function]
+   rule pillVar('varSymBracket(A:VarSym)) => A
+   rule pillVar('varIdQuote(A:VarId)) => A
+   rule pillVar(V:K) => V [owise]
+
+   syntax KItem ::= transVar(K, K) [function]
+   rule transVar(Mod:K, 'colon(.KList)) => fullName(Mod, 'colon(.KList))
+   rule transVar(Mod:K, C:ConSym) => fullName(Mod, C)
+   rule transVar(Mod:K, 'qConSymCon(A:ModId,, C:ConSym)) => fullName(A, C)
+   rule transVar(Mod:K, 'qTyConQuote(A:TyCon)) => fullName(Mod, A)
+   rule transVar(Mod:K, 'qTyConQuote('conTyCon(A:ModId,, C:TyCon)))
+                 => fullName(A, C)
+
+   syntax KItem ::= transTypeVar(K, K) [function]
+   rule transTypeVar(S:K, V:VarId) => tyVar(S, V)
+   rule transTypeVar(S:K, 'qVarIdCon(A:ModId,, B:VarId)) => tyVar(A, B)
+   rule transTypeVar(S:K, 'qVarBracket(C:ConSym)) => tyVar(S, C)
+   rule transTypeVar(S:K, 'qVarBracket(
+           'qConSymCon(A:ModId,, B:ConSym))) => tyVar(S, B)
+
+
    syntax Map ::= updateMapItem(Map, K, K, K) [function]
    rule updateMapItem(M:Map, .K, A:K, V:K)
            => M (A |-> names(SetItem(V)))
@@ -61,9 +83,12 @@ module HASKELL-HELPER
    rule countOnCommas('dotInTuple(.KList)) => 1
    rule countOnCommas('dotCon(C:GConCommas)) => 1 +Int countOnCommas(C)
 
-   syntax Int ::= countOnTypeTuple(TypeTuple) [function]
+   syntax Int ::= countOnTypeTuple(K) [function]
    rule countOnTypeTuple('twoTypeTuple(A:K,, B:K)) => 2
    rule countOnTypeTuple('typeTupleCon(A:K,, B:TypeTuple))
+            => 1 +Int countOnTypeTuple(B)
+   rule countOnTypeTuple('twoPatTuple(A:K,, B:K)) => 2
+   rule countOnTypeTuple('patTupleCon(A:K,, B:K))
             => 1 +Int countOnTypeTuple(B)
 
    syntax Bool ::= isFather(K, K, K, Map) [function]
@@ -119,7 +144,7 @@ module HASKELL-HELPER
    syntax List ::= toAbsTypeInClassTuple(K, Set, TypeTuple, Map, Map) [function]
 
    rule toAbsTypeInClass(Mod:K, S:Set, 'typeArrow(B:BType,, T:Type), TM:Map, IM:Map)
-            => typeConst((->), ListItem(toAbsTypeInClass(Mod,S, B, TM, IM))
+            => typeConst(fullName(Prelude, (->)), ListItem(toAbsTypeInClass(Mod,S, B, TM, IM))
                              ListItem(toAbsTypeInClass(Mod,S, T, TM, IM)))
         requires toAbsTypeInClass(Mod,S, B, TM, IM) =/=K none
               andBool toAbsTypeInClass(Mod,S, T, TM, IM) =/=K none
@@ -404,6 +429,21 @@ module HASKELL-HELPER
    rule toAbsTypeCon(Mod:K, T:TyCon) => fullName(Mod, T)
    rule toAbsTypeCon(Mod:K, 'conTyCon(Mod':K,, T:K)) => fullName(Mod', T)
 
+   syntax KItem ::= transExpCon(K, K) [function] //curr-mod-name, ExpCon
+   rule transExpCon(Mod:K, 'unitType(.KList)) => fullName(Prelude, 'unitType(.KList))
+   rule transExpCon(Mod:K, []) => fullName(Prelude, [])
+   rule transExpCon(Mod:K, 'tupleFun(Gs:GConCommas))
+          => fullName(Prelude, tupleType(countOnCommas(Gs) +Int 1))
+   rule transExpCon(Mod:K, T:TyCon) => fullName(Mod, T)
+   rule transExpCon(Mod:K, 'conTyCon(A:ModId,, T:TyCon))
+              => fullName(A, T)
+   rule transExpCon(Mod:K, 'gConBracket('colon(.KList)))
+              => fullName(Prelude, 'colon(.KList))
+   rule transExpCon(Mod:K, 'gConBracket(C:ConSym))
+              => fullName(Mod, C)
+   rule transExpCon(Mod:K, 'gConBracket('qConSymCon(A:ModId,, C:ConSym)))
+              => fullName(A, C)
+
    syntax KItem ::= toAbsTypeWithAll(K, Set) [function]
    rule toAbsTypeWithAll(T:K, .Set) => T
    rule toAbsTypeWithAll(T:K, S:Set) => forall(S, T) [owise]
@@ -479,21 +519,22 @@ module HASKELL-HELPER
    rule toAbsBangType(S:K, 'optBangATypes('optBangAType(Op:OptBang,, A:AType)
         ,, As:OptBangATypes)) => ListItem(toAbsType(S, A)) toAbsBangType(S:K, As)
 
-   syntax List ::= expandRecordType(Vars, K) [function]
-   rule expandRecordType(A:Var, T:K) => ListItem(typeConst(fullName(Prelude, recordAssign),
-                                   ListItem(tyVar(A)) ListItem(T)))
-   rule expandRecordType('varCon(A:Var,, As:Vars), T:K)
-           => ListItem(typeConst(fullName(Prelude, recordAssign),
-                      ListItem(tyVar(A)) ListItem(T))) expandRecordType(As, T)
+   syntax List ::= expandRecordType(K, Vars, K) [function]
+   rule expandRecordType(S:K, A:Var, T:K)
+             => ListItem(typeConst(fullName(Prelude, recordTypeAssign),
+                    ListItem(tyVar(S, pillVar(A))) ListItem(T)))
+   rule expandRecordType(S:K, 'varCon(A:Var,, As:Vars), T:K)
+           => ListItem(typeConst(fullName(Prelude, recordTypeAssign),
+                      ListItem(tyVar(S, pillVar(A))) ListItem(T))) expandRecordType(S, As, T)
 
    syntax List ::= toAbsBangTypeInRecord(K, K) [function]
                  //curr-mod-name, types
    rule toAbsBangTypeInRecord(S:K, .FieldDeclList) => .List
    rule toAbsBangTypeInRecord(S:K, 'fieldCon(Vs:Vars :: ! A:AType
-           ,, Fs:FieldDeclList)) => expandRecordType(Vs,
+           ,, Fs:FieldDeclList)) => expandRecordType(S, Vs,
                        toAbsType(S, A)) toAbsBangTypeInRecord(S, Fs)
    rule toAbsBangTypeInRecord(S:K, 'fieldCon('varAssign(Vs:Vars,, A:AType)
-           ,, Fs:FieldDeclList)) => expandRecordType(Vs,
+           ,, Fs:FieldDeclList)) => expandRecordType(S, Vs,
                        toAbsType(S, A)) toAbsBangTypeInRecord(S, Fs)
 
    syntax Map ::= makeSinglePreBeta(K, K, K) [function]
@@ -519,8 +560,8 @@ module HASKELL-HELPER
            => (N |-> curryTypes(ListItem(toAbsType(S, A)), T))
    rule makeSinglePreBeta(S:K, T:K, 'newConField(N:Con,, V:Var,, T':Type))
            => (N |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
-              fullName(Prelude, recordType), ListItem(typeConst(fullName(Prelude, recordAssign),
-                 ListItem(tyVar(V)) ListItem(toAbsType(S, T')))))) ListItem(T)))
+              fullName(Prelude, recordType), ListItem(typeConst(fullName(Prelude, recordTypeAssign),
+                 ListItem(tyVar(S, pillVar(V))) ListItem(toAbsType(S, T')))))) ListItem(T)))
 
    //functions to convert class name to abs form and convert context to a set of classes
 
@@ -901,6 +942,7 @@ module HASKELL-HELPER
         requires occurInKind(kindVar(A:Int), B)
 
    //functions to compile type classes to ast form
+   //only deal with method decl, method pattern will be in separate functions
    syntax Set ::= getTypeVarsInClass(K, Set) [function]
    rule getTypeVarsInClass(.K, .Set) => .Set
    rule getTypeVarsInClass(.K, SetItem(A:K) S:Set)
@@ -912,7 +954,7 @@ module HASKELL-HELPER
              //curr-mod, type-class-var, OptCDecls, gen-class-map, exist-ty-con-set
                   | toAstTypeClassAux(K, K, K, CDeclsList, Map, Set) [function]
             //curr-mod, type-class-var, CDecl,CDeclsList, gen-class-map, exist-ty-con-set
-                  | toAstTypeClassList(K, K, K, List, K, CDeclsList, Map, Set, Set) [function]
+                  | toAstTypeClassList(K, K, K, Set, K, CDeclsList, Map, Set, Set) [function]
             //curr-mod, type-class-var, vars, contexts, type,CDeclsList, gen-class-map,
             // exist-ty-con-set, exist-var-set
 
@@ -929,7 +971,7 @@ module HASKELL-HELPER
           => toAstTypeClass(Mod, V, B, M, S)
    rule toAstTypeClassAux(Mod:K, V:K, 'varAssign(X:Vars,, T:Type),
                 B:CDeclsList, M:Map, S:Set)
-           => toAstTypeClassList(Mod, V, X, .List, toAbsTypeWithAll(
+           => toAstTypeClassList(Mod, V, X, .Set, toAbsTypeWithAll(
                  toAbsType(Mod, T), getFreeTypeVars(toAbsType(Mod, T))), B, M,
                   S, getFreeTypeVars(toAbsType(Mod, T)))
         requires V in getFreeTypeVars(toAbsType(Mod, T))
@@ -940,7 +982,7 @@ module HASKELL-HELPER
 
    rule toAstTypeClassAux(Mod:K, V:K, 'genAssignContext(X:Vars,, C:Context,, T:Type),
                 B:CDeclsList, M:Map, S:Set)
-           => toAstTypeClassList(Mod, V, X, setToList(contextToSet(Mod, C)), toAbsTypeWithAll(
+           => toAstTypeClassList(Mod, V, X, contextToSet(Mod, C), toAbsTypeWithAll(
                  toAbsType(Mod, T), getFreeTypeVars(toAbsType(Mod, T))), B, M,
                   S, getFreeTypeVars(toAbsType(Mod, T)))
         requires V in getFreeTypeVars(toAbsType(Mod, T))
@@ -952,23 +994,205 @@ module HASKELL-HELPER
         requires (notBool V in getFreeTypeVars(toAbsType(Mod, T)))
                    orBool (notBool getTypeVarsInClass(.K, contextToSet(Mod, C))
                                      <=Set getFreeTypeVars(toAbsType(Mod, T)))
+   rule toAstTypeClassAux(Mod:K, V:K, X:K, B:CDeclsList, M:Map, S:Set)
+            => toAstTypeClass(Mod, V, B, M, S) [owise]
 
 
-   rule toAstTypeClassList(Mod:K, V:K, X:Var, Cons:List, T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
-           => toAstTypeClass(Mod, V, C, (X |-> methodDef(Cons, T, .List)) M, SetItem(X) S)
-        requires notBool X in (SetItem(V) S S1)
-   rule toAstTypeClassList(Mod:K, V:K, X:Var, Cons:List, T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
-           => error(classVarCollipse)
-        requires X in (SetItem(V) S S1)
-   rule toAstTypeClassList(Mod:K, V:K, 'varCon(X:Var,, Xs:Vars), Cons:List,
+   rule toAstTypeClassList(Mod:K, V:K, X:Var,
+                       Cons:Set, T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
+           => toAstTypeClass(Mod, V, C, (methodName(Mod, pillVar(X))
+                        |-> methodDef(Cons, T, .List)) M, SetItem(pillVar(X)) S)
+        requires notBool pillVar(X) in (S S1)
+   rule toAstTypeClassList(Mod:K, V:K, X:Var, Cons:Set,
+            T:K, C:CDeclsList, M:Map, S:Set, S1:Set) => error(classVarCollipse)
+        requires pillVar(X) in (S S1)
+   rule toAstTypeClassList(Mod:K, V:K, 'varCon(X:Var,, Xs:Vars), Cons:Set,
                   T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
-           => toAstTypeClassList(Mod, V, Xs, Cons:List, T, C,
-                  (X |-> methodDef(Cons, T, .List)) M, SetItem(X) S, S1)
-        requires notBool X in (SetItem(V) S S1)
-   rule toAstTypeClassList(Mod:K, V:K, 'varCon(X:Var,, Xs:Vars), Cons:List,
+           => toAstTypeClassList(Mod, V, Xs, Cons:Set, T, C,
+                  (methodName(Mod, pillVar(X))
+                     |-> methodDef(Cons, T, .List)) M, SetItem(pillVar(X)) S, S1)
+        requires notBool pillVar(X) in (S S1)
+   rule toAstTypeClassList(Mod:K, V:K, 'varCon(X:Var,, Xs:Vars), Cons:Set,
              T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
            => error(classVarCollipse)
-        requires X in (SetItem(V) S S1)
+        requires pillVar(X) in (S S1)
+
+   //functions to add possible pattern rules for type classes
+   //only for the right hand side.
+ /*  syntax KItem ::= toAstPat(K, K, Map) [function]
+      //curr-mod, exp, class-map
+   rule toAstPat(Mod:K, 'emptyOptCDecls(.KList), M:Map) => resultMap(M)
+   rule toAstPat(Mod:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)), M:Map)
+         => toAstPat(Mod, Cs, M)
+   rule toAstPat(Mod:K, .CDeclsList, M:Map) => resultMap(M)
+   rule toAstPat(Mod:K, 'cdeclCon('cdeclVarRhs(X:Var,, Y:Rhs),, B:CDeclsList), M:Map)
+            => toAstPat(Mod, B, (methodName(Mod, pillVar(X))
+                              |->  pat(.List, Y)) M)
+*/
+   //rule toAstTypeClass(Mod:K, V:K, 'cdeclCon(A:CDecl,, B:CDeclsList),
+    //                 M:Map, S:Set)
+    //     => toAstTypeClassAux(Mod, V:K, A, B, M, S)
+
+   //a function to transfer decls to ast form.
+   syntax KItem ::= transRhs(K, K) [function]
+                  | transExp(K, K) [function]
+                  | transPat(K, K) [function]
+
+   syntax List ::= transDecls(K, K) [function]
+                 | transDecl(K, K) [function]
+                 | transFPats(K, FPats) [function]
+                 | transPatTuple(K, PatTuple) [function]
+                 | transPatList(K, PatList) [function]
+                 | transAPatList(K, APatList) [function]
+
+   syntax List ::= genDeclForVars(K, Vars,Set, K) [function]
+   rule genDeclForVars(Mod:K, A:Var,S:Set, T:K)
+               => ListItem(methodDecl(methodName(Mod, A), S, T))
+   rule genDeclForVars(Mod:K, 'varCon(A:Var, B:Vars),S:Set, T:K)
+               => ListItem(methodDecl(methodName(Mod, A), S, T))
+                   genDeclForVars(Mod, B,S, T)
+
+         //curr-mod-name, exp
+   //rule transRhs(Mod:K, 'normalRhs(E:Exp,, D:OptDecls))
+    //       => rhs(transExp(Mod, E), transDecls(Mod, D))
+
+   rule transDecls(Mod:K, 'emptyOptDecls(.KList)) => .List
+   rule transDecls(Mod:K, .DeclsList) => .List
+   rule transDecls(Mod:K, 'whereDecls('decls(Ds:DeclsList)))
+           => transDecls(Mod, Ds)
+   rule transDecls(Mod:K, 'declsCon(D:Decl,, Ds:DeclsList))
+           => transDecl(Mod, D) transDecls(Mod, Ds)
+
+   rule transDecl(Mod:K, 'emptyIDecl(.KList)) => .List
+   rule transDecl(Mod:K, 'varAssign(A:Vars,, B:Type))
+         => genDeclForVars(Mod, A, .Set, toAbsType(Mod, B))
+   rule transDecl(Mod:K, 'genAssignContext(A:Vars,, C:Context,, B:Type))
+         => genDeclForVars(Mod, A, contextToSet(Mod, C), toAbsType(Mod, B))
+
+   rule transPat(Mod:K, 'binPattern(A:LPat,, B:QConOp,, C:Pat))
+           => appPat(transVar(Mod, B),
+                 ListItem(transPat(Mod, A)) ListItem(transPat(Mod, C)))
+   rule transPat(Mod:K, V:Var) => V
+   rule transPat(Mod:K, V:Var @ A:APat) => asPat(V, transPat(Mod, A))
+   rule transPat(Mod:K, G:GCon) => transExpCon(Mod, G)
+   rule transPat(Mod:K, 'recordPat(G:QCon,, Fs:FPats))
+              => appPat(transExpCon(Mod, G),
+                       ListItem(appPat(fullName(
+                          Prelude, recordParen), transFPats(Mod, Fs))))
+   rule transPat(Mod:K, 'underscore(.KList)) => unnamedVar
+   rule transPat(Mod:K, ~ A:APat) => irrefuPat(transPat(Mod, A))
+   rule transPat(Mod:K, I:Integer) => String2Int(#tokenToString(I))
+   rule transPat(Mod:K, I:CusFloat) => String2Float(#tokenToString(I))
+   rule transPat(Mod:K, I:CusChar) => #tokenToString(I)
+   rule transPat(Mod:K, I:CusString) => #tokenToString(I)
+   rule transPat(Mod:K, 'patTuple(As:PatTuple))
+             => appPat(fullName(Prelude, tupleType(
+                       countOnTypeTuple(As))), transPatTuple(Mod, As))
+   rule transPat(Mod:K, 'patList(As:PatList))
+             => appPat(fullName(Prelude, []), transPatList(Mod, As))
+   rule transPat(Mod:K, 'minusPat(A:IntFloat))
+          => minusCon(transPat(Mod, A))
+   rule transPat(Mod:K, 'lpatCon(G:GCon,, As:APatList))
+          => appPat(transExpCon(Mod, G), transAPatList(Mod, As))
+
+   rule transAPatList(Mod:K, A:APat) => ListItem(transPat(Mod, A))
+   rule transAPatList(Mod:K, 'apatCon(A:APat,, As:APatList))
+            => ListItem(transPat(Mod, A)) transAPatList(Mod, As)
+
+   rule transPatTuple(Mod:K, 'twoPatTuple(A:Pat,, B:Pat))
+           => ListItem(transPat(Mod, A)) ListItem(transPat(Mod, B))
+   rule transPatTuple(Mod:K, 'patTupleCon(A:Pat,, B:PatTuple))
+           => ListItem(transPat(Mod, A)) transPatTuple(Mod, B)
+
+   rule transPatList(Mod:K, A:Pat) => ListItem(transPat(Mod, A))
+   rule transPatList(Mod:K, 'patListCon(A:Pat,, B:PatList))
+           => ListItem(transPat(Mod, A)) transPatList(Mod, B)
 
 
+   rule transFPats(Mod:K, .FPats) => .List
+   rule transFPats(Mod:K, 'fpatCon('recordConAssign(A:QVar,, B:Pat),, C:FPats))
+           => ListItem(appPat(fullName(Prelude, recordAssign),
+             ListItem(transTypeVar(Mod, A)) ListItem(transPat(Mod, B)))) transFPats(Mod, C)
+
+/*
+    syntax Pat ::= LPat QConOp Pat
+                 | LPat
+
+    syntax LPat ::= APat
+                  | "-" IntFloat    [klabel('minusPat)]
+                  | GCon APatList  [klabel('lpatCon), onlyLabel]//arity gcon = k UNFINISHED
+
+    syntax APatList ::= APat | APat APatList [klabel('apatCon), onlyLabel]
+
+    syntax APat ::= Var [klabel('apatVar)]
+                  | Var "@" APat
+                  | GCon
+                  | QCon "{" FPats "}"
+                  | Literal [klabel('apatLiteral)]
+                  | "_"     [klabel('underscore), onlyLabel]
+                  | "(" Pat ")"   [bracket]
+                  | "(" PatTuple ")"
+                  | "[" PatList "]"
+                  | "~" APat
+
+
+                  | FunLhs Rhs [klabel('declFunLhsRhs), onlyLabel]
+                  | Pat Rhs [klabel('declPatRhs), onlyLabel]
+
+    syntax KItem ::= methodDecl(K, Set, K) //method-name, constaints, type
+
+
+    syntax IDecl ::= FunLhs Rhs [klabel('ideclFunLhsRhs), onlyLabel]
+                   | Var Rhs [klabel('ideclVarRhs), onlyLabel]
+                   | "" [onlyLabel, klabel('emptyIDecl)]
+
+    syntax GenDecl ::= VarsType
+                     | Vars "::" Context "=>" Type   [klabel('genAssignContext)]
+                     | Fixity Ops
+                     | Fixity Integer Ops
+                     | "" [onlyLabel, klabel('emptyGenDecl)]
+
+    //three optional data type for the TopDecl data operator. 
+    //deriving data type
+    syntax OptDeriving ::= Deriving | "" [onlyLabel, klabel('emptyDeriving)]
+    syntax Deriving ::= "deriving" DClass
+                      | "deriving" "(" DClassList ")"
+    syntax DClassList ::= List{DClass, ","}  [klabel('dclassCon)]
+    syntax DClass ::= QTyCon
+
+    syntax FunLhs ::= Var APatList
+                    | Pat VarOp Pat
+                    | "(" FunLhs ")" APatList
+
+    syntax Rhs ::= "=" Exp OptDecls
+                 | GdRhs OptDecls
+
+    syntax GdRhs ::= Guards "=" Exp
+                   | Guards "=" Exp GdRhs
+    syntax Guards ::= "|" GuardList
+    syntax GuardList ::= Guard | Guard "," GuardList  [klabel('guardListCon)]
+    syntax Guard ::= Pat "<-" InfixExp
+                   | "let" Decls
+                   | InfixExp
+
+    //definition of exp
+    syntax Exp ::= InfixExp
+                 > InfixExp "::" Type  [klabel('expAssign)]
+                 | InfixExp "::" Context "=>" Type  [klabel('expAssignContext)]
+
+    syntax InfixExp ::= LExp
+                      > "-" InfixExp   [klabel('minusInfix)]
+                      > LExp QOp InfixExp
+
+    syntax LExp ::= AExp
+                  > "\\" APatList "->" Exp
+                  | "let" Decls "in" Exp
+                  | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp
+                  | "case" Exp "of" "{" Alts "}"
+                  | "do" "{" Stmts "}"
+
+    syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
+    syntax OptComma ::= "," | ""     [onlyLabel, klabel('emptyComma)]
+
+*/
 endmodule

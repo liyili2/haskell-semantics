@@ -104,6 +104,7 @@ module HASKELL-ABSTRACT-SYNTAX
 
     syntax KResult ::= resultSet(Set)
     syntax KResult ::= resultMap(Map)
+    syntax KResult ::= resultList(List)
     syntax KResult ::= resultTyVarKindMap(Int, Set, Map)
                          //new-count, new-kind-vars, new-kind-map
     syntax KResult ::= resultTyVarKindList(Int, Set, List)
@@ -119,8 +120,11 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KResult ::= fullName(K, K) //module name, type con
     syntax KResult ::= preBetaEntry(Set, List, Map, Set)
            //optContext, list_of_vars, Body, optDeriving
-    syntax TyVar ::= tyVar(K) //convert a var to a tyVar, every record label name is a type
-    syntax KResult ::= "recordType" | "recordAssign"
+    syntax TyVar ::= tyVar(K, K)
+          //curr-name, convert a var to a tyVar, every record label name is a type
+    syntax KResult ::= "recordType" | "recordTypeAssign"
+                     | "recordParen" | "recordAssign"
+
             //two new type con names for records.
     syntax ModId ::= "Prelude"
     //built-in type cons
@@ -138,19 +142,31 @@ module HASKELL-ABSTRACT-SYNTAX
 
     syntax KItem ::= names(Set) //store all names
     syntax KItem ::= className(K, List) //name, list of type-vars
+    syntax KItem ::= methodName(K, K) //curr-mod, method-name
     syntax KItem ::= typeClass(Set, K, Map)
         // father, type var, contents,
-    syntax KItem ::= methodDef(List, K, List) //list of constraint, Type, list of patterns
+    syntax KItem ::= methodDef(Set, K, List) //constraints, Type, list of patterns
         // father, type var, contents,
+    syntax KItem ::= methodDecl(K, Set, K) //method-name, constaints, type
+
+    //pattern
+    syntax KItem ::= appPat(K, List) //app-name, list of args
+    syntax KItem ::= asPat(K, K) //first-name, second-pattern
+    syntax KItem ::= "unnamedVar"
+    syntax KItem ::= irrefuPat(K) //irrefutable pattern
+    syntax KItem ::= minusCon(K) //representing integer negation
 
     //expression syntax
+
     //1 gendecls are signatures
     syntax KItem ::= typeSig(List,K,K) //contexts, var, type
     syntax KItem ::= fixitySig(K, Int, K) //fixity, precedence, op
 
     //other declarations define function bodies
-    //rhs could be either one of pattern,exp, or 
     //a list of guards 
+    syntax KItem ::= body(List, K) //guards, rhs
+    syntax KItem ::= rhs(K, List) //rhs-expression, conditoins 
+
     syntax KItem ::= decl(Bool, K, List, List)
               //irrefutable?, pattern, rhs, conditions
     syntax KItem ::= guard(List, K) //patterns, exp

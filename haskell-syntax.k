@@ -56,7 +56,7 @@ module HASKELL-SYNTAX
     syntax VarOp ::= VarSym   | "`" VarId "`"     [klabel('varIdQuote), onlyLabel]
     syntax ConOp ::= ConSym   | "`" ConId "`"     [klabel('conIdQuote), onlyLabel]
 
-    syntax GConSym ::= ":" | QConSym
+    syntax GConSym ::= ":" [klabel('colon), onlyLabel] | QConSym
     syntax Vars ::= Var
                   | Var "," Vars  [klabel('varCon)]
     syntax VarsType ::= Vars "::" Type  [klabel('varAssign)]
@@ -159,9 +159,10 @@ module HASKELL-SYNTAX
     syntax FaType ::= QTyCon ATypeList
 
     //define declaration.
-    syntax OptDecls ::= "where" Decls | "" [onlyLabel, klabel('emptyOptDecls)]
+    syntax OptDecls ::= "where" Decls [onlyLabel, klabel('whereDecls)]
+                      | "" [onlyLabel, klabel('emptyOptDecls)]
     syntax Decls ::= "{" DeclsList "}" [klabel('decls)]
-    syntax DeclsList ::= List{Decl, ";"}
+    syntax DeclsList ::= List{Decl, ";"} [klabel('declsCon)]
 
     syntax Decl ::= GenDecl
                   | FunLhs Rhs [klabel('declFunLhsRhs), onlyLabel]
@@ -173,15 +174,15 @@ module HASKELL-SYNTAX
     syntax CDeclsList ::= List{CDecl, ";"}   [klabel('cdeclCon)]
 
     syntax CDecl ::= GenDecl
-                   | FunLhs Rhs
-                   | Var Rhs
+                   | FunLhs Rhs  [klabel('cdeclFunLhsRhs), onlyLabel]
+                   | Var Rhs [klabel('cdeclVarRhs), onlyLabel]
 
     syntax OptIDecls ::= "where" IDecls | "" [onlyLabel, klabel('emptyOptIDecls)]
     syntax IDecls ::= "{" IDeclsList "}"
     syntax IDeclsList ::= List{IDecl, ";"} [klabel('ideclslist)]
 
-    syntax IDecl ::= FunLhs Rhs [klabel('cdeclFunLhsRhs)]
-                   | Var Rhs [klabel('cdeclVarRhs)]
+    syntax IDecl ::= FunLhs Rhs [klabel('ideclFunLhsRhs), onlyLabel]
+                   | Var Rhs [klabel('ideclVarRhs), onlyLabel]
                    | "" [onlyLabel, klabel('emptyIDecl)]
 
     syntax GenDecl ::= VarsType
@@ -202,8 +203,8 @@ module HASKELL-SYNTAX
                     | Pat VarOp Pat
                     | "(" FunLhs ")" APatList
 
-    syntax Rhs ::= "=" Exp OptDecls
-                 | GdRhs OptDecls
+    syntax Rhs ::= "=" Exp OptDecls  [klabel('normalRhs), onlyLabel]
+                 | GdRhs OptDecls    [klabel('guardRhs), onlyLabel]
 
     syntax GdRhs ::= Guards "=" Exp
                    | Guards "=" Exp GdRhs
@@ -328,7 +329,7 @@ module HASKELL-SYNTAX
                    | "[" TyVar "]"  [klabel('tyVarList)]
                    | "(" TyVar "->" TyVar ")" //TyVars must be distinct
     //pat definition
-    syntax Pat ::= LPat QConOp Pat
+    syntax Pat ::= LPat QConOp Pat  [klabel('binPattern), onlyLabel]
                  | LPat
 
     syntax LPat ::= APat
@@ -337,24 +338,24 @@ module HASKELL-SYNTAX
 
     syntax APatList ::= APat | APat APatList [klabel('apatCon), onlyLabel]
 
-    syntax APat ::= Var [klabel('apatVar)]
+    syntax APat ::= Var
                   | Var "@" APat
                   | GCon
-                  | QCon "{" FPats "}"
+                  | QCon "{" FPats "}"  [klabel('recordPat), onlyLabel]
                   | Literal [klabel('apatLiteral)]
                   | "_"     [klabel('underscore), onlyLabel]
                   | "(" Pat ")"   [bracket]
-                  | "(" PatTuple ")"
-                  | "[" PatList "]"
-                  | "~" APat
+                  | "(" PatTuple ")"  [klabel('patTuple), onlyLabel]
+                  | "[" PatList "]"   [klabel('patList), onlyLabel]
+                  | "~" APat  [klabel('irrefutablePat)]
 
     syntax PatTuple ::= Pat "," Pat         [klabel('twoPatTuple)]
                       | Pat "," PatTuple    [klabel('patTupleCon)]
     syntax PatList ::= Pat
                       | Pat "," PatList     [klabel('patListCon)]
 
-    syntax FPats ::= List{FPat, ","}
-    syntax FPat ::= QVar "=" Pat
+    syntax FPats ::= List{FPat, ","}  [klabel('fpatCon)]
+    syntax FPat ::= QVar "=" Pat      [klabel('recordConAssign), onlyLabel]
 
     //definition of quals
     syntax Quals ::= Qual | Qual "," Quals  [klabel('qualCon)]
