@@ -27,6 +27,7 @@ module HASKELL-SYNTAX
   | ([\<][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \~ \:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)
   | ([\=][\! \# \$ \% \& \* \+ \. \/ \< \= \? \@ \\ \^ \| \~ \:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)} [onlyLabel]
     syntax ConSym ::= Token{[\:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
+                    | "-" [klabel('minusCon), onlyLabel, prefer]
 
     syntax IntFloat ::= "(" Integer ")"  [bracket] //NOT OFFICIAL SYNTAX
                       | "(" CusFloat ")" [bracket]
@@ -235,30 +236,32 @@ module HASKELL-SYNTAX
 
 //    syntax OptWhereDecls ::= "where" Decls | ""
 
-    syntax AExp ::= QVar [klabel('aexpQVar)]
+    syntax AExp ::= QVar
                   | GCon
                   | Literal
                   > AExp AExp [left, klabel('funApp), onlyLabel]
-                  > QCon "{" FBindList "}"
-                  | AExp "{" FBindList "}" //aexp cannot be qcon UNFINISHED
+                  > AExp "{" FBindList "}" [klabel('recordExp), onlyLabel]
+                          //aexp cannot be qcon UNFINISHED
                           //Liyi: first, does not understand the syntax, it is the Qcon {FBindlist}
                           //or QCon? Second, place a check in preprosssing.
                           //and also check the Fbindlist here must be at least one argument
                   > "(" Exp ")"             [bracket]
-                  | "(" ExpTuple ")"
-                  | "[" ExpList "]"
-                  | "[" Exp OptExpComma ".." OptExp "]"
-                  | "[" Exp "|" Quals "]"
-                  | "(" InfixExp QOp ")"
-                  | "(" QOp InfixExp ")" //qop cannot be - (minus) UNFINISHED
+                  | "(" ExpTuple ")"    [klabel('expTuple), onlyLabel]
+                  | "[" ExpList "]"     [klabel('expList), onlyLabel]
+                  | "[" Exp OptExpComma ".." OptExp "]"  [klabel('expSeq), onlyLabel]
+                  | "[" Exp "|" Quals "]"    [klabel('listComprehension), onlyLabel]
+                  | "(" InfixExp QOp ")"     [klabel('leftSection), onlyLabel]
+                  | "(" QOp InfixExp ")"     [klabel('rightSection), onlyLabel] 
+                            //qop cannot be - (minus) UNFINISHED
                            //Liyi: place a check here to check if QOp is a minus
 
-    syntax OptExpComma ::= "," Exp | "" [onlyLabel, klabel('emptyExpComma)]
+    syntax OptExpComma ::= "," Exp [onlyLabel, klabel('dotExp)]
+                         | "" [onlyLabel, klabel('emptyExpComma)]
     syntax OptExp ::= Exp | "" [onlyLabel, klabel('emptyExp)]
 
-    syntax ExpList ::= Exp | Exp "," ExpList  [right]
-    syntax ExpTuple ::= Exp "," Exp           [right, klabel('twoExpTuple)]
-                      | Exp "," ExpTuple      [right, klabel('expTupleCon)]
+    syntax ExpList ::= Exp | Exp "," ExpList  [right, klabel('expListCon), onlyLabel]
+    syntax ExpTuple ::= Exp "," Exp           [right, klabel('twoExpTuple), onlyLabel]
+                      | Exp "," ExpTuple      [right, klabel('expTupleCon), onlyLabel]
 
     //constr datatypes
     syntax OptConstrs  ::= "=" Constrs [klabel('nonemptyConstrs)] | "" [onlyLabel, klabel('emptyConstrs)]
@@ -360,8 +363,8 @@ module HASKELL-SYNTAX
     //definition of quals
     syntax Quals ::= Qual | Qual "," Quals  [klabel('qualCon)]
 
-    syntax Qual ::= Pat "<-" Exp
-                  | "let" Decls
+    syntax Qual ::= Pat "<-" Exp  [klabel('qualAssign), onlyLabel]
+                  | "let" Decls   [klabel('qualLet), onlyLabel]
                   | Exp
 
     //definition of alts
@@ -380,6 +383,7 @@ module HASKELL-SYNTAX
                   | ";"
 
      //definition of fbind
-    syntax FBindList ::= List{FBind, ","}
-    syntax FBind ::= QVar "=" Exp
+    syntax FBindList ::= List{FBind, ","}  [klabel('fbCon)]
+    syntax FBind ::= QVar "=" Exp   [klabel('fbConAssign), onlyLabel]
+
 endmodule

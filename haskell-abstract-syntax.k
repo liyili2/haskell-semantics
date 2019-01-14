@@ -20,6 +20,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "kindUnifierFail"
     syntax KItem ::= "ambiguousTypeVar"
     syntax KItem ::= "classVarCollipse"
+    syntax KItem ::= "syntaxError"
 
     syntax KItem ::= "startChecks"
     syntax KItem ::= "nextChecks"
@@ -109,6 +110,8 @@ module HASKELL-ABSTRACT-SYNTAX
                          //new-count, new-kind-vars, new-kind-map
     syntax KResult ::= resultTyVarKindList(Int, Set, List)
                          //new-count, new-kind-vars, new-kind-in-list
+    syntax KResult ::= resultTrans(Int, K) //int, exp
+    syntax KResult ::= resultTransList(Int, List) //int, exp-list
 
     //abstract syntax for type constrs
     syntax KResult ::= TypeResult
@@ -123,7 +126,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax TyVar ::= tyVar(K, K)
           //curr-name, convert a var to a tyVar, every record label name is a type
     syntax KResult ::= "recordType" | "recordTypeAssign"
-                     | "recordParen" | "recordAssign"
+                     | "recordParen" | "recordAssign" | "recordUpdate"
 
             //two new type con names for records.
     syntax ModId ::= "Prelude"
@@ -154,9 +157,13 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= asPat(K, K) //first-name, second-pattern
     syntax KItem ::= "unnamedVar"
     syntax KItem ::= irrefuPat(K) //irrefutable pattern
-    syntax KItem ::= minusCon(K) //representing integer negation
 
     //expression syntax
+    syntax KItem ::= appExp(K, List) //app-name, args
+    syntax KItem ::= "arithSeq1" | "arithSeq2noEnd" | "arithSeq2hasEnd" | "arithSeq3"
+                   | "listCompre" | "qualAssignAst" | "qualLetAst"
+    syntax KItem ::= lambda(K, K) //var, exp
+    syntax KItem ::= genVar(Int)
 
     //1 gendecls are signatures
     syntax KItem ::= typeSig(List,K,K) //contexts, var, type

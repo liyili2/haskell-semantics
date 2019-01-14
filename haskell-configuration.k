@@ -22,6 +22,7 @@ module HASKELL-CONFIGURATION
             <tempImports> .Map </tempImports>
             <kindVarCounter> 0 </kindVarCounter>
             <kindVarSet> .Set </kindVarSet>
+            <genVarCounter> 0 </genVarCounter>
             <modules> //static information about a module
                 <module multiplicity="*">
                     <moduleName> .K </moduleName>

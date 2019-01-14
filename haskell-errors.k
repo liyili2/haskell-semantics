@@ -47,4 +47,7 @@ module HASKELL-ERRORS
     rule <k> error(classVarCollipse) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type class whose method name copplipses with the type variables or the methods names.")) </output>
 
+    rule <k> error(syntaxError) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a expression that has syntactic error.")) </output>
+
 endmodule
