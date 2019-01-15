@@ -200,19 +200,19 @@ module HASKELL-SYNTAX
     syntax DClassList ::= List{DClass, ","}  [klabel('dclassCon)]
     syntax DClass ::= QTyCon
 
-    syntax FunLhs ::= Var APatList
-                    | Pat VarOp Pat
-                    | "(" FunLhs ")" APatList
+    syntax FunLhs ::= Var APatList             [klabel('normalLhs), onlyLabel]
+                    | Pat VarOp Pat            [klabel('binLhs), onlyLabel]
+                    | "(" FunLhs ")" APatList  [klabel('groupLhs), onlyLabel]
 
     syntax Rhs ::= "=" Exp OptDecls  [klabel('normalRhs), onlyLabel]
                  | GdRhs OptDecls    [klabel('guardRhs), onlyLabel]
 
-    syntax GdRhs ::= Guards "=" Exp
-                   | Guards "=" Exp GdRhs
-    syntax Guards ::= "|" GuardList
-    syntax GuardList ::= Guard | Guard "," GuardList  [klabel('guardListCon)]
-    syntax Guard ::= Pat "<-" InfixExp
-                   | "let" Decls
+    syntax GdRhs ::= Guards "=" Exp        [klabel('guardSingle), onlyLabel]
+                   | Guards "=" Exp GdRhs  [klabel('guardCon), onlyLabel]
+    syntax Guards ::= "|" GuardList        [klabel('startGuardCons), onlyLabel]
+    syntax GuardList ::= Guard | Guard "," GuardList  [klabel('guardListCon), onlyLabel]
+    syntax Guard ::= Pat "<-" InfixExp     [klabel('guardAssign), onlyLabel]
+                   | "let" Decls           [klabel('guardLet), onlyLabel]
                    | InfixExp
 
     //definition of exp

@@ -153,6 +153,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= methodDecl(K, Set, K) //method-name, constaints, type
 
     //pattern
+    syntax KItem ::= funPat(List) //name, args
     syntax KItem ::= appPat(K, List) //app-name, list of args
     syntax KItem ::= asPat(K, K) //first-name, second-pattern
     syntax KItem ::= "unnamedVar"
@@ -163,9 +164,13 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "arithSeq1" | "arithSeq2noEnd" | "arithSeq2hasEnd" | "arithSeq3"
                    | "listCompre" | "qualAssignAst" | "qualLetAst"
     syntax KItem ::= lambda(K, K) //var, exp
+    syntax KItem ::= lambdaAssign(K, K) //pat-fun-rhs, body
+    syntax KItem ::= body(K, List) //expressions/guards, list-of-conditions
     syntax KItem ::= genVar(Int)
     syntax KItem ::= letIn(List, K) //var, exp
-    syntax KItem ::= ifElse(K, K, K) //var, exp
+    syntax KItem ::= ifElse(List, K, K) //generalized ifelse, can deal with guard
+                                  //list of conditions, exp1, exp2
+    syntax KItem ::= tempGuard(List, K) //temp guard holder in translation
     syntax KItem ::= caseOf(K, List) //exp, cases
     syntax KItem ::= singleCase(K, K, List)//pat, exp, where
     syntax KItem ::= seq(K, K)//first stmt, next

@@ -3,6 +3,8 @@ requires "haskell-syntax.k"
 requires "haskell-configuration.k"
 requires "haskell-abstract-syntax.k"
 requires "haskell-helper.k"
+requires "haskell-kindinfer.k"
+requires "haskell-transformation.k"
 requires "haskell-errors.k"
 
 module HASKELL-PREPROCESSING
@@ -11,6 +13,8 @@ module HASKELL-PREPROCESSING
     imports HASKELL-CONFIGURATION
     imports HASKELL-HELPER
     imports HASKELL-ERRORS
+    imports HASKELL-KINDINFER
+    imports HASKELL-TRANSFORMATION
 
     rule <k> preModule(A:K,T:K) => startChecks ...</k>
          <tempAlpha> OldAlpha:K => A </tempAlpha>
