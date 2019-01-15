@@ -164,6 +164,12 @@ module HASKELL-ABSTRACT-SYNTAX
                    | "listCompre" | "qualAssignAst" | "qualLetAst"
     syntax KItem ::= lambda(K, K) //var, exp
     syntax KItem ::= genVar(Int)
+    syntax KItem ::= letIn(List, K) //var, exp
+    syntax KItem ::= ifElse(K, K, K) //var, exp
+    syntax KItem ::= caseOf(K, List) //exp, cases
+    syntax KItem ::= singleCase(K, K, List)//pat, exp, where
+    syntax KItem ::= seq(K, K)//first stmt, next
+    syntax KItem ::= typedExp(Set, K, K) //contexts, type, exp
 
     //1 gendecls are signatures
     syntax KItem ::= typeSig(List,K,K) //contexts, var, type

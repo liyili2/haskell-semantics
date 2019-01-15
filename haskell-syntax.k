@@ -221,15 +221,16 @@ module HASKELL-SYNTAX
                  | InfixExp "::" Context "=>" Type  [klabel('expAssignContext)]
 
     syntax InfixExp ::= LExp
-                      > "-" InfixExp   [klabel('minusInfix)]
-                      > LExp QOp InfixExp
+                      > "-" InfixExp   [klabel('minusInfix), onlyLabel]
+                      > LExp QOp InfixExp  [klabel('binInfixExp), onlyLabel]
 
     syntax LExp ::= AExp
-                  > "\\" APatList "->" Exp
-                  | "let" Decls "in" Exp
+                  > "\\" APatList "->" Exp  [klabel('lambdaExp), onlyLabel]
+                  | "let" Decls "in" Exp    [klabel('letInExp), onlyLabel]
                   | "if" Exp OptSemicolon "then" Exp OptSemicolon "else" Exp
-                  | "case" Exp "of" "{" Alts "}"
-                  | "do" "{" Stmts "}"
+                                            [klabel('ifElseExp), onlyLabel]
+                  | "case" Exp "of" "{" Alts "}"    [klabel('caseExp), onlyLabel]
+                  | "do" "{" Stmts "}"              [klabel('doExp), onlyLabel]
 
     syntax OptSemicolon ::= ";" | "" [onlyLabel, klabel('emptySemicolon)]
     syntax OptComma ::= "," | ""     [onlyLabel, klabel('emptyComma)]
@@ -368,19 +369,20 @@ module HASKELL-SYNTAX
                   | Exp
 
     //definition of alts
-    syntax Alts ::= Alt | Alt ";" Alts
+    syntax Alts ::= Alt
+                  | Alt ";" Alts [klabel('altCon), onlyLabel]
 
-    syntax Alt ::= Pat "->" Exp  [klabel('altArrow)]
+    syntax Alt ::= Pat "->" Exp  [klabel('altArrow), onlyLabel]
                  | Pat "->" Exp "where" Decls
-                 | "" [onlyLabel, klabel('emptyAlt)]
+                 | "" [onlyLabel, klabel('emptyAlt), onlyLabel]
 
     //definition of stmts
-    syntax Stmts ::= StmtList Exp OptSemicolon
-    syntax StmtList ::= List{Stmt, ""}
-    syntax Stmt ::= Exp ";"
-                  | Pat "<-" Exp ";"
-                  | "let" Decls ";"
-                  | ";"
+    syntax Stmts ::= StmtList Exp OptSemicolon  [klabel('stmtMain), onlyLabel]
+    syntax StmtList ::= List{Stmt, ""}          [klabel('stmtCon)]
+    syntax Stmt ::= Exp ";"           [klabel('expStmt), onlyLabel]
+                  | Pat "<-" Exp ";"  [klabel('patExpStmt), onlyLabel]
+                  | "let" Decls ";"   [klabel('letStmt), onlyLabel]
+                  | ";"               [klabel('emptyStmt), onlyLabel]
 
      //definition of fbind
     syntax FBindList ::= List{FBind, ","}  [klabel('fbCon)]
