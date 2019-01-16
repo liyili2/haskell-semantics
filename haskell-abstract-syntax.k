@@ -36,6 +36,13 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= putAlphaMap(Map)
     syntax KItem ::= putPreBetaMap(Map)
     syntax KItem ::= "collectKindInfo"
+
+   //transformation of classes
+    syntax KItem ::= "initClassStartInfo"
+    syntax KItem ::= "collectClassInfo"
+    syntax KItem ::= getClassInfo(K)
+    syntax KItem ::= getClassInfoAux(K, K, Set, K, K, K)
+    syntax KItem ::= getClassInfoAuxAux(K, K)
     syntax KItem ::= putClassMapSet(Map, Set)
     syntax KItem ::= putTypeClass(K, Set, K, K, K)
                //module, class contexts (super classes),
@@ -110,6 +117,7 @@ module HASKELL-ABSTRACT-SYNTAX
                          //new-count, new-kind-vars, new-kind-map
     syntax KResult ::= resultTyVarKindList(Int, Set, List)
                          //new-count, new-kind-vars, new-kind-in-list
+    syntax KResult ::= resultIntMap(Int, Map) //counter, map
     syntax KResult ::= resultTrans(Int, K) //int, exp
     syntax KResult ::= resultTransList(Int, List) //int, exp-list
 

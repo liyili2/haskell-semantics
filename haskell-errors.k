@@ -45,7 +45,7 @@ module HASKELL-ERRORS
          <output> L:List (.List => ListItem("The modules have a type class whose method does not define the type var for the type class, so it is an ambiguous type variable.")) </output>
 
     rule <k> error(classVarCollipse) ~> K:K => .K </k>
-         <output> L:List (.List => ListItem("The modules have a type class whose method name copplipses with the type variables or the methods names.")) </output>
+         <output> L:List (.List => ListItem("The modules have a type class whose name or method name copplipses with the type variables or the methods names.")) </output>
 
     rule <k> error(syntaxError) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a expression that has syntactic error.")) </output>

@@ -147,4 +147,18 @@ module HASKELL-HELPER
    rule fbSize('fbCon(A:FBind,, As:FBindList))
             => 1 +Int fbSize(As)
 
+   //check if a module contains the same class name before
+   syntax Bool ::= hasClassName(K, K, K, Map) [function]
+   rule hasClassName(A:K, C:K, .K, (A:K |-> B:K) M:Map)
+          => hasClassName(A,C, B, M)
+   rule hasClassName(A:K, C:K, resultSet(S:Set), M:Map) => C in S
+   rule hasClassName(A:K, B:K, C:K, M:Map) => false [owise]
+
+   //get a set of methods defined in a module
+   syntax Set ::= getMethodSet(K, K, Map) [function]
+   rule getMethodSet(A:K, .K, (A:K |-> B:K) M:Map)
+          => getMethodSet(A, B, M)
+   rule getMethodSet(A:K, resultSet(S:Set), M:Map) => S
+   rule getMethodSet(A:K, B:K, M:Map) => .Set [owise]
+
 endmodule

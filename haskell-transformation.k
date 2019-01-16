@@ -10,7 +10,6 @@ module HASKELL-TRANSFORMATION
     imports HASKELL-HELPER
     imports HASKELL-KINDINFER
 
-   //functions to compile type classes to ast form
    //only deal with method decl, method pattern will be in separate functions
    syntax Set ::= getTypeVarsInClass(K, Set) [function]
    rule getTypeVarsInClass(.K, .Set) => .Set
@@ -98,19 +97,33 @@ module HASKELL-TRANSFORMATION
            => M (A |-> updatePatListInDef(D, C))
        rule updatePatMapInExp(M:Map, A:K, C:K) => M [owise]
 
-   syntax KItem ::= toAstPat(Int, K, K, Map) [function]
-      //curr-mod, exp, class-map
-   rule toAstPat(N:Int, Mod:K, 'emptyOptCDecls(.KList), M:Map) => resultMap(M)
-   rule toAstPat(N:Int, Mod:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)), M:Map)
-         => toAstPat(N, Mod, Cs, M)
-   rule toAstPat(N:Int, Mod:K, .CDeclsList, M:Map) => resultMap(M)
-   rule toAstPat(N:Int, Mod:K, 'cdeclCon('cdeclVarRhs(X:Var,, Y:Rhs),, B:CDeclsList), M:Map)
-            => toAstPat(N, Mod, B, updatePatMapInExp(
-                   M, methodName(Mod, pillVar(X)), transRhs(N, Mod, Y)))
+   //get the core var of an exp
+   syntax KItem ::= getCoreVar(FunLhs) [function]
+   rule getCoreVar('normalLhs(X:Var,, As:APatList)) => pillVar(X)
+   rule getCoreVar('binLhs(A:Pat,, B:VarOp,, C:Pat)) => pillVar(B)
+   rule getCoreVar('groupLhs(A:FunLhs,, B:APatList)) => getCoreVar(A)
 
-   //rule toAstTypeClass(Mod:K, V:K, 'cdeclCon(A:CDecl,, B:CDeclsList),
-    //                 M:Map, S:Set)
-    //     => toAstTypeClassAux(Mod, V:K, A, B, M, S)
+   syntax KItem ::= toAstPat(Int, K, K, K, K, Map) [function]
+      //var-counter, curr-mod, CDecls, var, exp, class-map
+   rule toAstPat(N:Int, Mod:K, 'emptyOptCDecls(.KList), U:K, V:K, M:Map)
+              => resultIntMap(N, M)
+   rule toAstPat(N:Int, Mod:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)), U:K, V:K, M:Map)
+         => toAstPat(N, Mod, Cs, U, V, M)
+   rule toAstPat(N:Int, Mod:K, .CDeclsList,U:K, V:K, M:Map) => resultIntMap(N, M)
+   rule toAstPat(N:Int, Mod:K, 'cdeclCon(
+            'cdeclVarRhs(X:Var,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map)
+            => toAstPat(N, Mod, B, pillVar(X),
+                      transDecl(N, Mod, 'cdeclVarRhs(X:Var,, Y:Rhs)), M)
+   rule toAstPat(N:Int, Mod:K, 'cdeclCon(
+              'cdeclFunLhsRhs(X:FunLhs,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map)
+            => toAstPat(N, Mod, B, getCoreVar(X),
+                    transDecl(N, Mod, 'cdeclFunLhsRhs(X,, Y:Rhs)), M)
+   rule toAstPat(N:Int, Mod:K, A:K, X:K, error(B:K), M:Map) => error(B)
+   rule toAstPat(N:Int, Mod:K, A:K, X:K, resultTrans(N':Int, B:K), M:Map)
+         => toAstPat(N', Mod, A, .K, .K, updatePatMapInExp(M, X, B))
+   rule toAstPat(N:Int, Mod:K, 'cdeclCon(A:CDecl,, B:CDeclsList),.K,.K, M:Map)
+            => toAstPat(N, Mod, B, .K, .K, M) [owise]
+
    syntax KItem ::= formExpList(List) [function]
    rule formExpList(.List) => fullName(Prelude,[])
    rule formExpList(ListItem(A:K) L:List)

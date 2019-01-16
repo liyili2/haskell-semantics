@@ -38,7 +38,10 @@ module HASKELL-CONFIGURATION
               <importMap> .Map </importMap>
             </modules>
             <classes>
-              <classMethodNames> .Set </classMethodNames> //store all class method names in modules.
+              <classMethodNames> .Map </classMethodNames>
+                     //store all class method names in modules for each module
+              <classClassNames> .Map </classClassNames>
+                     //store all class names for each module
               <class multiplicity="*">
                 <classModule> .K </classModule>
                 <className> .K </className>
