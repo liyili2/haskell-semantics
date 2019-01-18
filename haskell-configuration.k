@@ -43,7 +43,7 @@ module HASKELL-CONFIGURATION
               <importMap> .Map </importMap>
             </modules>
             <classes>
-              <classClassNames> .Map </classClassNames>
+              <classNames> .Map </classNames>
                      //store all class names for each module
               <classMethodNames> .Map </classMethodNames>
               <class multiplicity="*">

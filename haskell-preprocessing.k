@@ -111,7 +111,7 @@ module HASKELL-PREPROCESSING
     rule <k> initClassStartInfo => .K ...</k>
          <currModule> Mod:K </currModule>
          <classMethodNames> CM:Map (.Map => (Mod |-> resultSet(.Set))) </classMethodNames>
-         <classClassNames> NM:Map (.Map => (Mod |-> resultSet(.Set))) </classClassNames>
+         <classNames> NM:Map (.Map => (Mod |-> resultSet(.Set))) </classNames>
     
    //functions to compile type classes to ast form
     rule <k> collectClassInfo => getClassInfo(TM) ...</k>
@@ -133,31 +133,36 @@ module HASKELL-PREPROCESSING
                     getMethodSet(Mod, .K, CM)), Ds, As) ...</k>
          <currModule> Mod:K </currModule>
          <classMethodNames> CM:Map </classMethodNames>
-         <classClassNames> NM:Map </classClassNames>
+         <classNames> NM:Map </classNames>
          requires notBool hasClassName(Mod, Name, .K, NM)
 
     rule <k> getClassInfo('topdeclslist('class(Cs:OptContext,,
                   Name:ConId,, Tv:TyVar,, Ds:OptCDecls),, As:TopDecls))
                => error(classVarCollipse) ...</k>
          <currModule> Mod:K </currModule>
-         <classClassNames> NM:Map </classClassNames>
+         <classNames> NM:Map </classNames>
          requires hasClassName(Mod, Name, .K, NM)
 
    rule getClassInfoAux(Name:K, Tv:K, S:Set, error(A:K), Ds:K, As:K) => error(A)
    rule <k> getClassInfoAux(Name:K, Tv:K, S:Set,
-               putClassMapSet(Methods:Map, MS:Set), Ds:K, As:K)
-            => getClassInfoAuxAux(Name, toAstPat(N, Mod, Ds, .K, .K, Methods))
-                 ~> getClassInfo(As) ...</k>
+               resultMap(Methods:Map), Ds:K, As:K)
+            => putClassMethodNames(genClassMethodNames(Ds)) ~>
+                 (getClassInfoAuxAux(Name, toAstPat(N, Mod, Ds, .K, .K, Methods))
+                 ~> getClassInfo(As)) ...</k>
          <genVarCounter> N:Int </genVarCounter>
          <currModule> Mod:K </currModule>
-         <classMethodNames> CM:Map => CM[Mod <- resultSet(MS)] </classMethodNames>
-         <classClassNames> NM:Map </classClassNames>
+         <classNames> NM:Map </classNames>
          (.Bag => <class>...
                      <classModule> Mod </classModule>
                      <className> Name </className>
                      <classTypeVar> Tv </classTypeVar>
                      <classContext> S </classContext>
                   ...</class>)
+
+  rule <k> putClassMethodNames(S:Set) => .K ...</k>
+       <currModule> Mod:K </currModule>
+       <classMethodNames> NM:Map
+               => updateMapItem(NM, .K, Mod, S) </classMethodNames>
 
     rule getClassInfoAuxAux(Name:K, error(A:K)) => error(A)
     rule <k> getClassInfoAuxAux(Name:K, resultIntMap(N':Int, M:Map))
@@ -186,7 +191,7 @@ module HASKELL-PREPROCESSING
                   Name:QTyCon,, Tv:Inst,, Ds:OptIDecls),, As:TopDecls))
                  => error(classVarNotInScope) ...</k>
          <currModule> Mod:K </currModule>
-         <classClassNames> NM:Map </classClassNames>
+         <classNames> NM:Map </classNames>
          requires notBool hasClassName(Mod, transVar(Mod, Name), .K, NM)
 
     rule getInstances('topdeclslist('instance(Cs:OptContext,,
@@ -202,7 +207,7 @@ module HASKELL-PREPROCESSING
          <genVarCounter> N:Int </genVarCounter>
          <currModule> Mod:K </currModule>
          <classMethodNames> CM:Map </classMethodNames>
-         <classClassNames> NM:Map </classClassNames>
+         <classNames> NM:Map </classNames>
          <class>...
              <classModule> Mod </classModule>
              <className> transVar(Mod, QTyCon) </className>
@@ -217,7 +222,7 @@ module HASKELL-PREPROCESSING
          <genVarCounter> N:Int => N' </genVarCounter>
          <currModule> Mod:K </currModule>
          <classMethodNames> CM:Map </classMethodNames>
-         <classClassNames> NM:Map </classClassNames>
+         <classNames> NM:Map </classNames>
          (.Bag => <instance>...
                      <instanceModule> Mod </instanceModule>
                      <instanceClass> Name </instanceClass>
@@ -307,6 +312,9 @@ module HASKELL-PREPROCESSING
         <unnamedModuleExp> L:List (.List => ListItem(A)) </unnamedModuleExp>
 
    //dealing with method decl in a module
+   rule getExpressions('topdeclslist('emptyGenDecl(.KList),, As:TopDecls))
+           => getExpressions(As)
+
     rule <k> getExpressions('topdeclslist('varAssign(A:Vars,, T:Type),, As:TopDecls))
                  => error(classVarCollipse) ...</k>
          <currModule> Mod:K </currModule>

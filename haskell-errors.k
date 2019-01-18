@@ -48,7 +48,10 @@ module HASKELL-ERRORS
          <output> L:List (.List => ListItem("The modules have a type class/method whose name or method name copplipses with the type variables or the methods names.")) </output>
 
     rule <k> error(classVarNotInScope) ~> K:K => .K </k>
-         <output> L:List (.List => ListItem("The modules have a type instance whose name or method name does not show in the original type class.")) </output>
+         <output> L:List (.List => ListItem("The modules have a type instance whose name does not show in the original type class.")) </output>
+
+    rule <k> error(classMethodVarNotInScope) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type class one of whose method name for a method definition does not show in the original type class.")) </output>
 
     rule <k> error(syntaxError) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a expression that has syntactic error.")) </output>

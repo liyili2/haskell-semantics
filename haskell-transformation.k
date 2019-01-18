@@ -18,6 +18,22 @@ module HASKELL-TRANSFORMATION
    rule getTypeVarsInClass(className(A:K, ListItem(C:K) B:List), S:Set)
             => SetItem(C) getTypeVarsInClass(.K, S)
 
+   //a function to generate class method names in a class
+   syntax Set ::= genClassMethodNames(K) [function]
+   rule genClassMethodNames('emptyOptCDecls(.KList)) => .Set
+   rule genClassMethodNames('cdeclWhere('cdeclBracket(Cs:CDecls)))
+         => genClassMethodNames(Cs)
+   rule genClassMethodNames('cdeclCon(C:CDecl,, Cs:CDeclsList))
+         => genClassMethodNames(C) genClassMethodNames(Cs)
+   rule genClassMethodNames('varAssign(Vs:Vars,, T:Type))
+           => genClassMethodNames(Vs)
+   rule genClassMethodNames(V:Var) => SetItem(pillVar(V))
+   rule genClassMethodNames('varCon(V:Var,, Vs:Vars))
+               => SetItem(pillVar(V)) genClassMethodNames(Vs)
+   rule genClassMethodNames('genAssignContext(Vs:Vars,, C:Context,, T:Type))
+               => genClassMethodNames(Vs)
+   rule genClassMethodNames(A:K) => .Set  [owise]
+
    syntax KItem ::= toAstTypeClass(K, K, K, Map, Set) [function]
              //curr-mod, type-class-var, OptCDecls, gen-class-map, exist-ty-con-set
                   | toAstTypeClassAux(K, K, K, CDeclsList, Map, Set) [function]
@@ -27,10 +43,10 @@ module HASKELL-TRANSFORMATION
             // exist-ty-con-set, exist-var-set
 
    rule toAstTypeClass(Mod:K, V:K, 'emptyOptCDecls(.KList), M:Map, S:Set)
-                   => putClassMapSet(M, S)
+                   => resultMap(M)
    rule toAstTypeClass(Mod:K, V:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)), M:Map, S:Set)
            => toAstTypeClass(Mod,V, Cs, M, S)
-   rule toAstTypeClass(Mod:K, V:K, .CDeclsList, M:Map, S:Set) => putClassMapSet(M, S)
+   rule toAstTypeClass(Mod:K, V:K, .CDeclsList, M:Map, S:Set) => resultMap(M)
    rule toAstTypeClass(Mod:K, V:K, 'cdeclCon(A:CDecl,, B:CDeclsList),
                      M:Map, S:Set)
          => toAstTypeClassAux(Mod, V:K, A, B, M, S)
@@ -68,8 +84,8 @@ module HASKELL-TRANSFORMATION
 
    rule toAstTypeClassList(Mod:K, V:K, X:Var,
                        Cons:Set, T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
-           => toAstTypeClass(Mod, V, C, (methodName(Mod, pillVar(X))
-                        |-> methodDef(Cons, T, .List)) M, SetItem(pillVar(X)) S)
+           => toAstTypeClass(Mod, V, C, (pillVar(X)
+                        |-> methodDef(Cons, T, .List)) M, S)
         requires notBool pillVar(X) in (S S1)
    rule toAstTypeClassList(Mod:K, V:K, X:Var, Cons:Set,
             T:K, C:CDeclsList, M:Map, S:Set, S1:Set) => error(classVarCollipse)
@@ -77,8 +93,8 @@ module HASKELL-TRANSFORMATION
    rule toAstTypeClassList(Mod:K, V:K, 'varCon(X:Var,, Xs:Vars), Cons:Set,
                   T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
            => toAstTypeClassList(Mod, V, Xs, Cons:Set, T, C,
-                  (methodName(Mod, pillVar(X))
-                     |-> methodDef(Cons, T, .List)) M, SetItem(pillVar(X)) S, S1)
+                  (pillVar(X)
+                     |-> methodDef(Cons, T, .List)) M, S, S1)
         requires notBool pillVar(X) in (S S1)
    rule toAstTypeClassList(Mod:K, V:K, 'varCon(X:Var,, Xs:Vars), Cons:Set,
              T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
@@ -117,10 +133,20 @@ module HASKELL-TRANSFORMATION
             'cdeclVarRhs(X:Var,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map)
             => toAstPat(N, Mod, B, pillVar(X),
                         transCDecl(transFunLhs(Mod, X), transRhs(N, Mod, Y)), M)
+        requires X in keys(M)
+   rule toAstPat(N:Int, Mod:K, 'cdeclCon(
+            'cdeclVarRhs(X:Var,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map)
+            => error(classMethodVarNotInScope)
+        requires notBool X in keys(M)
    rule toAstPat(N:Int, Mod:K, 'cdeclCon(
               'cdeclFunLhsRhs(X:FunLhs,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map)
             => toAstPat(N, Mod, B, getCoreVar(X),
                     transCDecl(transFunLhs(Mod, X), transRhs(N, Mod, Y)), M)
+        requires getCoreVar(X) in keys(M)
+   rule toAstPat(N:Int, Mod:K, 'cdeclCon(
+              'cdeclFunLhsRhs(X:FunLhs,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map)
+            => error(classMethodVarNotInScope)
+        requires notBool getCoreVar(X) in keys(M)
    rule toAstPat(N:Int, Mod:K, A:K, X:K, error(B:K), M:Map) => error(B)
    rule toAstPat(N:Int, Mod:K, A:K, X:K, resultTrans(N':Int, B:K), M:Map)
          => toAstPat(N', Mod, A, .K, .K, updatePatMapInExp(M, X, B))
@@ -275,13 +301,13 @@ module HASKELL-TRANSFORMATION
          => transTopDeclAux(transFunLhs(Mod, A), transRhs(N, Mod, B), M)
         requires getCoreVar(A) in Cs
    rule transTopDecl(N:Int, Mod:K, 'ideclFunLhsRhs(A:FunLhs,, B:Rhs), M:Map, Cs:Set)
-         => error(classVarNotInScope)
+         => error(classMethodVarNotInScope)
         requires notBool getCoreVar(A) in Cs
    rule transTopDecl(N:Int, Mod:K, 'ideclVarRhs(A:Var,, B:Rhs), M:Map, Cs:Set)
          => transTopDeclAux(transFunLhs(Mod, A), transRhs(N, Mod, B), M)
         requires A in Cs
    rule transTopDecl(N:Int, Mod:K, 'ideclVarRhs(A:Var,, B:Rhs), M:Map, Cs:Set)
-         => error(classVarNotInScope)
+         => error(classMethodVarNotInScope)
         requires notBool A in Cs
 
    rule transTopDeclAux(A:K, error(B:K), M:Map) => error(B)
@@ -367,9 +393,9 @@ module HASKELL-TRANSFORMATION
 
    syntax List ::= genDeclForVars(K, Vars,Set, K) [function]
    rule genDeclForVars(Mod:K, A:Var,S:Set, T:K)
-               => ListItem(methodDecl(methodName(Mod, A), S, T))
+               => ListItem(methodDecl(pillVar(A), S, T))
    rule genDeclForVars(Mod:K, 'varCon(A:Var, B:Vars),S:Set, T:K)
-               => ListItem(methodDecl(methodName(Mod, A), S, T))
+               => ListItem(methodDecl(pillVar(A), S, T))
                    genDeclForVars(Mod, B,S, T)
 
          //curr-mod-name, exp

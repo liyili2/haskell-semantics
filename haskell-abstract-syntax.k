@@ -21,6 +21,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "ambiguousTypeVar"
     syntax KItem ::= "classVarCollipse"
     syntax KItem ::= "classVarNotInScope"
+    syntax KItem ::= "classMethodVarNotInScope"
     syntax KItem ::= "syntaxError"
     syntax KItem ::= "instanceInstNotDistinct"
     syntax KItem ::= "instanceMethodArgsNoMatch"
@@ -47,7 +48,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= getClassInfo(K)
     syntax KItem ::= getClassInfoAux(K, K, Set, K, K, K)
     syntax KItem ::= getClassInfoAuxAux(K, K)
-    syntax KItem ::= putClassMapSet(Map, Set)
+    syntax KItem ::= putClassMethodNames(Set) [function]
     syntax KItem ::= putTypeClass(K, Set, K, K, K)
                //module, class contexts (super classes),
               // class name, class type-var, putClassMapSet
@@ -171,7 +172,6 @@ module HASKELL-ABSTRACT-SYNTAX
 
     syntax KItem ::= names(Set) //store all names
     syntax KItem ::= className(K, List) //name, list of type-vars
-    syntax KItem ::= methodName(K, K) //curr-mod, method-name
     syntax KItem ::= typeClass(Set, K, Map)
         // father, type var, contents,
     syntax KItem ::= methodDef(Set, K, List) //constraints, Type, list of patterns
