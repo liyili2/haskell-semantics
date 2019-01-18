@@ -332,7 +332,7 @@ module HASKELL-KINDINFER
                   | toAbsTypeAux(K, K, List, K) [function]
                           //curr-mod, type-con-name,type-args, unsolved
                   | toAbsTypeAuxAux(K, List) [function] //type-con, args
-   syntax List ::= toAbsTypeTuple(K, TypeTuple) [function]//curr-mod, type-tuple
+   syntax List ::= toAbsTypeTuple(K, K) [function]//curr-mod, type-tuple
                  | toAbsTypeList(K, ATypeList) [function]//curr-mod, typelist
 
    rule toAbsTypeList(S:K, .ATypeList) => .List
@@ -355,6 +355,16 @@ module HASKELL-KINDINFER
    rule toAbsType(S:K, 'tyList(A:K))
              => typeConst(fullName(Prelude, []),
                          ListItem(toAbsType(S, A)))
+   rule toAbsType(S:K, 'tyVarList(A:K))
+             => typeConst(fullName(Prelude, []), ListItem(A))
+   rule toAbsType(S:K, 'typeVarFun(A:K,, B:K))
+             => typeConst(fullName(Prelude, (->)), ListItem(A) ListItem(B))
+   rule toAbsType(S:K, 'instTupleCover(Ts:TyVarTuple))
+             => typeConst(fullName(Prelude,
+                      tupleType(countOnTypeTuple(Ts))), toAbsTypeTuple(S, Ts))
+   rule toAbsType(S:K, 'instAppType(A:GTyCon,, B:TyVars))
+             => toAbsTypeAuxAux(toAbsType(S, A), typeVarsToList(B))
+
    rule toAbsType(S:K, 'unitType(.KList))
              => typeConst(fullName(Prelude, 'unitType(.KList)), .List)
    rule toAbsType(S:K, 'tupleFun(Gs:GConCommas))
@@ -363,11 +373,12 @@ module HASKELL-KINDINFER
    rule toAbsType(S:K, 'tupleCover(Ts:TypeTuple))
              => typeConst(fullName(Prelude,
                       tupleType(countOnTypeTuple(Ts))), toAbsTypeTuple(S, Ts))
-   rule toAbsType(S:K, A:K) => A [owise]
 
    rule toAbsType(S:K, 'group(T:K)) => toAbsType(S, T)
    rule toAbsType(S:K, 'baTypeCon(T:K,, T1:K))
           => toAbsTypeAux(S, toAbsType(S, T), .List, T1)
+
+   rule toAbsType(S:K, A:K) => A [owise]
 
    rule toAbsTypeAux(S:K, A:K, L:List, 'baTypeCon(T:K,, T1:K))
            => toAbsTypeAux(S:K, A, L ListItem(toAbsType(S, T)), T1)
@@ -382,7 +393,10 @@ module HASKELL-KINDINFER
                      => ListItem(toAbsType(S, A)) ListItem(toAbsType(S, B))
    rule toAbsTypeTuple(S:K, 'typeTupleCon(A:K,, B:TypeTuple))
                      => ListItem(toAbsType(S, A)) toAbsTypeTuple(S, B)
-
+   rule toAbsTypeTuple(S:K, 'twoTypeVarTuple(A:K,, B:K))
+                     => ListItem(A) ListItem(B)
+   rule toAbsTypeTuple(S:K, 'typeVarTupleCon(A:K,, B:TypeTuple))
+                     => ListItem(A) toAbsTypeTuple(S, B)
 
    //collecting preBetaMap info
    /*

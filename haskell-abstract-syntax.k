@@ -20,7 +20,11 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "kindUnifierFail"
     syntax KItem ::= "ambiguousTypeVar"
     syntax KItem ::= "classVarCollipse"
+    syntax KItem ::= "classVarNotInScope"
     syntax KItem ::= "syntaxError"
+    syntax KItem ::= "instanceInstNotDistinct"
+    syntax KItem ::= "instanceMethodArgsNoMatch"
+    syntax KItem ::= "moreThanOneDefault"
 
     syntax KItem ::= "startChecks"
     syntax KItem ::= "nextChecks"
@@ -48,6 +52,14 @@ module HASKELL-ABSTRACT-SYNTAX
                //module, class contexts (super classes),
               // class name, class type-var, putClassMapSet
 
+    syntax KItem ::= "collectInstances"
+    syntax KItem ::= getInstances(K)
+    syntax KItem ::= getInstancesAux(K, K, Set, K, K)
+
+    syntax KItem ::= "collectExpressions"
+    syntax KItem ::= getExpressions(K)
+    syntax KItem ::= getExpressionsAux(K)
+
     //preprocessing of beta map
     syntax KItem ::= "makePreBetaMap"
     syntax KResult ::= "star" // kind inference base
@@ -70,6 +82,9 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "checkParUsed"
 //NEED TO CHECK all the polymorphic parameters from right appear on left. RIGHT SIDE ONLY
 //NEED TO CHECK UNIQUENESS FOR POLY PARAM ON LEFT SIDE ONLY
+
+    //check and deal with default in each module
+    syntax KItem ::= "checkOnlyDefault"
 
     syntax KItem ::= "startImportRecursion"
     syntax KItem ::= callInit(K, K)
@@ -113,6 +128,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KResult ::= resultSet(Set)
     syntax KResult ::= resultMap(Map)
     syntax KResult ::= resultList(List)
+    syntax KResult ::= resultDefaultTypes(K, K)
     syntax KResult ::= resultTyVarKindMap(Int, Set, Map)
                          //new-count, new-kind-vars, new-kind-map
     syntax KResult ::= resultTyVarKindList(Int, Set, List)
@@ -120,6 +136,9 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KResult ::= resultIntMap(Int, Map) //counter, map
     syntax KResult ::= resultTrans(Int, K) //int, exp
     syntax KResult ::= resultTransList(Int, List) //int, exp-list
+    syntax KResult ::= resultTransMap(Int, Map) //int, exp-map
+    syntax KResult ::= resultTransSetMap(Int, Set, Map) //int, fun-sets, map
+    syntax KResult ::= resultTransSetTerm(Int, Set, K) //int, fun-sets, map
 
     //abstract syntax for type constrs
     syntax KResult ::= TypeResult
@@ -137,7 +156,6 @@ module HASKELL-ABSTRACT-SYNTAX
                      | "recordParen" | "recordAssign" | "recordUpdate"
 
             //two new type con names for records.
-    syntax ModId ::= "Prelude"
     //built-in type cons
     syntax KItem ::= tupleType(Int) // the abstract constr of tuple type
     syntax KItem ::= "tupleTypeAll" // the abstract constr of tuple type in importing prelude
@@ -173,6 +191,7 @@ module HASKELL-ABSTRACT-SYNTAX
                    | "listCompre" | "qualAssignAst" | "qualLetAst"
     syntax KItem ::= lambda(K, K) //var, exp
     syntax KItem ::= lambdaAssign(K, K) //pat-fun-rhs, body
+    syntax KItem ::= funAssign(List, K) //args-with-pat, body
     syntax KItem ::= body(K, List) //expressions/guards, list-of-conditions
     syntax KItem ::= genVar(Int)
     syntax KItem ::= letIn(List, K) //var, exp

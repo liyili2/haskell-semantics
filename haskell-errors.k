@@ -45,9 +45,21 @@ module HASKELL-ERRORS
          <output> L:List (.List => ListItem("The modules have a type class whose method does not define the type var for the type class, so it is an ambiguous type variable.")) </output>
 
     rule <k> error(classVarCollipse) ~> K:K => .K </k>
-         <output> L:List (.List => ListItem("The modules have a type class whose name or method name copplipses with the type variables or the methods names.")) </output>
+         <output> L:List (.List => ListItem("The modules have a type class/method whose name or method name copplipses with the type variables or the methods names.")) </output>
+
+    rule <k> error(classVarNotInScope) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type instance whose name or method name does not show in the original type class.")) </output>
 
     rule <k> error(syntaxError) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a expression that has syntactic error.")) </output>
+
+    rule <k> error(instanceInstNotDistinct) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have an instance having type vars that are not distinct in a type.")) </output>
+
+    rule <k> error(instanceMethodArgsNoMatch) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have an instance having method definitions that have different size of arguments.")) </output>
+
+    rule <k> error(moreThanOneDefault) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module have more than one default definitions.")) </output>
 
 endmodule

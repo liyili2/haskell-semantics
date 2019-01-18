@@ -95,7 +95,8 @@ module HASKELL-TRANSFORMATION
               //map, name, patterns
    rule updatePatMapInExp(M:Map (A |-> D:K), A:K, C:K)
            => M (A |-> updatePatListInDef(D, C))
-       rule updatePatMapInExp(M:Map, A:K, C:K) => M [owise]
+   rule updatePatMapInExp(M:Map, A:K, C:K)
+                  => M (A |-> methodDef(.Set, .K, ListItem(C))) [owise]
 
    //get the core var of an exp
    syntax KItem ::= getCoreVar(FunLhs) [function]
@@ -105,6 +106,8 @@ module HASKELL-TRANSFORMATION
 
    syntax KItem ::= toAstPat(Int, K, K, K, K, Map) [function]
       //var-counter, curr-mod, CDecls, var, exp, class-map
+                  | transCDecl(K, K) [function]
+
    rule toAstPat(N:Int, Mod:K, 'emptyOptCDecls(.KList), U:K, V:K, M:Map)
               => resultIntMap(N, M)
    rule toAstPat(N:Int, Mod:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)), U:K, V:K, M:Map)
@@ -113,16 +116,20 @@ module HASKELL-TRANSFORMATION
    rule toAstPat(N:Int, Mod:K, 'cdeclCon(
             'cdeclVarRhs(X:Var,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map)
             => toAstPat(N, Mod, B, pillVar(X),
-                      transDecl(N, Mod, 'cdeclVarRhs(X:Var,, Y:Rhs)), M)
+                        transCDecl(transFunLhs(Mod, X), transRhs(N, Mod, Y)), M)
    rule toAstPat(N:Int, Mod:K, 'cdeclCon(
               'cdeclFunLhsRhs(X:FunLhs,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map)
             => toAstPat(N, Mod, B, getCoreVar(X),
-                    transDecl(N, Mod, 'cdeclFunLhsRhs(X,, Y:Rhs)), M)
+                    transCDecl(transFunLhs(Mod, X), transRhs(N, Mod, Y)), M)
    rule toAstPat(N:Int, Mod:K, A:K, X:K, error(B:K), M:Map) => error(B)
    rule toAstPat(N:Int, Mod:K, A:K, X:K, resultTrans(N':Int, B:K), M:Map)
          => toAstPat(N', Mod, A, .K, .K, updatePatMapInExp(M, X, B))
    rule toAstPat(N:Int, Mod:K, 'cdeclCon(A:CDecl,, B:CDeclsList),.K,.K, M:Map)
             => toAstPat(N, Mod, B, .K, .K, M) [owise]
+
+   rule transCDecl(A:K, error(B:K)) => error(B)
+   rule transCDecl(funPat(ListItem(X:K) L:List), resultTrans(N:Int, A:K))
+            =>  resultTrans(N, funAssign(L, A))
 
    syntax KItem ::= formExpList(List) [function]
    rule formExpList(.List) => fullName(Prelude,[])
@@ -144,6 +151,143 @@ module HASKELL-TRANSFORMATION
    rule formGuardCons(.List) => none
    rule formGuardCons(ListItem(tempGuard(A:List, B:K)) L:List)
           => ifElse(A, B, formGuardCons(L))
+
+   //check if the pattern list in a function in a class has all same number of args
+   syntax KItem ::= checkMethodPatNumbers(Map, K) [function]
+                  | checkMethodPatNumbersList(Map, List) [function]
+                  | checkMethodPatNumbersListAux(Map, List, Int) [function]
+   rule checkMethodPatNumbers(.Map, .K) => .K
+   rule checkMethodPatNumbers(M:Map (A:K |-> B:K), .K)
+          => checkMethodPatNumbers(M, B)
+   rule checkMethodPatNumbers(M:Map, resultList(L:List))
+         => checkMethodPatNumbersList(M, L)
+   rule checkMethodPatNumbers(M:Map, methodDef(S:Set, T:K, L:List))
+         => checkMethodPatNumbersList(M, L)
+
+   rule checkMethodPatNumbersList(M:Map, .List)
+                         => checkMethodPatNumbers(M, .K)
+   rule checkMethodPatNumbersList(M:Map, ListItem(funAssign(A:List, B:K)) L:List)
+              => checkMethodPatNumbersListAux(M, L, size(A))
+   rule checkMethodPatNumbersListAux(M:Map, .List, N:Int)
+              => checkMethodPatNumbers(M, .K)
+   rule checkMethodPatNumbersListAux(M:Map,
+              ListItem(funAssign(A:List, B:K)) L:List, N:Int)
+            => checkMethodPatNumbersListAux(M, L, N)
+        requires size(A) ==K N
+   rule checkMethodPatNumbersListAux(M:Map,
+              ListItem(funAssign(A:List, B:K)) L:List, N:Int)
+            => error(instanceMethodArgsNoMatch)
+        requires size(A) =/=K N
+
+   //transformation of expressions in a module, bascially an exp is a decl
+   syntax KItem ::= transDeclFun(Int, K, K, Set, Map)  [function]
+                  | transDeclFunAux(K, K, Set, Map)    [function]
+                  | transDeclFunAux1(K, K, Set)        [function]
+                 //gen-var, cur-mod, decl, function-name-set, fun-map
+   rule transDeclFun(N:Int, Mod:K, 'declFunLhsRhs(F:FunLhs,, R:Rhs), S:Set, M:Map)
+          => transDeclFunAux(transFunLhs(Mod, F), transRhs(N, Mod, R), S, M)
+        requires notBool getCoreVar(F) in S orBool getCoreVar(F) in keys(M)
+   rule transDeclFun(N:Int, Mod:K, 'declFunLhsRhs(F:FunLhs,, R:Rhs), S:Set, M:Map)
+          => error(classVarCollipse)
+        requires getCoreVar(F) in S andBool notBool getCoreVar(F) in keys(M)
+   rule transDeclFun(N:Int, Mod:K, 'declPatRhs(F:Pat,, R:Rhs), S:Set, M:Map)
+          => transDeclFunAux1(transPat(Mod, F), transRhs(N, Mod, R), S)
+
+   rule transDeclFunAux(funPat(ListItem(X:K) L:List), resultTrans(N:Int, B:K), S:Set, M:Map)
+             => resultTransSetMap(N, SetItem(X), updatePatMapInExp(M, X, funAssign(L, B)))
+   rule transDeclFunAux(A:K, error(B:K), S:Set, M:Map) => error(B)
+
+   rule transDeclFunAux1(A:K, error(B:K), S:Set) => error(B)
+   rule transDeclFunAux1(A:K, resultTrans(N:Int, B:K), S:Set)
+             => resultTransSetTerm(N, S, lambdaAssign(A, B))
+
+   //add type/context to method def in a map
+   syntax KItem ::= addDeclToK(K, Set, K) [function]
+   rule addDeclToK(methodDef(S:Set, T:K, L:List), S1:Set, T1:K)
+           => methodDef(S1, T1, L)
+
+   syntax Map ::= addDeclToMap(Map, K, Set, Set, K) [function]
+          //def map, execute, Set-of-keys, contexts, type
+   rule addDeclToMap(M:Map, .K, .Set, S:Set, T:K) => M
+   rule addDeclToMap(M:Map, .K, SetItem(A:K) S:Set, S1:Set, T:K)
+         => addDeclToMap(M, A, S, S1, T)
+   rule addDeclToMap(M:Map (A |-> B:K), A:KItem, S:Set, S1:Set, T:K)
+          => (A |-> addDeclToK(B, S1, T)) addDeclToMap(M, .K, S, S1, T)
+   rule addDeclToMap(M:Map, A:KItem, S:Set, S1:Set, T:K)
+          => addDeclToMap(M, .K, S, S1, T) [owise]
+
+
+   //create an empty entry in the method definition map
+   syntax Map ::= createEmptyEntry(Map, K, Set) [function]
+   rule createEmptyEntry(M:Map, .K, .Set) => M
+   rule createEmptyEntry(M:Map, .K, SetItem(A:K) S:Set)
+            => createEmptyEntry(M, A, S)
+   rule createEmptyEntry(M:Map, A:KItem, S:Set)
+          => createEmptyEntry(M (A |-> methodDef(.Set, .K, ListItem(none))), .K, S)
+
+   //check if the method definition has defined pattern /types
+   syntax Bool ::= hasDefinedPat(K) [function]
+                 | hasNoDefinedPats(Set, K) [function]
+   rule hasDefinedPat(methodDef(A:Set, B:K, .List)) => false
+   rule hasDefinedPat(methodDef(A:Set, B:K, ListItem(C:K) L:List)) => true
+   rule hasNoDefinedPats(.Set, .K) => true
+   rule hasNoDefinedPats(SetItem(A:K) S:Set, .K)
+          => hasNoDefinedPats(S, A)
+   rule hasNoDefinedPats(S:Set, A:KItem) => hasNoDefinedPats(S, .K)
+        requires notBool hasDefinedPat(A)
+   rule hasNoDefinedPats(S:Set, A:KItem) => false
+        requires hasDefinedPat(A)
+
+   syntax Bool ::= hasDefinedType(K) [function]
+                 | hasNoDefinedTypes(Set, K) [function]
+   rule hasDefinedType(methodDef(A:Set, T:K, L:List)) => T =/=K .K
+   rule hasNoDefinedTypes(.Set, .K) => true
+   rule hasNoDefinedTypes(SetItem(A:K) S:Set, .K)
+          => hasNoDefinedTypes(S, A)
+   rule hasNoDefinedTypes(S:Set, A:KItem) => hasNoDefinedTypes(S, .K)
+        requires notBool hasDefinedType(A)
+   rule hasNoDefinedTypes(S:Set, A:KItem) => false
+        requires hasDefinedType(A)
+
+
+   //trans top level decls
+   syntax KItem ::= transTopDecls(Int, K, K, Set) [function]
+                    //int, cur-mod, idecls, set-of-funcions
+                  | transTopDeclsAux(Int, K, K, K, Map, Set) [function]
+                  | transTopDecl(Int, K, K, Map, Set) [function]
+                  | transTopDeclAux(K, K, Map)   [function]
+
+   rule transTopDecls(N:Int, Mod:K, 'emptyOptIDecls(.KList), Cs:Set)
+         => resultTransMap(N, .Map)
+   rule transTopDecls(N:Int, Mod:K, 'ideclWhere('ideclBracket(Ds:DeclsList)), Cs:Set)
+           => transTopDeclsAux(N, Mod, Ds, .K, .Map, Cs)
+   rule transTopDeclsAux(N:Int, Mod:K, .IDeclsList, .K, M:Map, Cs:Set)
+             => resultTransMap(N, M)
+   rule transTopDeclsAux(N:Int, Mod:K, 'ideclsCon(D:IDecl,, Ds:IDeclsList),
+                     .K, M:Map, Cs:Set)
+           => transTopDeclsAux(N, Mod, Ds, transTopDecl(N, Mod, D, M, Cs), M:Map, Cs:Set)
+   rule transTopDeclsAux(N:Int, Mod:K, Ds:K, error(A:K), M:Map, Cs:Set) => error(A)
+   rule transTopDeclsAux(N:Int, Mod:K, Ds:K, resultTransMap(N':Int, M':Map), M:Map, Cs:Set)
+          => transTopDeclsAux(N', Mod, Ds, .K, M', Cs:Set)
+   
+   rule transTopDecl(N:Int, Mod:K, 'emptyIDecl(.KList), M:Map, Cs:Set) => resultTransMap(N, M)
+   rule transTopDecl(N:Int, Mod:K, 'ideclFunLhsRhs(A:FunLhs,, B:Rhs), M:Map, Cs:Set)
+         => transTopDeclAux(transFunLhs(Mod, A), transRhs(N, Mod, B), M)
+        requires getCoreVar(A) in Cs
+   rule transTopDecl(N:Int, Mod:K, 'ideclFunLhsRhs(A:FunLhs,, B:Rhs), M:Map, Cs:Set)
+         => error(classVarNotInScope)
+        requires notBool getCoreVar(A) in Cs
+   rule transTopDecl(N:Int, Mod:K, 'ideclVarRhs(A:Var,, B:Rhs), M:Map, Cs:Set)
+         => transTopDeclAux(transFunLhs(Mod, A), transRhs(N, Mod, B), M)
+        requires A in Cs
+   rule transTopDecl(N:Int, Mod:K, 'ideclVarRhs(A:Var,, B:Rhs), M:Map, Cs:Set)
+         => error(classVarNotInScope)
+        requires notBool A in Cs
+
+   rule transTopDeclAux(A:K, error(B:K), M:Map) => error(B)
+   rule transTopDeclAux(funPat(ListItem(A:K) L:List), resultTrans(N:Int, B:K), M:Map)
+                => resultTransMap(N, updateFunExp(M, A, funAssign(L, B)))
+
 
    //a function to transfer decls to ast form.
    syntax KItem ::= transRhs(Int, K, K) [function]
@@ -547,7 +691,6 @@ module HASKELL-TRANSFORMATION
    rule transDeclsAux(N:Int, Mod:K, Ds:DeclsList, resultTransList(N':Int, A:List), L:List)
              => transDeclsAux(N', Mod, Ds, .K, L A)
 
-   rule transDecl(N:Int, Mod:K, 'emptyIDecl(.KList)) => resultTransList(N, .List)
    rule transDecl(N:Int, Mod:K, 'emptyGenDecl(.KList)) => resultTransList(N, .List)
    rule transDecl(N:Int, Mod:K, 'varAssign(A:Vars,, B:Type))
          => resultTransList(N, genDeclForVars(Mod, A, .Set, toAbsType(Mod, B)))
@@ -557,14 +700,6 @@ module HASKELL-TRANSFORMATION
    rule transDecl(N:Int, Mod:K, 'declFunLhsRhs(A:FunLhs,, B:Rhs))
          => transDeclAux(transFunLhs(Mod, A), transRhs(N, Mod, B))
    rule transDecl(N:Int, Mod:K, 'declPatRhs(A:Pat,, B:Rhs))
-         => transDeclAux(transFunLhs(Mod, A), transRhs(N, Mod, B))
-   rule transDecl(N:Int, Mod:K, 'cdeclFunLhsRhs(A:FunLhs,, B:Rhs))
-         => transDeclAux(transFunLhs(Mod, A), transRhs(N, Mod, B))
-   rule transDecl(N:Int, Mod:K, 'cdeclVarRhs(A:Var,, B:Rhs))
-         => transDeclAux(transFunLhs(Mod, A), transRhs(N, Mod, B))
-   rule transDecl(N:Int, Mod:K, 'ideclFunLhsRhs(A:FunLhs,, B:Rhs))
-         => transDeclAux(transFunLhs(Mod, A), transRhs(N, Mod, B))
-   rule transDecl(N:Int, Mod:K, 'ideclVarRhs(A:Var,, B:Rhs))
          => transDeclAux(transFunLhs(Mod, A), transRhs(N, Mod, B))
 
    rule transDeclAux(A:K, error(B:K)) => error(B)
@@ -641,8 +776,8 @@ module HASKELL-TRANSFORMATION
    rule transFunLhs(Mod:K, 'normalLhs(V:Var,, As:APatList))
          => funPat(ListItem(transPat(Mod, V)) transAPatList(Mod, As))
    rule transFunLhs(Mod:K, 'binLhs(P1:Pat,, V:VarOp,, P2:Pat))
-         => funPat(ListItem(appPat(transVar(Mod,V),
-                  ListItem(transPat(Mod, P1)) ListItem(transPat(Mod, P2)))))
+         => funPat(ListItem(transVar(Mod,V))
+                  ListItem(transPat(Mod, P1)) ListItem(transPat(Mod, P2)))
    rule transFunLhs(Mod:K, 'groupLhs(F:FunLhs,, As:APatList))
          => insertAPatList(transFunLhs(Mod, F), transAPatList(Mod, As))
    rule insertAPatList(funPat(L:List), L2:List) => funPat(L L2)

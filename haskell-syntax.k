@@ -14,6 +14,9 @@ module HASKELL-SYNTAX
 
     syntax VarId ::= Token{[a-z\_][a-z A-Z\_0-9\']*} [onlyLabel] | "size" [onlyLabel]
     syntax ConId ::= Token{[A-Z][a-zA-Z \_0-9\']*} [onlyLabel]
+                   | "Integer"        [prefer]
+                   | "Double"         [prefer]
+                   | "Prelude"        [prefer]
     syntax VarSym ::= Token{
    ([\! \# \$ \% \& \* \+ \/ \> \? \^][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)
   |[\-] | [\.]
@@ -129,7 +132,7 @@ module HASKELL-SYNTAX
     //definition of top decls
     syntax TopDecls ::= List{TopDecl, ";"} [klabel('topdeclslist)]
 
-    syntax TopDecl ::= Decl [klabel('topdecldecl)]
+    syntax TopDecl ::= Decl
                      > "type" SimpleType "=" Type [klabel('atype)]
                      | "data" OptContext SimpleType OptConstrs OptDeriving  [klabel('data)]
                      | "newtype" OptContext SimpleType "=" NewConstr OptDeriving [klabel('newtype)]
@@ -169,18 +172,19 @@ module HASKELL-SYNTAX
                   | FunLhs Rhs [klabel('declFunLhsRhs), onlyLabel]
                   | Pat Rhs [klabel('declPatRhs), onlyLabel]
 
-    syntax OptCDecls ::= "where" CDecls [klabel('cdeclWhere)]
+    syntax OptCDecls ::= "where" CDecls [klabel('cdeclWhere), onlyLabel]
                        | "" [onlyLabel, klabel('emptyOptCDecls)]
-    syntax CDecls ::= "{" CDeclsList "}" [klabel('cdeclBracket)]
+    syntax CDecls ::= "{" CDeclsList "}" [klabel('cdeclBracket), onlyLabel]
     syntax CDeclsList ::= List{CDecl, ";"}   [klabel('cdeclCon)]
 
     syntax CDecl ::= GenDecl
                    | FunLhs Rhs  [klabel('cdeclFunLhsRhs), onlyLabel]
                    | Var Rhs [klabel('cdeclVarRhs), onlyLabel]
 
-    syntax OptIDecls ::= "where" IDecls | "" [onlyLabel, klabel('emptyOptIDecls)]
-    syntax IDecls ::= "{" IDeclsList "}"
-    syntax IDeclsList ::= List{IDecl, ";"} [klabel('ideclslist)]
+    syntax OptIDecls ::= "where" IDecls  [klabel('ideclWhere), onlyLabel]
+                       | "" [onlyLabel, klabel('emptyOptIDecls)]
+    syntax IDecls ::= "{" IDeclsList "}"   [klabel('ideclBracket), onlyLabel]
+    syntax IDeclsList ::= List{IDecl, ";"} [klabel('ideclsCon)]
 
     syntax IDecl ::= FunLhs Rhs [klabel('ideclFunLhsRhs), onlyLabel]
                    | Var Rhs [klabel('ideclVarRhs), onlyLabel]
@@ -313,7 +317,7 @@ module HASKELL-SYNTAX
                    | "(" Type ")"               [klabel('group)]           
     syntax TypeTuple ::= Type "," Type          [right,klabel('twoTypeTuple), onlyLabel]
                        | Type "," TypeTuple     [klabel('typeTupleCon), onlyLabel]
-    syntax Types ::= List{Type, ","}
+    syntax Types ::= List{Type, ","}            [klabel('typeCon)]
 
     syntax GConCommas ::= ","            [klabel('dotInTuple)]
                        | "," GConCommas  [klabel('dotCon)]
@@ -327,11 +331,14 @@ module HASKELL-SYNTAX
                   | QCon
 
     //inst definition
-    syntax Inst  ::= GTyCon
-                   | "(" GTyCon TyVars ")" //TyVars must be distinct UNFINISHED
-                   | "(" TyVarTuple ")" //TyVars must be distinct
-                   | "[" TyVar "]"  [klabel('tyVarList)]
-                   | "(" TyVar "->" TyVar ")" //TyVars must be distinct
+    syntax Inst ::= GTyCon
+                  | "(" GTyCon TyVars ")" [klabel('instAppType), onlyLabel]
+                    //TyVars must be distinct UNFINISHED
+                  | "(" TyVarTuple ")" [klabel('instTupleCover), onlyLabel]
+                      //TyVars must be distinct
+                  | "[" TyVar "]"  [klabel('tyVarList), onlyLabel]
+                  | "(" TyVar "->" TyVar ")" [klabel('typeVarFun), onlyLabel]
+                     //TyVars must be distinct
     //pat definition
     syntax Pat ::= LPat QConOp Pat  [klabel('binPattern), onlyLabel]
                  | LPat

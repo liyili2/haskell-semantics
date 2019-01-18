@@ -40,12 +40,14 @@ module HASKELL-PREPROCESSING
     rule nextChecks => makePreBetaMap
                 ~> (checkPreBetaInScope
                 ~> (genKindMap
-                ~> (nextNextChecks)))
+                ~> (checkOnlyDefault
+                ~> (nextNextChecks))))
 
     rule nextNextChecks => (checkArgSortsAreTargets
                 ~> (checkParUsed
                 ~> (initClassStartInfo
-                 ~> collectClassInfo)))
+                 ~> (collectClassInfo
+                ~> collectExpressions))))
 
     //deal with alpha map, deal with renaming of type name
     //collect information for the type name and kind in the same module
@@ -95,6 +97,15 @@ module HASKELL-PREPROCESSING
          <tempKindMap> KM:Map </tempKindMap>
          <tempAlphaMap> AM:Map </tempAlphaMap>
 
+    //check there is only one default in a module
+    rule <k> checkOnlyDefault => checkOnlyDefault(TM) ...</k>
+         <tempModule> TM:K </tempModule>
+
+    rule <k> resultDefaultTypes(T1:K, T2:K) => .K ...</k>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <defaultInt> _:K => T1 </defaultInt>
+         <defaultDouble> _:K => T2 </defaultDouble>
 
     //deal with type classes. type classes ast gen
     rule <k> initClassStartInfo => .K ...</k>
@@ -112,6 +123,9 @@ module HASKELL-PREPROCESSING
     rule getClassInfo('bodytopdecls(Ts:TopDecls)) => getClassInfo(Ts)
     rule getClassInfo(.TopDecls) => .K
 
+    rule getClassInfo('topdeclslist(A:TopDecl,, As:TopDecls)) => getClassInfo(As)
+         requires notBool isTheClass(A)
+         
     rule <k> getClassInfo('topdeclslist('class(Cs:OptContext,,
                   Name:ConId,, Tv:TyVar,, Ds:OptCDecls),, As:TopDecls))
                => getClassInfoAux(fullName(Mod, Name),Tv, contextToSet(Mod, Cs),
@@ -146,12 +160,205 @@ module HASKELL-PREPROCESSING
                   ...</class>)
 
     rule getClassInfoAuxAux(Name:K, error(A:K)) => error(A)
-    rule <k> getClassInfoAuxAux(Name:K, resultIntMap(N':Int, M:Map)) => .K ...</k>
+    rule <k> getClassInfoAuxAux(Name:K, resultIntMap(N':Int, M:Map))
+              => checkMethodPatNumbers(M, .K) ...</k>
          <genVarCounter> N:Int => N' </genVarCounter>
          <class>...
              <classModule> Mod </classModule>
              <className> Name </className>
              <classMethods> _:Map => M </classMethods>
          ...</class>
+
+   //functions to compile type class instances to ast form
+    rule <k> collectInstances => getInstances(TM) ...</k>
+         <tempModule> TM:K </tempModule>
+
+    rule getInstances('bodyimpandtop(Is:ImpDecls,, Ts:TopDecls))
+               => getInstances(Ts)
+    rule getInstances('bodyimpdecls(Is:ImpDecls)) => .K
+    rule getInstances('bodytopdecls(Ts:TopDecls)) => getInstances(Ts)
+    rule getInstances(.TopDecls) => .K
+
+    rule getInstances('topdeclslist(A:TopDecl,, As:TopDecls)) => getInstances(As)
+         requires notBool isTheInstance(A)
+
+    rule <k> getInstances('topdeclslist('instance(Cs:OptContext,,
+                  Name:QTyCon,, Tv:Inst,, Ds:OptIDecls),, As:TopDecls))
+                 => error(classVarNotInScope) ...</k>
+         <currModule> Mod:K </currModule>
+         <classClassNames> NM:Map </classClassNames>
+         requires notBool hasClassName(Mod, transVar(Mod, Name), .K, NM)
+
+    rule getInstances('topdeclslist('instance(Cs:OptContext,,
+                  Name:QTyCon,, Tv:Inst,, Ds:OptIDecls),, As:TopDecls))
+                 => error(instanceInstNotDistinct)
+         requires hasDistinctVars(Tv)
+
+    rule <k> getInstances('topdeclslist('instance(Cs:OptContext,,
+                  Name:QTyCon,, Tv:Inst,, Ds:OptIDecls),, As:TopDecls))
+               => getInstancesAux(transVar(Mod, Name), toAbsType(Mod, Tv),
+                    contextToSet(Mod, Cs),
+                    transTopDecls(N, Mod, Ds, keys(Methods)), As) ...</k>
+         <genVarCounter> N:Int </genVarCounter>
+         <currModule> Mod:K </currModule>
+         <classMethodNames> CM:Map </classMethodNames>
+         <classClassNames> NM:Map </classClassNames>
+         <class>...
+             <classModule> Mod </classModule>
+             <className> transVar(Mod, QTyCon) </className>
+             <classMethods> Methods:Map </classMethods>
+         ...</class>
+         requires hasClassName(Mod, transVar(Mod, Name), .K, NM)
+                  andBool notBool hasDistinctVars(Tv)
+
+   rule getInstancesAux(Name:K, Tv:K, S:Set, error(A:K), As:K) => error(A)
+   rule <k> getInstancesAux(Name:K, Tv:K, S:Set, resultTransMap(N':Int, M':Map), As:K)
+            => checkMethodPatNumbers(M', .K) ~> getInstances(As) ...</k>
+         <genVarCounter> N:Int => N' </genVarCounter>
+         <currModule> Mod:K </currModule>
+         <classMethodNames> CM:Map </classMethodNames>
+         <classClassNames> NM:Map </classClassNames>
+         (.Bag => <instance>...
+                     <instanceModule> Mod </instanceModule>
+                     <instanceClass> Name </instanceClass>
+                     <instanceType> Tv </instanceType>
+                     <instanceContext> S </instanceContext>
+                     <instanceMethods> M' </instanceMethods>
+                  ...</instance>)
+
+   //transformation of expressions in a module
+   rule <k> collectExpressions => getExpressions(TM) ...</k>
+        <tempModule> TM:K </tempModule>
+
+
+    rule getExpressions('bodyimpandtop(Is:ImpDecls,, Ts:TopDecls))
+               => getExpressions(Ts)
+    rule getExpressions('bodyimpdecls(Is:ImpDecls)) => .K
+    rule getExpressions('bodytopdecls(Ts:TopDecls)) => getExpressions(Ts)
+    rule getExpressions(.TopDecls) => .K
+
+    rule getExpressions('topdeclslist(A:TopDecl,, As:TopDecls)) => getExpressions(As)
+         requires notBool isTheExp(A)
+
+    rule <k> getExpressions('topdeclslist('declFunLhsRhs(A:K,, B:K),, As:TopDecls))
+              => getExpressionsAux(transDeclFun(N,Mod, 'declFunLhsRhs(A:K,, B:K),
+                          getRidWrapper(X) getRidWrapper(Y), M))
+                 ~> getExpressions(As) ...</k>
+         <currModule> Mod:K </currModule>
+         <genVarCounter> N:Int </genVarCounter>
+         <classMethodNames>... Mod |-> X:K ...</classMethodNames>
+         <moduleMethodNames>... Mod |-> Y:K ...</moduleMethodNames>
+         <module>...
+            <moduleName> Mod:K </moduleName>
+            <moduleMethods> M:Map </moduleMethods>
+         ...</module>
+
+   rule getExpressionsAux(error(A:K)) => error(A)
+   rule <k> getExpressionsAux(resultTransSetMap(
+                    N':Int, S:Set, M':Map)) => .K ...</k>
+         <currModule> Mod:K </currModule>
+         <genVarCounter> N:Int => N' </genVarCounter>
+         <moduleMethodNames> MM:Map => updateMapItem(MM, .K, Mod, S) </moduleMethodNames>
+         <module>...
+            <moduleName> Mod:K </moduleName>
+            <moduleMethods> M:Map => M' </moduleMethods>
+         ...</module>
+
+    rule <k> getExpressions('topdeclslist('declPatRhs(A:Pat,, B:Rhs),, As:TopDecls))
+                 => getExpressionsAux(transDeclFun(N,Mod, 'declPatRhs(A,, B),
+                          setMinus(getFreeVarsInPat(A),.K, getRidWrapper(Y)), M))
+                 ~> getExpressions(As) ...</k>
+         <currModule> Mod:K </currModule>
+         <genVarCounter> N:Int </genVarCounter>
+         <classMethodNames>... Mod |-> X:K ...</classMethodNames>
+         <moduleMethodNames>... Mod |-> Y:K ...</moduleMethodNames>
+         <module>...
+            <moduleName> Mod:K </moduleName>
+            <moduleMethods> M:Map => createEmptyEntry(M, .K,
+                setMinus(getFreeVarsInPat(A),.K, getRidWrapper(Y))) </moduleMethods>
+         ...</module>
+        requires (notBool isIntersect(getFreeVarsInPat(A),.K,
+                        getRidWrapper(X) getRidWrapper(Y)))
+                 orBool (isIntersect(getFreeVarsInPat(A),.K, getRidWrapper(Y))
+                       andBool hasNoDefinedPats(getValues(M, .K,
+                           getIntersect(getFreeVarsInPat(A),.K, getRidWrapper(Y))), .K))
+
+    rule <k> getExpressions('topdeclslist('declPatRhs(A:Pat,, B:Rhs),, As:TopDecls))
+                 => error(classVarCollipse) ...</k>
+         <currModule> Mod:K </currModule>
+         <genVarCounter> N:Int </genVarCounter>
+         <classMethodNames>... Mod |-> X:K ...</classMethodNames>
+         <moduleMethodNames>... Mod |-> Y:K ...</moduleMethodNames>
+         <module>...
+            <moduleName> Mod:K </moduleName>
+            <moduleMethods> M:Map </moduleMethods>
+         ...</module>
+        requires (isIntersect(getFreeVarsInPat(A),.K,
+                        getRidWrapper(X) getRidWrapper(Y)))
+                 andBool notBool (isIntersect(getFreeVarsInPat(A),.K, getRidWrapper(Y))
+                       andBool hasNoDefinedPats(getValues(M, .K,
+                           getIntersect(getFreeVarsInPat(A),.K, getRidWrapper(Y))), .K))
+
+   rule <k> getExpressionsAux(resultTransSetTerm(
+                    N':Int, S:Set, A:K)) => .K ...</k>
+        <currModule> Mod:K </currModule>
+        <genVarCounter> N:Int => N' </genVarCounter>
+        <moduleMethodNames> MM:Map => updateMapItem(MM, .K, Mod, S) </moduleMethodNames>
+        <unnamedModuleExp> L:List (.List => ListItem(A)) </unnamedModuleExp>
+
+   //dealing with method decl in a module
+    rule <k> getExpressions('topdeclslist('varAssign(A:Vars,, T:Type),, As:TopDecls))
+                 => error(classVarCollipse) ...</k>
+         <currModule> Mod:K </currModule>
+         <genVarCounter> N:Int </genVarCounter>
+         <classMethodNames>... Mod |-> X:K ...</classMethodNames>
+         <moduleMethodNames>... Mod |-> Y:K ...</moduleMethodNames>
+         <module>...
+            <moduleName> Mod:K </moduleName>
+            <moduleMethods> M:Map </moduleMethods>
+         ...</module>
+        requires isIntersect(getFreeVarsInPat(A),.K,
+                        getRidWrapper(X) getRidWrapper(Y))
+                 andBool notBool (isIntersect(getFreeVarsInPat(A),.K, getRidWrapper(Y))
+                       andBool hasNoDefinedTypes(getValues(M, .K,
+                           getIntersect(getFreeVarsInPat(A),.K, getRidWrapper(Y))), .K))
+
+    rule <k> getExpressions('topdeclslist('varAssign(A:Vars,, T:Type),, As:TopDecls))
+                 => getExpressions(As) ...</k>
+         <currModule> Mod:K </currModule>
+         <genVarCounter> N:Int </genVarCounter>
+         <classMethodNames>... Mod |-> X:K ...</classMethodNames>
+         <moduleMethodNames>... Mod |-> (Y:K => addToSetInK(Y,
+                  setMinus(getFreeVarsInPat(A),.K, getRidWrapper(Y)))) ...</moduleMethodNames>
+         <module>...
+            <moduleName> Mod:K </moduleName>
+            <moduleMethods> M:Map => addDeclToMap(M, .K,
+                getFreeVarsInPat(A), .Set, toAbsType(Mod, T)) </moduleMethods>
+         ...</module>
+        requires (notBool isIntersect(getFreeVarsInPat(A),.K,
+                        getRidWrapper(X) getRidWrapper(Y)))
+                 orBool (isIntersect(getFreeVarsInPat(A),.K, getRidWrapper(Y))
+                       andBool hasNoDefinedTypes(getValues(M, .K,
+                           getIntersect(getFreeVarsInPat(A),.K, getRidWrapper(Y))), .K))
+
+    rule <k> getExpressions('topdeclslist('genAssignContext(
+                       A:Vars,, C:Context,, T:Type),, As:TopDecls))
+                 => getExpressions(As) ...</k>
+         <currModule> Mod:K </currModule>
+         <genVarCounter> N:Int </genVarCounter>
+         <classMethodNames>... Mod |-> X:K ...</classMethodNames>
+         <moduleMethodNames>... Mod |-> (Y:K => addToSetInK(Y,
+                  setMinus(getFreeVarsInPat(A),.K, getRidWrapper(Y)))) ...</moduleMethodNames>
+         <module>...
+            <moduleName> Mod:K </moduleName>
+            <moduleMethods> M:Map => addDeclToMap(M, .K,
+                getFreeVarsInPat(A), contextToSet(Mod, C), toAbsType(Mod, T)) </moduleMethods>
+         ...</module>
+        requires (notBool isIntersect(getFreeVarsInPat(A),.K,
+                        getRidWrapper(X) getRidWrapper(Y)))
+                 orBool (isIntersect(getFreeVarsInPat(A),.K, getRidWrapper(Y))
+                       andBool hasNoDefinedTypes(getValues(M, .K,
+                           getIntersect(getFreeVarsInPat(A),.K, getRidWrapper(Y))), .K))
+
 
 endmodule

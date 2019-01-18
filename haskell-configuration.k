@@ -10,6 +10,7 @@ module HASKELL-CONFIGURATION
         <T>
             <k> $PGM:ModuleList ~> startImportRecursion </k>
             <tempModule> .K </tempModule>
+            <unnamedModuleExp> .List </unnamedModuleExp>
             <tempCode> .K </tempCode>
             <tempAlpha> .K </tempAlpha>
             <tempAlphaMap> .Map </tempAlphaMap>
@@ -24,6 +25,7 @@ module HASKELL-CONFIGURATION
             <kindVarSet> .Set </kindVarSet>
             <genVarCounter> 0 </genVarCounter>
             <modules> //static information about a module
+                <moduleMethodNames> .Map </moduleMethodNames>
                 <module multiplicity="*">
                     <moduleName> .K </moduleName>
                     <moduleAlphaPlus> .K </moduleAlphaPlus>
@@ -31,6 +33,9 @@ module HASKELL-CONFIGURATION
                     <moduleCompCode> .K </moduleCompCode>
                     <exports> .Set </exports>
                     <importElemMap> .Map </importElemMap>
+                    <defaultInt> Integer </defaultInt>
+                    <defaultDouble> Double </defaultDouble>
+                    <moduleMethods> .Map </moduleMethods>
                 </module>
               <typeNameInMod> .Map </typeNameInMod>
                    //store all type names in modules. from module name to type name+arity
@@ -38,10 +43,9 @@ module HASKELL-CONFIGURATION
               <importMap> .Map </importMap>
             </modules>
             <classes>
-              <classMethodNames> .Map </classMethodNames>
-                     //store all class method names in modules for each module
               <classClassNames> .Map </classClassNames>
                      //store all class names for each module
+              <classMethodNames> .Map </classMethodNames>
               <class multiplicity="*">
                 <classModule> .K </classModule>
                 <className> .K </className>
@@ -49,6 +53,13 @@ module HASKELL-CONFIGURATION
                 <classContext> .Set </classContext>
                 <classMethods> .Map </classMethods>
               </class>
+              <instance multiplicity="*">
+                <instanceModule> .K </instanceModule>
+                <instanceClass> .K </instanceClass>
+                <instanceType> .K </instanceType>
+                <instanceContext> .Set </instanceContext>
+                <instanceMethods> .Map </instanceMethods>
+              </instance>
             </classes>
             <output stream="stdout" color="DodgerBlue"> .List </output>
         </T>
