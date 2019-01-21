@@ -47,7 +47,10 @@ module HASKELL-PREPROCESSING
                 ~> (checkParUsed
                 ~> (initClassStartInfo
                  ~> (collectClassInfo
-                ~> collectExpressions))))
+                ~> (collectExpressions
+                ~> genModuleChecks)))))
+
+    rule genModuleChecks => genExportSet
 
     //deal with alpha map, deal with renaming of type name
     //collect information for the type name and kind in the same module

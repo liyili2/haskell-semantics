@@ -104,8 +104,10 @@ module HASKELL-ABSTRACT-SYNTAX
 
  
     //defaul name for the haskell module if not specified.
+    syntax KItem ::= "genModuleChecks"
     syntax KItem ::= "noname"
     syntax KItem ::= "allExports"
+    syntax KItem ::= "genExportSet"
     syntax Set ::= toExports(K) //deal with exports
     syntax KItem ::= importElem(K, K, K)
                   //OptQualified, OptAsModId, OptImpSpec 
