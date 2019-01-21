@@ -6,6 +6,8 @@ requires "haskell-helper.k"
 requires "haskell-kindinfer.k"
 requires "haskell-transformation.k"
 requires "haskell-errors.k"
+requires "haskell-modules.k"
+
 
 module HASKELL-PREPROCESSING
     imports HASKELL-SYNTAX
@@ -15,6 +17,7 @@ module HASKELL-PREPROCESSING
     imports HASKELL-ERRORS
     imports HASKELL-KINDINFER
     imports HASKELL-TRANSFORMATION
+    imports HASKELL-MODULES
 
     rule <k> preModule(A:K,T:K) => startChecks ...</k>
          <tempAlpha> OldAlpha:K => A </tempAlpha>
@@ -45,12 +48,56 @@ module HASKELL-PREPROCESSING
 
     rule nextNextChecks => (checkArgSortsAreTargets
                 ~> (checkParUsed
-                ~> (initClassStartInfo
                  ~> (collectClassInfo
                 ~> (collectExpressions
-                ~> genModuleChecks)))))
+                ~> genModuleChecks))))
 
-    rule genModuleChecks => genExportSet
+    //genarate export set, and initialize inside module checks
+    //TODO: place validity checks for syntax of cname in exports
+    //be able to distingush class vs data types
+    //check if all exports are valid due to imports
+   rule <k> 'moduleExp('moduleName(A:ModId),, C:Exports,, B:K)
+              => genExportSet(toExports(A, C)) ~> startChecks ...</k>
+        <tempModule> _:K => B </tempModule>
+        <currModule> _:K => A </currModule>
+        <moduleMethodNames> MM:Map => MM[A <- resultSet(.Set)] </moduleMethodNames>
+        <classMethodNames> CM:Map => CM[A <- resultSet(.Set)] </classMethodNames>
+        <classNames> NM:Map => NM[A <- resultSet(.Set)] </classNames>
+        (.Bag => <module>...
+                    <moduleName> A </moduleName>
+                ...</module>)
+
+   rule <k> 'module('moduleName(A:ModId),, B:K) => startChecks ...</k>     
+        <tempModule> _:K => B </tempModule>
+        <currModule> _:K => A </currModule>
+        <moduleMethodNames> MM:Map => MM[A <- resultSet(.Set)] </moduleMethodNames>
+        <classMethodNames> CM:Map => CM[A <- resultSet(.Set)] </classMethodNames>
+        <classNames> NM:Map => NM[A <- resultSet(.Set)] </classNames>
+        (.Bag => <module>...
+                    <moduleName> A </moduleName>
+                    <exports> SetItem(haveAll) </exports>
+                ...</module>)
+
+   rule <k> 'moduleBody(B:K) => startChecks ...</k>     
+        <tempModule> _:K => B </tempModule>
+        <currModule> _:K => Main </currModule>
+        <moduleMethodNames> MM:Map => MM[Main <- resultSet(.Set)] </moduleMethodNames>
+        <classMethodNames> CM:Map => CM[Main <- resultSet(.Set)] </classMethodNames>
+        <classNames> NM:Map => NM[Main <- resultSet(.Set)] </classNames>
+        (.Bag => <module>...
+                    <exports> SetItem(haveAll) </exports>
+                    <moduleName> Main </moduleName>
+                ...</module>)
+
+   rule <k> genExportSet(.Set) => .K ...</k>
+        <currModule> X:K </currModule>
+        <moduleName> X </moduleName>
+        <exports> _:Set => SetItem(absClass) </exports>
+
+   rule <k> genExportSet(SetItem(A:K) S:Set) => .K ...</k>
+        <currModule> X:K </currModule>
+        <moduleName> X </moduleName>
+        <exports> _:Set => SetItem(A:K) S:Set </exports>
 
     //deal with alpha map, deal with renaming of type name
     //collect information for the type name and kind in the same module
@@ -111,11 +158,6 @@ module HASKELL-PREPROCESSING
          <defaultDouble> _:K => T2 </defaultDouble>
 
     //deal with type classes. type classes ast gen
-    rule <k> initClassStartInfo => .K ...</k>
-         <currModule> Mod:K </currModule>
-         <classMethodNames> CM:Map (.Map => (Mod |-> resultSet(.Set))) </classMethodNames>
-         <classNames> NM:Map (.Map => (Mod |-> resultSet(.Set))) </classNames>
-    
    //functions to compile type classes to ast form
     rule <k> collectClassInfo => getClassInfo(TM) ...</k>
          <tempModule> TM:K </tempModule>

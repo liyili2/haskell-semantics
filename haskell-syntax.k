@@ -17,6 +17,7 @@ module HASKELL-SYNTAX
                    | "Integer"        [prefer]
                    | "Double"         [prefer]
                    | "Prelude"        [prefer]
+                   | "Main"           [prefer]
     syntax VarSym ::= Token{
    ([\! \# \$ \% \& \* \+ \/ \> \? \^][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)
   |[\-] | [\.]
@@ -93,20 +94,20 @@ module HASKELL-SYNTAX
 
     syntax ImpDecls ::= List{ImpDecl, ";"} [klabel('impDecls)]
 
-    syntax Exports ::= "(" ExportList OptComma ")"
-    syntax ExportList ::= List{Export, ","}
+    syntax Exports ::= "(" ExportList OptComma ")" [klabel('exportWrap), onlyLabel]
+    syntax ExportList ::= List{Export, ","}        [klabel('exportCon)]
 
     syntax Export ::= QVar 
-                    | QTyCon OptCQList 
+                    | QTyCon OptCQList [klabel('exportTyCon), onlyLabel]
                     | ModuleName
 
     //optional cname list
-    syntax OptCQList ::= "(..)"
-                       | "(" CQList ")"   [klabel('cqListBracket)]
+    syntax OptCQList ::= "(..)"           [klabel('allInclude), onlyLabel]
+                       | "(" CQList ")"   [bracket]
                           //Liyi: a check needs to place in preprocessing to check
                           //if the CQList is a cname list or a qvar list.
                        | "" [onlyLabel, klabel('emptyOptCNameList)]
-    syntax CQList ::= List{CQName, ","}
+    syntax CQList ::= List{CQName, ","}   [klabel('cnameCon)]
 
     syntax ImpDecl ::= "import" OptQualified ModId OptAsModId OptImpSpec [klabel('impDecl)]
                      | "" [onlyLabel, klabel('emptyImpDecl)]

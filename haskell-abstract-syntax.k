@@ -43,7 +43,6 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "collectKindInfo"
 
    //transformation of classes
-    syntax KItem ::= "initClassStartInfo"
     syntax KItem ::= "collectClassInfo"
     syntax KItem ::= getClassInfo(K)
     syntax KItem ::= getClassInfoAux(K, K, Set, K, K, K)
@@ -99,6 +98,8 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "visited"
     syntax KItem ::= "unvisited"
     syntax KItem ::= "none"
+    syntax KItem ::= "haveAll"  //used for import/export
+    syntax KItem ::= "absClass" //used for import/export
     syntax KItem ::= Module(K, K)
     syntax KItem ::= preModule(K,K) //(alpha, T)
 
@@ -107,8 +108,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "genModuleChecks"
     syntax KItem ::= "noname"
     syntax KItem ::= "allExports"
-    syntax KItem ::= "genExportSet"
-    syntax Set ::= toExports(K) //deal with exports
+    syntax KItem ::= genExportSet(K)
     syntax KItem ::= importElem(K, K, K)
                   //OptQualified, OptAsModId, OptImpSpec 
     syntax KItem ::= "startPreprocessing"
@@ -151,6 +151,7 @@ module HASKELL-ABSTRACT-SYNTAX
                         | curryTypes(List, K) //only in the top level
                         | forall(Set, K) //set of vars, type
     syntax KResult ::= fullName(K, K) //module name, type con
+    syntax KResult ::= moduleNameAst(K) //module name, type con
     syntax KResult ::= preBetaEntry(Set, List, Map, Set)
            //optContext, list_of_vars, Body, optDeriving
     syntax TyVar ::= tyVar(K, K)
