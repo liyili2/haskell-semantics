@@ -100,6 +100,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "none"
     syntax KItem ::= "haveAll"  //used for import/export
     syntax KItem ::= "absClass" //used for import/export
+    syntax KItem ::= "instanceOnly" //used for import/export
     syntax KItem ::= Module(K, K)
     syntax KItem ::= preModule(K,K) //(alpha, T)
 

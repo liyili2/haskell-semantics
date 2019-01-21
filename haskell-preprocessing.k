@@ -92,7 +92,7 @@ module HASKELL-PREPROCESSING
    rule <k> genExportSet(.Set) => .K ...</k>
         <currModule> X:K </currModule>
         <moduleName> X </moduleName>
-        <exports> _:Set => SetItem(absClass) </exports>
+        <exports> _:Set => SetItem(instanceOnly) </exports>
 
    rule <k> genExportSet(SetItem(A:K) S:Set) => .K ...</k>
         <currModule> X:K </currModule>
