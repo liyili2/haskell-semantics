@@ -1,4 +1,4 @@
-1. Haskell export system problem. Does not check the name of the export module for a type/class-method.
+1. Haskell export system problem. Does not check the name of the export module for a type/class-method. in ghci 8.0 version.
 
 ex: module AStack( Stack(G.Empty), Test(AStack.xx), G.pop, top, size ) the AStack and G cannot be checked
 
