@@ -32,7 +32,7 @@ module HASKELL-CONFIGURATION
                     <moduleBetaPlus> .K </moduleBetaPlus>
                     <moduleCompCode> .K </moduleCompCode>
                     <exports> .Set </exports>
-                    <importElemMap> .Map </importElemMap>
+                    <imports> .Set </imports>
                     <defaultInt> Integer </defaultInt>
                     <defaultDouble> Double </defaultDouble>
                     <moduleMethods> .Map </moduleMethods>

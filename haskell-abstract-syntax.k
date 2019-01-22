@@ -107,6 +107,10 @@ module HASKELL-ABSTRACT-SYNTAX
  
     //defaul name for the haskell module if not specified.
     syntax KItem ::= "genModuleChecks"
+    syntax KItem ::= "genImportSet"
+    syntax KResult ::= resultImportSet(Set)
+    syntax KItem ::= importElem(Bool,K,K, Set, Set)
+              //isQualified,import-mod, as-mod, set-of-import-specs, hidings
     syntax KItem ::= "noname"
     syntax KItem ::= "allExports"
     syntax KItem ::= genExportSet(K)

@@ -36,6 +36,84 @@ module HASKELL-MODULES
           => transCName(Mod:K, A) transCName(Mod:K, B)
     rule transCName(Mod:K, V:CQName) => transVar(Mod, V)
 
+    syntax KItem ::= transCNameWithFailure(K, K, List) [function]
+    rule transCNameWithFailure(Mod:K, 'allInclude(.KList), L:List)
+            => resultList(ListItem(haveAll))
+    rule transCNameWithFailure(Mod:K, 'emptyOptCNameList(.KList), L:List)
+           => resultList(.List)
+    rule transCNameWithFailure(Mod:K, .CQList, L:List) => resultList(L)
+    rule transCNameWithFailure(Mod:K, 'cnameCon(A:Var,, B:K), L:List)
+          => transCNameWithFailure(Mod:K, B, L ListItem(transVar(Mod, A)))
+    rule transCNameWithFailure(Mod:K, 'cnameCon(A:Con,, B:K), L:List)
+          => transCNameWithFailure(Mod:K, B, L ListItem(transVar(Mod, A)))
+    rule transCNameWithFailure(Mod:K, 'cnameCon(A:QVar,, B:K), L:List)
+          => error(syntaxError)
+
+
+    //transformation of imports 
+    syntax Bool ::= transQualified(K) [function]
+    rule transQualified('emptyQualified(.KList)) => false
+    rule transQualified(qualified) => true
+
+    syntax KItem ::= getAsModId(K) [function]
+    rule getAsModId('emptyOptAsModId(.KList)) => .K
+    rule getAsModId('asModid(A:K)) => A
+
+    syntax KItem ::= transImportList(K, K, Set) [function]
+                   | transImportListAux(K, K, K, K, Set) [function]
+    rule transImportList(Mod:K, .ImportList, S:Set) => resultSet(S)
+    rule transImportList(Mod:K, 'importCon(A:Var,, As:ImportList), S:Set)
+             => transImportList(Mod, As, SetItem(transVar(Mod, A)) S)
+    rule transImportList(Mod:K, 'importCon(
+             'importTyCon(T:TyCon,, C:OptCQList),, As:ImportList), S:Set)
+             => transImportListAux(Mod, As, transVar(Mod, T),
+                      transCNameWithFailure(Mod, C, .List), S)
+    rule transImportListAux(Mod:K, As:K, A:K, error(B:K), S:Set) => error(B)
+    rule transImportListAux(Mod:K, As:K, A:K, resultList(L:List), S:Set)
+            => transImportList(Mod, As, S SetItem(appExp(A, L)))
+
+
+
+    syntax KItem ::= genImportSet(K, K, Set) [function]
+                   | genImportSetAux(K, K, K, Set) [function]
+                   | genImportSetNext(K, K, K, K, Set) [function]
+                   | genImportSetNext1(K, K, K, K, Set) [function]
+                   | genImportSetNext2(K, K, K, K, Set) [function]
+
+    rule genImportSet(Mod:K, 'bodyimpandtop(I:ImpDecls,, T:TopDecls), S:Set)
+          => genImportSet(Mod, I, S)
+    rule genImportSet(Mod:K, 'bodyimpdecls(I:ImpDecls), S:Set)
+          => genImportSet(Mod, I, S)
+    rule genImportSet(Mod:K, 'bodytopdecls(T:TopDecls), S:Set) => resultImportSet(S)
+    rule genImportSet(Mod:K, .ImpDecls, S:Set) => resultImportSet(S)
+    rule genImportSet(Mod:K, 'impDecls(I:ImpDecl,, Is:ImpDecls), S:Set)
+            => genImportSetAux(Mod, I, Is, S)
+    rule genImportSetAux(Mod:K, 'emptyImpDecl(.KList), Is:K, S:Set)
+           => genImportSet(Mod, Is, S)
+    rule genImportSetAux(Mod:K, 'impDecl(A:OptQualified,, B:ModId,,
+                  C:OptAsModId,, D:OptImpSpec), Is:K, S:Set)
+          => genImportSetNext(Mod, Is, importElem(
+                transQualified(A), B, getAsModId(C), .Set, .Set), D, S)
+
+    rule genImportSetNext(Mod:K, Is:K, A:K, 'emptyOptImpSpec(.KList), S:Set)
+            => genImportSet(Mod, Is, SetItem(A) S)
+    rule genImportSetNext(Mod:K, Is:K, X:K, 'impSpecKey(
+            A:ImportList,, P:OptComma), S:Set)
+          => genImportSetNext1(Mod, Is, X, transImportList(Mod, A, .Set), S)
+    rule genImportSetNext(Mod:K, Is:K, X:K, 'hidingCon('impSpecKey(
+            A:ImportList,, P:OptComma)), S:Set)
+          => genImportSetNext2(Mod, Is, X, transImportList(Mod, A, .Set), S)
+
+    rule genImportSetNext1(Mod:K, Is:K, X, error(A:K), S:Set) => error(A)
+    rule genImportSetNext1(Mod:K, Is:K, importElem(
+             X:K, Y:K, Z:K, As:Set, Ns:Set), resultSet(As':Set), S:Set)
+           => genImportSet(Mod, Is, S SetItem(importElem(X, Y, Z, As', Ns)))
+    rule genImportSetNext2(Mod:K, Is:K, X, error(A:K), S:Set) => error(A)
+    rule genImportSetNext2(Mod:K, Is:K, importElem(
+             X:K, Y:K, Z:K, As:Set, Ns:Set), resultSet(Ns':Set), S:Set)
+           => genImportSet(Mod, Is, S SetItem(importElem(X, Y, Z, As, Ns')))
+
+
 
 
 endmodule

@@ -1,3 +1,7 @@
 1. Haskell export system problem. Does not check the name of the export module for a type/class-method.
 
 ex: module AStack( Stack(G.Empty), Test(AStack.xx), G.pop, top, size ) the AStack and G cannot be checked
+
+2. Haskell module if the module name is omitted, it means that the module is a main and it does not show in any haskell documents. 
+
+3. Haskell does not check if the exported module is a name replaced with the old name, and the new name might collipse with another existing name

@@ -44,13 +44,15 @@ module HASKELL-PREPROCESSING
                 ~> (checkPreBetaInScope
                 ~> (genKindMap
                 ~> (checkOnlyDefault
-                ~> (nextNextChecks))))
+                ~> nextNextChecks)))
 
     rule nextNextChecks => (checkArgSortsAreTargets
                 ~> (checkParUsed
                  ~> (collectClassInfo
                 ~> (collectExpressions
                 ~> genModuleChecks))))
+
+    rule genModuleChecks => genImportSet
 
     //genarate export set, and initialize inside module checks
     //TODO: place validity checks for syntax of cname in exports
@@ -98,6 +100,15 @@ module HASKELL-PREPROCESSING
         <currModule> X:K </currModule>
         <moduleName> X </moduleName>
         <exports> _:Set => SetItem(A:K) S:Set </exports>
+
+   rule <k> genImportSet => genImportSet(X, S, .Set) ...</k>
+        <currModule> X:K </currModule>
+        <tempModule> S:K </tempModule>
+
+   rule <k> resultImportSet(S:Set) => .K ...</k>
+        <currModule> X:K </currModule>
+        <moduleName> X </moduleName>
+        <imports> _:Set => S </imports>
 
     //deal with alpha map, deal with renaming of type name
     //collect information for the type name and kind in the same module

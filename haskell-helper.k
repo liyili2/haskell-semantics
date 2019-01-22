@@ -51,6 +51,8 @@ module HASKELL-HELPER
    rule transVar(Mod:K, A:VarSym) => fullName(Prelude, A)
    rule transVar(Mod:K, 'conTyCon(A:ModId,, C:TyCon)) => fullName(A, C)
    rule transVar(Mod:K, C:TyCon) => fullName(Mod, C)
+   rule transVar(Mod:K, C:ConId) => fullName(Mod, C)
+   rule transVar(Mod:K, 'conSymBracket(C:ConSym)) => transVar(Mod, C)
 
    syntax KItem ::= transTypeVar(K, K) [function]
    rule transTypeVar(S:K, V:VarId) => tyVar(S, V)

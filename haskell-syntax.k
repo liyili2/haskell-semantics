@@ -109,24 +109,24 @@ module HASKELL-SYNTAX
                        | "" [onlyLabel, klabel('emptyOptCNameList)]
     syntax CQList ::= List{CQName, ","}   [klabel('cnameCon)]
 
-    syntax ImpDecl ::= "import" OptQualified ModId OptAsModId OptImpSpec [klabel('impDecl)]
+    syntax ImpDecl ::= "import" OptQualified ModId OptAsModId OptImpSpec [onlyLabel, klabel('impDecl)]
                      | "" [onlyLabel, klabel('emptyImpDecl)]
     syntax OptQualified ::= "qualified"
                           | ""  [onlyLabel, klabel('emptyQualified)]
-    syntax OptAsModId ::= "as" ModId
+    syntax OptAsModId ::= "as" ModId   [onlyLabel, klabel('asModid)]
                         | ""    [onlyLabel, klabel('emptyOptAsModId)]
 
     syntax OptImpSpec ::= ImpSpec
                         | ""    [onlyLabel, klabel('emptyOptImpSpec)]
 
-    syntax ImpSpecKey ::= "(" ImportList OptComma ")"
+    syntax ImpSpecKey ::= "(" ImportList OptComma ")"  [klabel('impSpecKey), onlyLabel]
     syntax ImpSpec ::= ImpSpecKey
-                     | "hiding" ImpSpecKey
+                     | "hiding" ImpSpecKey  [onlyLabel, klabel('hidingCon)]
 
-    syntax ImportList ::= List{Import, ","}
+    syntax ImportList ::= List{Import, ","}  [klabel('importCon)]
 
     syntax Import ::= Var
-                    | TyCon CQList
+                    | TyCon OptCQList  [klabel('importTyCon), onlyLabel]
                      //Liyi: a check to check if the import cqlist elements are within cnames
                      //or are within vars. in the preprossing.
 
