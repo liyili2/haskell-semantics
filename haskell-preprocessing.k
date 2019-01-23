@@ -112,6 +112,7 @@ module HASKELL-PREPROCESSING
         <moduleName> X </moduleName>
         <imports> _:Set => S </imports>
 
+   //collect names for each module, and then start checking imports/exports
    rule <k> genAllModuleNames
             => genAllModuleNamesNext(collectTypeNames(keys(NM))
                collectTypeNames(keys(BM)) collectPreBetaNames(BM, .K)

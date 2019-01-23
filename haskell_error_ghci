@@ -5,3 +5,7 @@ ex: module AStack( Stack(G.Empty), Test(AStack.xx), G.pop, top, size ) the AStac
 2. Haskell module if the module name is omitted, it means that the module is a main and it does not show in any haskell documents. 
 
 3. Haskell does not check if the exported module is a name replaced with the old name, and the new name might collipse with another existing name
+
+4. Haskell does not check how many times a module is imported. The sum of all these modules is the result
+
+5, undefinedness: if a module can import the same module twice, then if one is qualified and the other is not, the imported module entities will become unqualified.

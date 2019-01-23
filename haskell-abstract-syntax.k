@@ -124,7 +124,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "noname"
     syntax KItem ::= "allExports"
     syntax KItem ::= genExportSet(K)
-    syntax KItem ::= importElem(K, K, K)
+    //syntax KItem ::= importElem(K, K, K)
                   //OptQualified, OptAsModId, OptImpSpec 
     syntax KItem ::= "startPreprocessing"
     syntax KItem ::= "selectImport"
