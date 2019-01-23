@@ -438,22 +438,22 @@ module HASKELL-KINDINFER
    rule makeSinglePreBeta(S:K, T:K, 'nonemptyConstrs(Cs:Constrs))
                 => makeSinglePreBeta(S, T, Cs)
    rule makeSinglePreBeta(S:K, T:K, 'constrCon(N:Con,, Ts:OptBangATypes))
-           => (N |-> curryTypes(toAbsBangType(S, Ts), T))
+           => (pillVar(N) |-> curryTypes(toAbsBangType(S, Ts), T))
    rule makeSinglePreBeta(S:K, T:K, N:Con { F:FieldDeclList })
-           => (N |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
+           => (pillVar(N) |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
               fullName(Prelude, recordType), toAbsBangTypeInRecord(S, F))) ListItem(T)))
    rule makeSinglePreBeta(S:K, T:K, 'multConstr(
            'constrCon(N:Con,, Ts:OptBangATypes),, Cs:Constrs))
-           => (N |-> curryTypes(toAbsBangType(S, Ts), T)) makeSinglePreBeta(S, T, Cs)
+           => (pillVar(N) |-> curryTypes(toAbsBangType(S, Ts), T)) makeSinglePreBeta(S, T, Cs)
    rule makeSinglePreBeta(S:K, T:K, 'multConstr(N:Con { F:FieldDeclList },, Cs:Constrs))
-           => (N |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
+           => (pillVar(N) |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
               fullName(Prelude, recordType), toAbsBangTypeInRecord(S, F))) ListItem(T)))
             makeSinglePreBeta(S, T, Cs)
    //deal with newConstr
    rule makeSinglePreBeta(S:K, T:K, 'newConstrCon(N:Con,, A:AType))
-           => (N |-> curryTypes(ListItem(toAbsType(S, A)), T))
+           => (pillVar(N) |-> curryTypes(ListItem(toAbsType(S, A)), T))
    rule makeSinglePreBeta(S:K, T:K, 'newConField(N:Con,, V:Var,, T':Type))
-           => (N |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
+           => (pillVar(N) |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
               fullName(Prelude, recordType), ListItem(typeConst(fullName(Prelude, recordTypeAssign),
                  ListItem(tyVar(S, pillVar(V))) ListItem(toAbsType(S, T')))))) ListItem(T)))
 
@@ -461,9 +461,9 @@ module HASKELL-KINDINFER
 
    syntax KItem ::= toAbsClass(K, Class) [function] //curr-mod-name, class
    rule toAbsClass(Mod:K, 'classCon(T:QTyCon,, V:TyVar))
-                  => className(toAbsTypeCon(Mod, T), ListItem(V))
+                  => classTitle(toAbsTypeCon(Mod, T), ListItem(V))
    rule toAbsClass(Mod:K, 'multiClass(T:QTyCon,, A:TyVar,, As:ATypeList))
-                  => className(toAbsTypeCon(Mod, T), ListItem(A) toAbsTypeList(Mod, As))
+                  => classTitle(toAbsTypeCon(Mod, T), ListItem(A) toAbsTypeList(Mod, As))
 
    syntax Set ::= contextToSet(K, K) [function] //curr-mod-name, class
                 | contextToSetAux(K, Classes) [function]//curr-mod, classes

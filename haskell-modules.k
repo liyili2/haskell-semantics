@@ -114,6 +114,54 @@ module HASKELL-MODULES
            => genImportSet(Mod, Is, S SetItem(importElem(X, Y, Z, As, Ns')))
 
 
+    //collect all elements in a modules
+    syntax Set ::= collectTypeNames(Set) [function]
+    rule collectTypeNames(.Set) => .Set
+    rule collectTypeNames(SetItem(A:K) S:Set)
+             => SetItem(typeName(A)) collectTypeNames(S)
+
+    syntax Set ::= collectFunNames(Set) [function]
+    rule collectFunNames(.Set) => .Set
+    rule collectFunNames(SetItem(A:K) S:Set)
+           => SetItem(funName(A)) collectFunNames(S)
+
+    syntax KItem ::= toClassName(K) [function]
+    rule toClassName(fullName(Mod:K, A:K)) => className(A)
+
+    syntax Set ::= toClassNames(Set) [function]
+    rule toClassNames(.Set) => .Set
+    rule toClassNames(SetItem(A:K) S:Set)
+             => SetItem(toClassName(A)) toClassNames(S)
+
+    syntax Set ::= collectPreBetaNamesAux(Set) [function]
+    rule collectPreBetaNamesAux(.Set) => .Set
+    rule collectPreBetaNamesAux(SetItem(A:K) S:Set)
+           => SetItem(constrName(A)) collectPreBetaNamesAux(S)
+
+    syntax Set ::= collectFieldNamesAux(List) [function]
+    rule collectFieldNamesAux(.List) => .Set
+    rule collectFieldNamesAux(ListItem(
+            typeConst(fullName(Prelude, recordTypeAssign),
+                    ListItem(tyVar(S:K, A:K)) Ls:List)) L:List)
+             => SetItem(funName(A)) collectFieldNamesAux(L)
+
+    syntax Set ::= collectFieldNames(List) [function]
+    rule collectFieldNames(.List) => .Set
+    rule collectFieldNames(ListItem(typeConst(fullName(Prelude, (->)),
+            ListItem(typeConst(fullName(Prelude, recordType), AL:List))
+                Ls:List)) L:List)
+               => collectFieldNamesAux(AL) collectFieldNames(L)
+
+    syntax Set ::= collectPreBetaNames(Map, K) [function]
+    rule collectPreBetaNames(.Map, .K) => .Set
+    rule collectPreBetaNames(M:Map (A:K |-> B:K), .K)
+           => collectPreBetaNames(M, B)
+    rule collectPreBetaNames(M:Map, preBetaEntry(A:Set, B:List, C:Map, D:Set))
+           => collectPreBetaNamesAux(keys(C))
+                collectFieldNames(values(C))
+                   collectPreBetaNames(M, .K)
+
+
 
 
 endmodule

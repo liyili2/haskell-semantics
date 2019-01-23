@@ -53,6 +53,8 @@ module HASKELL-PREPROCESSING
                 ~> genModuleChecks))))
 
     rule genModuleChecks => genImportSet
+                         ~> (genAllModuleNames
+                         ~> checkExportScope)
 
     //genarate export set, and initialize inside module checks
     //TODO: place validity checks for syntax of cname in exports
@@ -110,6 +112,24 @@ module HASKELL-PREPROCESSING
         <moduleName> X </moduleName>
         <imports> _:Set => S </imports>
 
+   rule <k> genAllModuleNames
+            => genAllModuleNamesNext(collectTypeNames(keys(NM))
+               collectTypeNames(keys(BM)) collectPreBetaNames(BM, .K)
+               toClassNames(getRidWrapper(CM)) collectFunNames(getRidWrapper(CMM))
+                collectFunNames(getRidWrapper(MM))) ...</k>
+        <currModule> X:K </currModule>
+        <moduleName> X </moduleName>
+        <tempBetaMap> BM:Map </tempBetaMap>
+        <moduleAlpha> NM:Map </moduleAlpha>
+        <classNames>... X |-> CM:K ...</classNames>
+        <classMethodNames>... X |-> CMM:K ...</classMethodNames>
+        <moduleMethodNames>... X |-> MM:K ...</moduleMethodNames>
+
+   rule <k> genAllModuleNamesNext(S:Set) => .Set ...</k>
+        <currModule> X:K </currModule>
+        <moduleName> X </moduleName>
+        <moduleElems> _:Set => S </moduleElems>
+
     //deal with alpha map, deal with renaming of type name
     //collect information for the type name and kind in the same module
     rule <k> collectKindInfo => collectTypes(N, S, Mod, TM, .Map) ...</k>
@@ -123,7 +143,9 @@ module HASKELL-PREPROCESSING
          <currModule> Mod:K </currModule>
 
     rule <k> putAlphaMap(M:Map) => .K ...</k>
-         <tempAlphaMap> _:Map => M </tempAlphaMap>
+         <currModule> Mod:K </currModule>
+        <moduleName> X </moduleName>
+        <moduleAlpha> _:Map => M </moduleAlpha>
 
     rule <k> putPreBetaMap(M:Map) => .K ...</k>
          <tempBetaMap> _:Map => M </tempBetaMap>
@@ -140,23 +162,29 @@ module HASKELL-PREPROCESSING
 
     //finish
     rule <k> genKindMap => kindInfer(N, S, .K, .K, AM BM, M, .Set) ...</k>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
          <tempBetaMap> BM:Map </tempBetaMap>
-         <tempAlphaMap> AM:Map </tempAlphaMap>
-         <tempKindMap> M:Map </tempKindMap>
+         <moduleAlpha> AM:Map </moduleAlpha>
+         <kindMap> M:Map </kindMap>
          <kindVarCounter> N:Int </kindVarCounter>
          <kindVarSet> S:Set </kindVarSet>
 
     rule <k> resultTyVarKindMap(N:Int, S:Set, M:Map) => .K ...</k>
-         <tempKindMap> _:Map => M </tempKindMap>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <kindMap> _:Map => M </kindMap>
          <kindVarCounter> _:Int => N </kindVarCounter>
          <kindVarSet> _:Set => S </kindVarSet>
 
     rule <k> checkPreBetaInScope
                => isAllValidTypes(AM M, .K, .K, keys(KM))
                   ~> isAllValidTypeVars(AM M, .K, .K) ...</k>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
          <tempBetaMap> M:Map </tempBetaMap>
-         <tempKindMap> KM:Map </tempKindMap>
-         <tempAlphaMap> AM:Map </tempAlphaMap>
+         <kindMap> KM:Map </kindMap>
+         <moduleAlpha> AM:Map </moduleAlpha>
 
     //check there is only one default in a module
     rule <k> checkOnlyDefault => checkOnlyDefault(TM) ...</k>
@@ -184,12 +212,13 @@ module HASKELL-PREPROCESSING
          
     rule <k> getClassInfo('topdeclslist('class(Cs:OptContext,,
                   Name:ConId,, Tv:TyVar,, Ds:OptCDecls),, As:TopDecls))
-               => getClassInfoAux(fullName(Mod, Name),Tv, contextToSet(Mod, Cs),
+               => getClassInfoAux(transVar(Mod, Name),Tv, contextToSet(Mod, Cs),
                     toAstTypeClass(Mod, Tv, Ds, .Map,
                     getMethodSet(Mod, .K, CM)), Ds, As) ...</k>
          <currModule> Mod:K </currModule>
          <classMethodNames> CM:Map </classMethodNames>
-         <classNames> NM:Map </classNames>
+         <classNames> NM:Map => updateMapItem(NM,
+                          .K, Mod, transVar(Mod, Name)) </classNames>
          requires notBool hasClassName(Mod, Name, .K, NM)
 
     rule <k> getClassInfo('topdeclslist('class(Cs:OptContext,,

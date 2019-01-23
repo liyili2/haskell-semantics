@@ -15,7 +15,7 @@ module HASKELL-TRANSFORMATION
    rule getTypeVarsInClass(.K, .Set) => .Set
    rule getTypeVarsInClass(.K, SetItem(A:K) S:Set)
             => getTypeVarsInClass(A, S)
-   rule getTypeVarsInClass(className(A:K, ListItem(C:K) B:List), S:Set)
+   rule getTypeVarsInClass(classTitle(A:K, ListItem(C:K) B:List), S:Set)
             => SetItem(C) getTypeVarsInClass(.K, S)
 
    //a function to generate class method names in a class

@@ -104,13 +104,23 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= Module(K, K)
     syntax KItem ::= preModule(K,K) //(alpha, T)
 
- 
+
+    //all kinds of elements that a module can have
+    syntax KItem ::= typeName(K) //a name for a type
+    syntax KItem ::= constrName(K) //name for a constructor
+    syntax KItem ::= funName(K) //name for a function/method
+    syntax KItem ::= className(K) //name for a class
+
     //defaul name for the haskell module if not specified.
     syntax KItem ::= "genModuleChecks"
     syntax KItem ::= "genImportSet"
     syntax KResult ::= resultImportSet(Set)
     syntax KItem ::= importElem(Bool,K,K, Set, Set)
               //isQualified,import-mod, as-mod, set-of-import-specs, hidings
+    syntax KItem ::= "genAllModuleNames"
+    syntax KItem ::= genAllModuleNamesNext(Set)
+    syntax KItem ::= "checkExportScope"
+
     syntax KItem ::= "noname"
     syntax KItem ::= "allExports"
     syntax KItem ::= genExportSet(K)
@@ -179,7 +189,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= typeMap(Map) //store all type with their arity in a module.
 
     syntax KItem ::= names(Set) //store all names
-    syntax KItem ::= className(K, List) //name, list of type-vars
+    syntax KItem ::= classTitle(K, List) //name, list of type-vars
     syntax KItem ::= typeClass(Set, K, Map)
         // father, type var, contents,
     syntax KItem ::= methodDef(Set, K, List) //constraints, Type, list of patterns

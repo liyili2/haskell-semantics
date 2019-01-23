@@ -13,9 +13,7 @@ module HASKELL-CONFIGURATION
             <unnamedModuleExp> .List </unnamedModuleExp>
             <tempCode> .K </tempCode>
             <tempAlpha> .K </tempAlpha>
-            <tempAlphaMap> .Map </tempAlphaMap>
             <tempBetaMap> .Map </tempBetaMap>
-            <tempKindMap> .Map </tempKindMap>
             <tempT> .K </tempT>
             <tempExports> .Map </tempExports>
             <currModule> .K </currModule>
@@ -26,11 +24,13 @@ module HASKELL-CONFIGURATION
             <genVarCounter> 0 </genVarCounter>
             <modules> //static information about a module
                 <moduleMethodNames> .Map </moduleMethodNames>
+                <moduleElems> .Set </moduleElems>
                 <module multiplicity="*">
                     <moduleName> .K </moduleName>
-                    <moduleAlphaPlus> .K </moduleAlphaPlus>
+                    <moduleAlpha> .Map </moduleAlpha>
                     <moduleBetaPlus> .K </moduleBetaPlus>
-                    <moduleCompCode> .K </moduleCompCode>
+                    <kindMap> .Map </kindMap>
+                       //a module storing all elements of operators that are possibly outputed
                     <exports> .Set </exports>
                     <imports> .Set </imports>
                     <defaultInt> Integer </defaultInt>

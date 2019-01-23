@@ -33,6 +33,7 @@ module HASKELL-HELPER
    syntax KItem ::= pillVar(K) [function]
    rule pillVar('varSymBracket(A:VarSym)) => A
    rule pillVar('varIdQuote(A:VarId)) => A
+   rule pillVar('conSymBracket(C:ConSym)) => C
    rule pillVar(V:K) => V [owise]
 
    syntax KItem ::= transVar(K, K) [function]
