@@ -6,7 +6,7 @@ module HASKELL-ABSTRACT-SYNTAX
 
     //error states
     syntax KItem ::= "error"
-    syntax KItem ::= error(K) //error with message
+    syntax KResult ::= error(K) //error with message
     syntax KItem ::= "cyclicImports"
     syntax KItem ::= "typeVarNoInclusive"
     syntax KItem ::= "repeatedNames"
@@ -26,6 +26,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "instanceInstNotDistinct"
     syntax KItem ::= "instanceMethodArgsNoMatch"
     syntax KItem ::= "moreThanOneDefault"
+    syntax KItem ::= "importFromNoSource"
 
     syntax KItem ::= "startChecks"
     syntax KItem ::= "nextChecks"
@@ -62,6 +63,7 @@ module HASKELL-ABSTRACT-SYNTAX
 
     //preprocessing of beta map
     syntax KItem ::= "makePreBetaMap"
+    syntax KItem ::= "grabAllTypeNames"
     syntax KResult ::= "star" // kind inference base
     syntax KResult ::= kindVar(Int) //unknown kind
     syntax KResult ::= kindArrow(K, K) // kind inference arrow case
@@ -101,6 +103,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "haveAll"  //used for import/export
     syntax KItem ::= "absClass" //used for import/export
     syntax KItem ::= "instanceOnly" //used for import/export
+    syntax KResult ::= resultExportSet(Set)
     syntax KItem ::= Module(K, K)
     syntax KItem ::= preModule(K,K) //(alpha, T)
 
@@ -111,19 +114,28 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= funName(K) //name for a function/method
     syntax KItem ::= className(K) //name for a class
 
+    syntax KItem ::= "genExportSet"
+    syntax KItem ::= toExports(K, Set, Set, Set)
+           //term, result-set
+           // set of types, set of classes
+
+
     //defaul name for the haskell module if not specified.
     syntax KItem ::= "genModuleChecks"
     syntax KItem ::= "genImportSet"
-    syntax KResult ::= resultImportSet(Set)
-    syntax KItem ::= importElem(Bool,K,K, Set, Set)
-              //isQualified,import-mod, as-mod, set-of-import-specs, hidings
+    syntax KResult ::= resultImportSet(Set, Set)
+    syntax KItem ::= importElem(K, K, Bool, Set, Map)
+              //import-mod, as-mod,
+              //isQualified,set-of-import-elements, map-of-import-element
     syntax KItem ::= "genAllModuleNames"
     syntax KItem ::= genAllModuleNamesNext(Set)
     syntax KItem ::= "checkExportScope"
+    
+    //first check if all imports are in scope of parent exports
+    syntax KItem ::= "checkAllImportsGoodFromExports"
+    syntax KItem ::= expandExports(Set, K, Set)
 
     syntax KItem ::= "noname"
-    syntax KItem ::= "allExports"
-    syntax KItem ::= genExportSet(K)
     //syntax KItem ::= importElem(K, K, K)
                   //OptQualified, OptAsModId, OptImpSpec 
     syntax KItem ::= "startPreprocessing"
@@ -144,6 +156,7 @@ module HASKELL-ABSTRACT-SYNTAX
     rule val(K:KResult) => valValue(K) [structural]
 
     syntax KResult ::= resultSet(Set)
+    syntax KResult ::= resultSetMap(Set, Map)
     syntax KResult ::= resultMap(Map)
     syntax KResult ::= resultList(List)
     syntax KResult ::= resultDefaultTypes(K, K)

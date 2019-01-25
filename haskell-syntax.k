@@ -12,7 +12,8 @@ module HASKELL-SYNTAX
     syntax CusChar ::= Token{[\'](~[\'\\\&])[\']} [onlyLabel]
     syntax CusString ::= Token{[\"](~[\"\\]*)[\"]} [onlyLabel]
 
-    syntax VarId ::= Token{[a-z\_][a-z A-Z\_0-9\']*} [onlyLabel] | "size" [onlyLabel]
+    syntax VarId ::= Token{[a-z\_][a-z A-Z\_0-9\']*} [onlyLabel] | "size" [onlyLabel, prefer]
+                   | "main" [prefer]
     syntax ConId ::= Token{[A-Z][a-zA-Z \_0-9\']*} [onlyLabel]
                    | "Integer"        [prefer]
                    | "Double"         [prefer]

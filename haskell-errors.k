@@ -65,4 +65,7 @@ module HASKELL-ERRORS
     rule <k> error(moreThanOneDefault) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The module have more than one default definitions.")) </output>
 
+    rule <k> error(importFromNoSource) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module have an import a construct/type/function that is not in the original module.")) </output>
+
 endmodule

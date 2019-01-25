@@ -230,7 +230,7 @@ module HASKELL-KINDINFER
 
    rule makeAlphaMAux(Mod:K, type A:SimpleType = B:Type, M:Map, As:K, TM:Map)
             => makeAlphaM(Mod:K, As, addEdges(getConstrNames(A), getConstrNames(B)) M,
-                            (getSingleton(getConstrNames(A))
+                            (buildVar(getSingleton(getConstrNames(A)))
                                  |-> alphaTuple(getTyVarList(A), toAbsType(Mod, B))) TM)
         requires getTypeNames(B) <=Set getTypeNames(A)
                   andBool getSingleton(getConstrNames(A)) in keys(M)
@@ -497,12 +497,12 @@ module HASKELL-KINDINFER
 
    rule makePreBetaFunAux(S:K, 'data(Oc:K,,
               'simpleTypeCon(N:K,, Ts:K),, Cons:K,, Od:K), As:K, M:Map)
-          =>  makePreBetaFun(S, As, (toAbsTypeCon(S, N)
+          =>  makePreBetaFun(S, As, (buildVar(N)
               |-> preBetaEntry(contextToSet(S, Oc), toTypeList(Ts),
                   makeSinglePreBeta(S, toAbsType(S, N), Cons), derivingToSet(S, Od))) M)
    rule makePreBetaFunAux(S:K, 'newtype(Oc:K,,
               'simpleTypeCon(N:K,, Ts:K),, Cons:NewConstr,, Od:K), As:K, M:Map)
-          =>  makePreBetaFun(S, As, (toAbsTypeCon(S, N)
+          =>  makePreBetaFun(S, As, (buildVar(N)
               |-> preBetaEntry(contextToSet(S, Oc), toTypeList(Ts),
                   makeSinglePreBeta(S, toAbsType(S, N), Cons), derivingToSet(S, Od))) M)
    rule makePreBetaFunAux(S:K, A:TopDecl, As:K, TM:Map)

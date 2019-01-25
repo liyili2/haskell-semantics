@@ -36,6 +36,15 @@ module HASKELL-HELPER
    rule pillVar('conSymBracket(C:ConSym)) => C
    rule pillVar(V:K) => V [owise]
 
+   syntax KItem ::= buildVar(K) [function]
+   rule buildVar(V:VarId) => funName(V)
+   rule buildVar('qVarIdCon(M:ModId,, V:VarId))
+            => fullName(M, funName(V))
+   rule buildVar(C:ConSym) => funName(C)
+   rule buildVar('qConSymCon(M:ModId,, C:ConSym))
+            => fullName(M, funName(C))
+   rule buildVar(C:ConId) => typeName(C)
+
    syntax KItem ::= transVar(K, K) [function]
    rule transVar(Mod:K, 'colon(.KList)) => fullName(Mod, 'colon(.KList))
    rule transVar(Mod:K, C:ConSym) => fullName(Mod, C)
@@ -222,6 +231,16 @@ module HASKELL-HELPER
         requires (A in S')
    rule setMinus(S:Set, A:KItem, S':Set) => SetItem(A) setMinus(S, .K, S')
         requires notBool A in S'
+
+   syntax Map ::= mapMinus(Map, K, K, Map) [function]
+   rule mapMinus(.Map, .K, .K, M':Map) => .Map
+   rule mapMinus((A:K |-> B:K) S:Map, .K,.K, S':Map)
+          => mapMinus(S, A,B, S')
+   rule mapMinus(S:Map, A:KItem,B:KItem, S':Map) => mapMinus(S:Map, .K,.K, S')
+        requires A in keys(S')
+   rule mapMinus(S:Map, A:KItem,B:KItem, S':Map) => (A |-> B) mapMinus(S, .K,.K, S')
+        requires notBool A in keys(S')
+
 
    syntax Set ::= "intTypeSet" [function]
    rule intTypeSet => SetItem("Int") SetItem("Int8") SetItem("Int16")

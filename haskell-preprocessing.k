@@ -32,36 +32,49 @@ module HASKELL-PREPROCESSING
                 ~> (checkAllExpBlocksHavingLandingpad(.K, TES)
                 ~> (checkAllExpInFromInvoke(.K, TES)
                 ~> (checkLandingpad
-                ~> checkLandingDomResumes)))))) ...</k> */
+                ~> checkLandingDomResumes)))))) ...</k>
+              checkNoSameKey
+                 checkTypeConsDontCollide */
 
-    rule startChecks => checkNoSameKey
-                ~> (checkTypeConsDontCollide
+    rule startChecks => genImportSet
                 ~> (collectKindInfo
                 ~> (makeAlphaMap
-                ~> nextChecks)))
+                ~> nextChecks))
 
     rule nextChecks => makePreBetaMap
+                ~> (grabAllTypeNames
                 ~> (checkPreBetaInScope
                 ~> (genKindMap
-                ~> (checkOnlyDefault
                 ~> nextNextChecks)))
 
-    rule nextNextChecks => (checkArgSortsAreTargets
+    rule nextNextChecks => (checkOnlyDefault
+                 ~> (checkArgSortsAreTargets
                 ~> (checkParUsed
                  ~> (collectClassInfo
                 ~> (collectExpressions
-                ~> genModuleChecks))))
+                ~> genModuleChecks)))))
 
-    rule genModuleChecks => genImportSet
-                         ~> (genAllModuleNames
-                         ~> checkExportScope)
+    rule genModuleChecks => genAllModuleNames
+                         ~> (genExportSet
+                         ~> checkAllImportsGoodFromExports)
+
+
+    //grabing all type names from the current module
+    rule <k> grabAllTypeNames => .K ...</k>
+         <currModule> X:K </currModule>
+         <moduleName> X </moduleName>
+         <moduleAlpha> A:Map </moduleAlpha>
+         <tempBetaMap> B:Map </tempBetaMap>
+         <moduleTypeNames> NM:Map
+                  => NM[X <- resultSet(keys(A) keys(B))] </moduleTypeNames>
 
     //genarate export set, and initialize inside module checks
     //TODO: place validity checks for syntax of cname in exports
     //be able to distingush class vs data types
     //check if all exports are valid due to imports
    rule <k> 'moduleExp('moduleName(A:ModId),, C:Exports,, B:K)
-              => genExportSet(toExports(A, C)) ~> startChecks ...</k>
+              => startChecks ...</k>
+        <tempExports> _:K => C </tempExports>
         <tempModule> _:K => B </tempModule>
         <currModule> _:K => A </currModule>
         <moduleMethodNames> MM:Map => MM[A <- resultSet(.Set)] </moduleMethodNames>
@@ -77,9 +90,9 @@ module HASKELL-PREPROCESSING
         <moduleMethodNames> MM:Map => MM[A <- resultSet(.Set)] </moduleMethodNames>
         <classMethodNames> CM:Map => CM[A <- resultSet(.Set)] </classMethodNames>
         <classNames> NM:Map => NM[A <- resultSet(.Set)] </classNames>
+        <exports> Ex:Map => Ex[A <- resultSet(SetItem(haveAll))] </exports>
         (.Bag => <module>...
                     <moduleName> A </moduleName>
-                    <exports> SetItem(haveAll) </exports>
                 ...</module>)
 
    rule <k> 'moduleBody(B:K) => startChecks ...</k>     
@@ -88,11 +101,12 @@ module HASKELL-PREPROCESSING
         <moduleMethodNames> MM:Map => MM[Main <- resultSet(.Set)] </moduleMethodNames>
         <classMethodNames> CM:Map => CM[Main <- resultSet(.Set)] </classMethodNames>
         <classNames> NM:Map => NM[Main <- resultSet(.Set)] </classNames>
+        <exports> Ex:Map => Ex[Main <- resultSet(SetItem(main))] </exports>
         (.Bag => <module>...
-                    <exports> SetItem(haveAll) </exports>
                     <moduleName> Main </moduleName>
                 ...</module>)
 
+/*
    rule <k> genExportSet(.Set) => .K ...</k>
         <currModule> X:K </currModule>
         <moduleName> X </moduleName>
@@ -102,12 +116,27 @@ module HASKELL-PREPROCESSING
         <currModule> X:K </currModule>
         <moduleName> X </moduleName>
         <exports> _:Set => SetItem(A:K) S:Set </exports>
-
-   rule <k> genImportSet => genImportSet(X, S, .Set) ...</k>
+   generate all export set, starting by generating all class/type names along the module
+   check if all export elements are distint.
+*/
+   rule <k> genExportSet => toExports(Term, .Set, 
+                   allNamesFromModule(X, .K, MI, CM),
+                 allNamesFromModule(X, .K, MI, TM)) ...</k>
         <currModule> X:K </currModule>
-        <tempModule> S:K </tempModule>
+        <moduleName> X </moduleName>
+        <moduleImportMap> MI:Map </moduleImportMap>
+        <classNames> CM:Map </classNames>
+        <moduleTypeNames> TM:Map </moduleTypeNames>
+        <tempExports> Term:K </tempExports>
 
-   rule <k> resultImportSet(S:Set) => .K ...</k>
+
+   //generating import set
+   rule <k> genImportSet => genImportSet(S, M,.Set, .Set) ...</k>
+        <tempModule> S:K </tempModule>
+        <exports> M:Map </exports>
+
+   rule <k> resultImportSet(S1:Set, S:Set) => .K ...</k>
+        <moduleImportMap> MI:Map => MI[X <- resultSet(S1)] </moduleImportMap>
         <currModule> X:K </currModule>
         <moduleName> X </moduleName>
         <imports> _:Set => S </imports>
@@ -130,6 +159,21 @@ module HASKELL-PREPROCESSING
         <currModule> X:K </currModule>
         <moduleName> X </moduleName>
         <moduleElems> _:Set => S </moduleElems>
+
+   //check if all import names are in scope.
+   // first check if all imports are valid compared with exports
+/*
+   rule <k> checkAllImportsGoodFromExports
+               => expandExports(Es, .K, .Set) ...</k>
+        <currModule> X:K </currModule>
+        <moduleName> X </moduleName>
+        <exports> Es:Set </exports>
+*/
+
+   rule <k> expandExports(.Set, .K, S:Set) => .K ...</k>
+        <currModule> X:K </currModule>
+        <moduleName> X </moduleName>
+        <imports> Is:Set </imports>
 
     //deal with alpha map, deal with renaming of type name
     //collect information for the type name and kind in the same module

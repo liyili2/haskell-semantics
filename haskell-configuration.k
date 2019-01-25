@@ -15,7 +15,7 @@ module HASKELL-CONFIGURATION
             <tempAlpha> .K </tempAlpha>
             <tempBetaMap> .Map </tempBetaMap>
             <tempT> .K </tempT>
-            <tempExports> .Map </tempExports>
+            <tempExports> .K </tempExports>
             <currModule> .K </currModule>
             <importTree> .List </importTree>
             <tempImports> .Map </tempImports>
@@ -24,14 +24,18 @@ module HASKELL-CONFIGURATION
             <genVarCounter> 0 </genVarCounter>
             <modules> //static information about a module
                 <moduleMethodNames> .Map </moduleMethodNames>
+                <moduleTypeNames> .Map </moduleTypeNames>
+                 //all valid type names for each module generated from alpha/beta
+                 //needs to generate from beta/alpha
+                <moduleImportMap> .Map </moduleImportMap>
                 <moduleElems> .Set </moduleElems>
+                <exports> .Map </exports>
                 <module multiplicity="*">
                     <moduleName> .K </moduleName>
                     <moduleAlpha> .Map </moduleAlpha>
-                    <moduleBetaPlus> .K </moduleBetaPlus>
+                    <moduleBeta> .Map </moduleBeta>
                     <kindMap> .Map </kindMap>
                        //a module storing all elements of operators that are possibly outputed
-                    <exports> .Set </exports>
                     <imports> .Set </imports>
                     <defaultInt> Integer </defaultInt>
                     <defaultDouble> Double </defaultDouble>
@@ -46,6 +50,8 @@ module HASKELL-CONFIGURATION
               <classNames> .Map </classNames>
                      //store all class names for each module
               <classMethodNames> .Map </classMethodNames>
+              <methodNamesByClass> .Map </methodNamesByClass>
+              <classParentMap> .Map </classParentMap>
               <class multiplicity="*">
                 <classModule> .K </classModule>
                 <className> .K </className>
@@ -53,13 +59,15 @@ module HASKELL-CONFIGURATION
                 <classContext> .Set </classContext>
                 <classMethods> .Map </classMethods>
               </class>
-              <instance multiplicity="*">
-                <instanceModule> .K </instanceModule>
-                <instanceClass> .K </instanceClass>
-                <instanceType> .K </instanceType>
-                <instanceContext> .Set </instanceContext>
-                <instanceMethods> .Map </instanceMethods>
-              </instance>
+              <instances>
+                <instance multiplicity="*">
+                   <instanceModule> .K </instanceModule>
+                   <instanceClass> .K </instanceClass>
+                   <instanceType> .K </instanceType>
+                   <instanceContext> .Set </instanceContext>
+                   <instanceMethods> .Map </instanceMethods>
+                </instance>
+              </instances>
             </classes>
             <output stream="stdout" color="DodgerBlue"> .List </output>
         </T>

@@ -9,3 +9,38 @@ ex: module AStack( Stack(G.Empty), Test(AStack.xx), G.pop, top, size ) the AStac
 4. Haskell does not check how many times a module is imported. The sum of all these modules is the result
 
 5, undefinedness: if a module can import the same module twice, then if one is qualified and the other is not, the imported module entities will become unqualified.
+
+6. Haskell document said that it is not OK to have a ModId.con format in a type Con in a export list, but the GHC allows this.
+
+7. Haskell does not say that you cannot import a same module in a module twice, for example, you can:
+
+import A (x)
+import A as B (y)
+
+So, assume this is indicated but not specified in Haskell, then the following is an error:
+
+module C (module A,x) where  
+import A (x)
+;import A as B (y)
+
+;x = 5
+
+this does not give an warning saying that x in C is conflicting with the x in module A
+
+8. In haskell document, it says:
+
+The form “module M” names the set of all entities that are in scope with both an unqualified name “e” and a qualified name “M.e”. This set may be empty. For example:
+
+
+However, the following does not work
+
+module C (module A) where  
+import qualified A (x)
+
+
+module D where
+import C
+a = x ---> error
+
+
+
