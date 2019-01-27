@@ -216,37 +216,53 @@ module HASKELL-KINDINFER
    syntax KItem ::= getSingleton(Set) [function]
    rule getSingleton(SetItem(A:K)) => A
 
-   syntax KItem ::= makeAlphaM(K, K, Map, Map) [function] //curr-mod, (Alpha, AlphaMap)
-                  | makeAlphaMAux(K, TopDecl, Map, K, Map) [function]
-                   //curr-mod, top-decl, checking map, checking-point, store-map
-   rule makeAlphaM(Mod:K, 'bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map, TM:Map)
-          => makeAlphaM(Mod:K, Ts, M, TM)
-   rule makeAlphaM(Mod:K, 'bodyimpdecls(Is:ImpDecls), M:Map, TM:Map) => .K
-   rule makeAlphaM(Mod:K, 'bodytopdecls(Ts:TopDecls), M:Map, TM:Map)
-                  => makeAlphaM(Mod:K, Ts, M, TM)
-   rule makeAlphaM(Mod:K, .TopDecls, M:Map, TM:Map) => putAlphaMap(TM)
-   rule makeAlphaM(Mod:K, 'topdeclslist(A:TopDecl,, As:TopDecls), M:Map, TM:Map)
-              => makeAlphaMAux(Mod:K, A, M, As, TM)
+   syntax KItem ::= makeAlphaM(K, K, Map, Map, Set, Set) [function]
+              //curr-mod, (Alpha, AlphaMap), temp-map,
+              // set-of-types-in-curr, import set
+                  | makeAlphaMAux(K, TopDecl, Map, K, Map, Set, Set) [function]
+                   //curr-mod, top-decl, checking map, checking-point,
+                  // store-map, set-of-types, import set
+                  | makeAlphaMAuxAux(K, TopDecl, Map, K, List, K, Map, Set, Set) [function]
 
-   rule makeAlphaMAux(Mod:K, type A:SimpleType = B:Type, M:Map, As:K, TM:Map)
-            => makeAlphaM(Mod:K, As, addEdges(getConstrNames(A), getConstrNames(B)) M,
-                            (buildVar(getSingleton(getConstrNames(A)))
-                                 |-> alphaTuple(getTyVarList(A), toAbsType(Mod, B))) TM)
+   rule makeAlphaM(Mod:K, 'bodyimpandtop(Is:ImpDecls,, Ts:TopDecls),
+            M:Map, TM:Map, Ts:Set, Is:Set)
+          => makeAlphaM(Mod:K, Ts, M, TM, Ts:Set, Is:Set)
+   rule makeAlphaM(Mod:K, 'bodyimpdecls(Is:ImpDecls), M:Map, TM:Map, Ts:Set, Is:Set) => .K
+   rule makeAlphaM(Mod:K, 'bodytopdecls(Ts:TopDecls), M:Map, TM:Map, Ts:Set, Is:Set)
+                  => makeAlphaM(Mod:K, Ts, M, TM, Ts:Set, Is:Set)
+   rule makeAlphaM(Mod:K, .TopDecls, M:Map, TM:Map, Ts:Set, Is:Set) => putAlphaMap(TM)
+   rule makeAlphaM(Mod:K, 'topdeclslist(A:TopDecl,, As:TopDecls),
+             M:Map, TM:Map, Ts:Set, Is:Set)
+              => makeAlphaMAux(Mod:K, A, M, As, TM, Ts:Set, Is:Set)
+
+   rule makeAlphaMAux(Mod:K, type A:SimpleType = B:Type,
+               M:Map, As:K, TM:Map, Ts:Set, Is:Set)
+          => makeAlphaMAuxAux(Mod, As, addEdges(getConstrNames(A), getConstrNames(B)) M,
+               typeName(getSingleton(getConstrNames(A))),
+                   getTyVarList(A),toAbsType(Mod, B, getTyVarSet(A),Ts,Is), TM, Ts, Is)
         requires getTypeNames(B) <=Set getTypeNames(A)
                   andBool getSingleton(getConstrNames(A)) in keys(M)
                   andBool notBool hasCycleAux(
                                getSingleton(getConstrNames(A)), getConstrNames(B), M)
    rule makeAlphaMAux(Mod:K, type A:SimpleType = B:Type,
-                               M:Map, As:K, TM:Map) => error(typeVarNoInclusive)
+                               M:Map, As:K, TM:Map, Ts:Set, Is:Set)
+               => error(typeVarNoInclusive)
         requires notBool (getTypeNames(B) <=Set getTypeNames(A))
    rule makeAlphaMAux(Mod:K, type A:SimpleType = B:Type,
-                               M:Map, As:K, TM:Map) => error(repeatedNames)
+                               M:Map, As:K, TM:Map, Ts:Set, Is:Set)
+               => error(repeatedNames)
         requires notBool getSingleton(getConstrNames(A)) in keys(M)
    rule makeAlphaMAux(Mod:K, type A:SimpleType = B:Type,
-                            M:Map, As:K, TM:Map) => error(cycleAlpha)
+                            M:Map, As:K, TM:Map, Ts:Set, Is:Set) => error(cycleAlpha)
         requires hasCycleAux(getSingleton(getConstrNames(A)), getConstrNames(B), M)
-   rule makeAlphaMAux(Mod:K, A:TopDecl, M:Map, As:K, TM:Map)
-                           => makeAlphaM(Mod:K, As, M, TM) [owise]
+   rule makeAlphaMAux(Mod:K, A:TopDecl, M:Map, As:K, TM:Map, Ts:Set, Is:Set)
+                           => makeAlphaM(Mod:K, As, M, TM, Ts:Set, Is:Set) [owise]
+
+   rule makeAlphaMAuxAux(Mod:K, As:K, M:Map, A:K,
+                   L:List, error(B:K), TM:Map, Ts:Set, Is:Set) => error(B)
+   rule makeAlphaMAuxAux(Mod:K, As:K, M:Map, A:K,
+                   L:List, B:K, TM:Map, Ts:Set, Is:Set)
+            => makeAlphaM(Mod, As, M, (A |-> alphaTuple(L, B)) TM, Ts, Is) [owise]
 
 
    //collect a map for knowing the type name and its partial kind (not proved)
@@ -258,7 +274,7 @@ module HASKELL-KINDINFER
    rule parKindEntry(N:Int, S:Set, Curr:K, 'simpleTypeCon(T:TyCon,, Vs:TyVars))
             => parKindEntryAux(Curr, T, resolveKindEntry(N, S, Vs, .List))
    rule parKindEntryAux(Curr:K, T:K, resultTyVarKindList(N:Int, S:Set, L:List))
-            => resultTyVarKindMap(N, S, (toAbsTypeCon(Curr,T) |-> listToKind(L)))
+            => resultTyVarKindMap(N, S, (typeName(T) |-> listToKind(L)))
 
    syntax KItem ::= listToKind(List) [function]
    rule listToKind(.List) => star
@@ -300,8 +316,17 @@ module HASKELL-KINDINFER
    rule toTypeList('typeVars(X:TyVar,, A:TyVars))
            => ListItem(X) toTypeList(A)
 
+   syntax Set ::= toTypeSet(K) [function]
+   rule toTypeSet(.TyVars) => .List
+   rule toTypeSet('typeVars(X:TyVar,, A:TyVars))
+           => SetItem(X) toTypeSet(A)
+
    syntax List ::= getTyVarList(K) [function]
    rule getTyVarList('simpleTypeCon(A:TyCon,, B:TyVars))
+           => toTypeList(B)
+
+   syntax Set ::= getTyVarSet(K) [function]
+   rule getTyVarSet('simpleTypeCon(A:TyCon,, B:TyVars))
            => toTypeList(B)
 
    //convert a type con to abs form (fullname)
@@ -328,71 +353,278 @@ module HASKELL-KINDINFER
    rule toAbsTypeWithAll(T:K, .Set) => T
    rule toAbsTypeWithAll(T:K, S:Set) => forall(S, T) [owise]
 
-   syntax KItem ::= toAbsType(K, K) [function] //current module name, type
-                  | toAbsTypeAux(K, K, List, K) [function]
+   //a function to find the module names of a type in imports
+   syntax KItem ::= findGoodName(K, K, Set) [function]
+   rule findGoodName(A:K, .K, .Set) => none
+   rule findGoodName(A:K, .K, SetItem(B:K) S:Set)
+            => findGoodName(A, B, S)
+   rule findGoodName(A:K, importElem(Ma:K, Mb:K,
+             T:Bool, Es:Set, M:Map), S:Set) => Ma
+        requires A in Es 
+   rule findGoodName(A:K, importElem(Ma:K, Mb:K,
+             T:Bool, Es:Set, M:Map), S:Set)
+          => findGoodName(A, .K, S)
+        requires notBool A in Es 
+
+   syntax KItem ::= findGoodNameNoQualified(K, K, Set) [function]
+   rule findGoodNameNoQualified(A:K, .K, .Set) => none
+   rule findGoodNameNoQualified(A:K, .K, SetItem(B:K) S:Set)
+            => findGoodNameNoQualified(A, B, S)
+   rule findGoodNameNoQualified(A:K, importElem(Ma:K, Mb:K,
+             T:Bool, Es:Set, M:Map), S:Set) => Ma
+        requires A in Es 
+   rule findGoodNameNoQualified(A:K, importElem(Ma:K, Mb:K,
+             T:Bool, Es:Set, M:Map), S:Set) => Ma
+        requires A in Es andBool Mb ==K .K
+   rule findGoodNameNoQualified(A:K, importElem(Ma:K, Mb:K,
+             T:Bool, Es:Set, M:Map), S:Set)
+            => findGoodNameNoQualified(A, .K, S)
+        requires A in Es andBool Mb =/=K .K
+   rule findGoodNameNoQualified(A:K, importElem(Ma:K, Mb:K,
+             T:Bool, Es:Set, M:Map), S:Set)
+          => findGoodNameNoQualified(A, .K, S)
+        requires notBool A in Es 
+
+   syntax KItem ::= countGoodName(K, K, Set) [function]
+   rule countGoodName(A:K, .K, .Set) => 0
+   rule countGoodName(A:K, .K, SetItem(B:K) S:Set)
+           => countGoodName(A, B, S)
+   rule countGoodName(A:K, importElem(Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => 1 +Int countGoodName(A, .K, S)
+        requires A in Es
+   rule countGoodName(A:K, importElem(Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => countGoodName(A, .K, S)
+        requires notBool A in Es
+
+   syntax KItem ::= countGoodNameWithoutAs(K, K, Set) [function]
+   rule countGoodNameWithoutAs(A:K, .K, .Set) => 0
+   rule countGoodNameWithoutAs(A:K, .K, SetItem(B:K) S:Set)
+           => countGoodNameWithoutAs(A, B, S)
+   rule countGoodNameWithoutAs(A:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => 1 +Int countGoodNameWithoutAs(A, .K, S)
+        requires A in Es andBool Mb =/=K .K
+   rule countGoodNameWithoutAs(A:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => countGoodNameWithoutAs(A, .K, S)
+        requires A in Es andBool Mb ==K .K
+   rule countGoodNameWithoutAs(A:K, importElem(Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => countGoodNameWithoutAs(A, .K, S)
+        requires notBool A in Es
+
+   syntax KItem ::= countGoodNameNoQualified(K, K, Set) [function]
+   rule countGoodNameNoQualified(A:K, .K, .Set) => 0
+   rule countGoodNameNoQualified(A:K, .K, SetItem(B:K) S:Set)
+           => countGoodNameNoQualified(A, B, S)
+   rule countGoodNameNoQualified(A:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => 1 +Int countGoodNameNoQualified(A, .K, S)
+        requires A in Es andBool notBool T
+   rule countGoodNameNoQualified(A:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => countGoodNameNoQualified(A, .K, S)
+        requires A in Es andBool T
+   rule countGoodNameNoQualified(A:K, importElem(Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => countGoodNameNoQualified(A, .K, S)
+        requires notBool A in Es
+
+   syntax KItem ::= countGoodNameWithMod(K, K, K, Set) [function]
+   rule countGoodNameWithMod(A:K, B:K, .K, .Set) => 0
+   rule countGoodNameWithMod(A:K,B:K, .K, SetItem(C:K) S:Set)
+           => countGoodNameWithMod(A,B, C, S)
+   rule countGoodNameWithMod(A:K, B:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => 1 +Int countGoodNameWithMod(A,B, .K, S)
+        requires A in Es andBool Ma ==K B andBool Mb ==K .K
+   rule countGoodNameWithMod(A:K, B:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => 1 +Int countGoodNameWithMod(A,B, .K, S)
+        requires A in Es andBool Mb ==K B
+   rule countGoodNameWithMod(A:K, B:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => countGoodNameWithMod(A,B, .K, S)
+        requires notBool A in Es
+   rule countGoodNameWithMod(A:K, B:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => countGoodNameWithMod(A,B, .K, S)
+        requires Ma =/=K B andBool Mb ==K .K
+   rule countGoodNameWithMod(A:K, B:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => countGoodNameWithMod(A,B, .K, S)
+        requires Mb =/=K B
+
+   //a function to get the as name in an import
+   syntax KItem ::= getAsNameType(K, K, Set) [function]
+   rule getAsNameType(A:K, .K, .Set) => none
+   rule getAsNameType(A:K, .K, SetItem(B:K) S:Set)
+           => getAsNameType(A, B, S)
+   rule getAsNameType(A:K, importElem(Mod:K,
+                 As:K, F:Bool, Is:Set, Im:Map), S:Set) => As
+        requires A in Is andBool As =/=K none
+   rule getAsNameType(A:K, importElem(Mod:K,
+                 As:K, F:Bool, Is:Set, Im:Map), S:Set)
+           => getAsNameType(A, .K, S)
+        requires notBool A in Is
+
+   //a set of functions to transform type to ast-type
+   // and check if all type-con and typevars are valid
+   syntax KItem ::= toAbsType(K, K, Set, Set, Set) [function]
+                    //current module name, type,
+                   //set-of-type-vars, curr-types, imports
+                  | toAbsTypeAux(K, K, List, K,K, Set, Set, Set) [function]
                           //curr-mod, type-con-name,type-args, unsolved
+                  | toAbsTypeArrow(K, K) [function]
+                  | toAbsTypeListAux(K)  [function]
+                  | toAbsTypeTupleAux(K, K) [function]
+                  | toAbsTypeTuple(K, K, K, List, Set, Set, Set) [function]
+                //curr-mod, type-tuple, execute, list.
+               // set-of-type-vars, curr-types, imports
                   | toAbsTypeAuxAux(K, List) [function] //type-con, args
-   syntax List ::= toAbsTypeTuple(K, K) [function]//curr-mod, type-tuple
-                 | toAbsTypeList(K, ATypeList) [function]//curr-mod, typelist
 
-   rule toAbsTypeList(S:K, .ATypeList) => .List
-   rule toAbsTypeList(S:K, 'atypeList(A:AType,, B:ATypeList))
-           => ListItem(toAbsType(S, A)) toAbsTypeList(S, B)
+   rule toAbsType(S:K, A:TyVar, As:Set, Ts:Set, Is:Set) => A
+        requires A in As
+   rule toAbsType(S:K, A:TyVar, As:Set, Ts:Set, Is:Set) => error(typeVarNotInScope)
+        requires notBool A in As
+   rule toAbsType(S:K, A:TyCon, As:Set, Ts:Set, Is:Set)
+                      => typeConst(fullName(S,typeName(A)), .List)
+        requires typeName(A) in Ts
+                   andBool countGoodNameNoQualified(typeName(A), .K, Is) ==K 0
+   rule toAbsType(S:K, A:TyCon, As:Set, Ts:Set, Is:Set)
+                      => error(ambiguousTypeName)
+        requires typeName(A) in Ts
+                   andBool countGoodNameNoQualified(typeName(A), .K, Is) =/=K 0
+   rule toAbsType(S:K, A:TyCon, As:Set, Ts:Set, Is:Set)
+              => typeConst(fullName(findGoodNameNoQualified(
+                        typeName(A), .K, Is),typeName(A)), .List)
+        requires notBool typeName(A) in Ts
+            andBool countGoodNameNoQualified(typeName(A), .K, Is) ==K 1
+   rule toAbsType(S:K, A:TyCon, As:Set, Ts:Set, Is:Set)
+              => error(typeNotInScope)
+        requires notBool typeName(A) in Ts
+            andBool countGoodNameNoQualified(typeName(A), .K, Is) ==K 0
+   rule toAbsType(S:K, A:TyCon, As:Set, Ts:Set, Is:Set)
+              => error(ambiguousTypeName)
+        requires notBool typeName(A) in Ts
+            andBool countGoodNameNoQualified(typeName(A), .K, Is) >Int 1
 
-   rule toAbsType(S:K, 'simpleTypeCon(T:TyCon,, A:TyVars))
-            => typeConst(fullName(S,T), toTypeList(A))
-   rule toAbsType(S:K, A:TyVar) => A
-   rule toAbsType(S:K, A:TyCon) => typeConst(fullName(S,A), .List)
-   rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon))
-             => typeConst(fullName(N,A), .List)
-   rule toAbsType(S:K,(->))
-             => typeConst(fullName(Prelude, (->)), .List)
-   rule toAbsType(S:K, 'typeArrow(A:K,, B:K))
-             => typeConst(fullName(Prelude, (->)),
-                         ListItem(toAbsType(S, A)) ListItem(toAbsType(S, B)))
-   rule toAbsType(S:K,[])
-             => typeConst(fullName(Prelude, []), .List)
-   rule toAbsType(S:K, 'tyList(A:K))
-             => typeConst(fullName(Prelude, []),
-                         ListItem(toAbsType(S, A)))
-   rule toAbsType(S:K, 'tyVarList(A:K))
-             => typeConst(fullName(Prelude, []), ListItem(A))
-   rule toAbsType(S:K, 'typeVarFun(A:K,, B:K))
-             => typeConst(fullName(Prelude, (->)), ListItem(A) ListItem(B))
-   rule toAbsType(S:K, 'instTupleCover(Ts:TyVarTuple))
+   rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon), As:Set, Ts:Set, Is:Set)
+             => typeConst(fullName(N,typeName(A)), .List)
+        requires typeName(A) in Ts andBool S ==K N
+                andBool countGoodNameNoQualified(typeName(A), .K, Is) ==K 0
+   rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon), As:Set, Ts:Set, Is:Set)
+             => error(ambiguousTypeName)
+        requires typeName(A) in Ts andBool S ==K N
+                andBool countGoodNameWithMod(typeName(A), N, .K, Is) =/=K 0
+   rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon), As:Set, Ts:Set, Is:Set)
+             => error(typeNotInScope)
+        requires notBool typeName(A) in Ts
+                andBool countGoodNameWithMod(typeName(A), N, .K, Is) ==K 0
+   rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon), As:Set, Ts:Set, Is:Set)
+             => typeConst(fullName(N,typeName(A)), .List)
+        requires notBool typeName(A) in Ts
+                andBool countGoodNameWithMod(typeName(A), N, .K, Is) ==K 1
+   rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon), As:Set, Ts:Set, Is:Set)
+             => error(ambiguousTypeName)
+        requires notBool typeName(A) in Ts
+                andBool countGoodNameWithMod(typeName(A), N, .K, Is) >Int 1
+   rule toAbsType(S:K,(->), As:Set, Ts:Set, Is:Set)
+             => typeConst(fullName(Prelude, typeName((->))), .List)
+   rule toAbsType(S:K,[], As:Set, Ts:Set, Is:Set)
+             => typeConst(fullName(Prelude, typeName([])), .List)
+   rule toAbsType(S:K, 'typeArrow(A:K,, B:K), As:Set, Ts:Set, Is:Set)
+             => toAbsTypeArrow(toAbsType(S, A, As:Set, Ts:Set, Is:Set), 
+                        toAbsType(S, A, As:Set, Ts:Set, Is:Set))
+   rule toAbsTypeArrow(error(A:K), B:K) => error(A)
+   rule toAbsTypeArrow(A:K, error(B:K)) => error(B)
+   rule toAbsTypeArrow(A:K, B:K) => typeConst(
+              fullName(Prelude, typeName((->))), ListItem(A) ListItem(B)) [owise]
+   rule toAbsType(S:K, 'tyList(A:K), As:Set, Ts:Set, Is:Set)
+             => toAbsTypeListAux(toAbsType(S, A, As:Set, Ts:Set, Is:Set))
+   rule toAbsTypeListAux(error(A:K)) => error(A)
+   rule toAbsTypeListAux(A:K) => typeConst(
+                 fullName(Prelude, typeName([])), ListItem(A)) [owise]
+   rule toAbsType(S:K, 'tyVarList(A:K), As:Set, Ts:Set, Is:Set)
+             => typeConst(fullName(Prelude, typeName([])), ListItem(A))
+   rule toAbsType(S:K, 'typeVarFun(A:K,, B:K), As:Set, Ts:Set, Is:Set)
+             => typeConst(fullName(Prelude, typeName((->))), ListItem(A) ListItem(B))
+   rule toAbsType(S:K, 'instTupleCover(Ts:TyVarTuple), As:Set, Ts:Set, Is:Set)
+             => typeConst(fullName(Prelude, typeName(tupleType(countOnTypeTuple(Ts)))),
+                 toAbsTypeTuple(S, Ts))
+   rule toAbsType(S:K, 'instAppType(A:GTyCon,, B:TyVars), As:Set, Ts:Set, Is:Set)
+             => toAbsTypeAuxAux(toAbsType(S, A, As:Set, Ts:Set, Is:Set),
+                   typeVarsToList(B))
+   rule toAbsType(S:K, 'unitType(.KList), As:Set, Ts:Set, Is:Set)
+             => typeConst(fullName(Prelude, typeName('unitType(.KList))), .List)
+   rule toAbsType(S:K, 'tupleFun(Gs:GConCommas), As:Set, Ts:Set, Is:Set)
              => typeConst(fullName(Prelude,
-                      tupleType(countOnTypeTuple(Ts))), toAbsTypeTuple(S, Ts))
-   rule toAbsType(S:K, 'instAppType(A:GTyCon,, B:TyVars))
-             => toAbsTypeAuxAux(toAbsType(S, A), typeVarsToList(B))
+                     typeName(tupleType(countOnCommas(Gs) +Int 1))), .List)
+   rule toAbsType(S:K, 'tupleCover(Ts:TypeTuple), As:Set, Ts:Set, Is:Set)
+             => toAbsTypeTupleAux(fullName(Prelude,
+                  typeName(tupleType(countOnTypeTuple(Ts)))),
+               toAbsTypeTuple(S, Ts,.K, .List, As:Set, Ts:Set, Is:Set))
+   rule toAbsType(S:K, 'group(T:K), As:Set, Ts:Set, Is:Set)
+              => toAbsType(S, T, As:Set, Ts:Set, Is:Set)
 
-   rule toAbsType(S:K, 'unitType(.KList))
-             => typeConst(fullName(Prelude, 'unitType(.KList)), .List)
-   rule toAbsType(S:K, 'tupleFun(Gs:GConCommas))
-             => typeConst(fullName(Prelude,
-                      tupleType(countOnCommas(Gs) +Int 1)), .List)
-   rule toAbsType(S:K, 'tupleCover(Ts:TypeTuple))
-             => typeConst(fullName(Prelude,
-                      tupleType(countOnTypeTuple(Ts))), toAbsTypeTuple(S, Ts))
+   rule toAbsType(S:K, 'baTypeCon(T:K,, T1:K), As:Set, Ts:Set, Is:Set)
+          => toAbsTypeAux(S, toAbsType(S, T, As, Ts, Is), .List, .K, T1, As, Ts, Is)
 
-   rule toAbsType(S:K, 'group(T:K)) => toAbsType(S, T)
-   rule toAbsType(S:K, 'baTypeCon(T:K,, T1:K))
-          => toAbsTypeAux(S, toAbsType(S, T), .List, T1)
+   rule toAbsType(S:K, A:K, As:Set, Ts:Set, Is:Set) => A [owise]
 
-   rule toAbsType(S:K, A:K) => A [owise]
+   rule toAbsTypeAux(S:K, error(A:K), L:List,
+                  B:K, C:K, As:Set, Ts:Set, Is:Set) => error(A)
+   rule toAbsTypeAux(S:K, A:K, L:List, .K, 'baTypeCon(T:K,, T1:K), As:Set, Ts:Set, Is:Set)
+           => toAbsTypeAux(S:K, A, L,toAbsType(S, T, As, Ts, Is),
+                        T1, As:Set, Ts:Set, Is:Set)
+        requires notBool isError(A)
+   rule toAbsTypeAux(S:K, A:K, L, error(B:K),
+                        T1:K, As:Set, Ts:Set, Is:Set) => error(B)
+        requires notBool isError(A)
+   rule toAbsTypeAux(S:K, A:K, L, T:KItem,
+                        T1:K, As:Set, Ts:Set, Is:Set)
+             => toAbsTypeAux(S, A, L ListItem(T), .K, T1, As, Ts, Is)
+        requires notBool isError(A) andBool notBool isError(T)
+   rule toAbsTypeAux(S:K, A:K, L, .K,
+                        T1:K, As:Set, Ts:Set, Is:Set)
+           => toAbsTypeAux(S, A, L, toAbsType(S, T1, As, Ts, Is), .K, As, Ts, Is)
+        requires notBool isBATypeCon(T1)
+      rule toAbsTypeAux(S:K, A:K, L:List, .K,
+                        .K, As:Set, Ts:Set, Is:Set)
+            => toAbsTypeAuxAux(A, L)
+           requires notBool isError(A)
 
-   rule toAbsTypeAux(S:K, A:K, L:List, 'baTypeCon(T:K,, T1:K))
-           => toAbsTypeAux(S:K, A, L ListItem(toAbsType(S, T)), T1)
-   rule toAbsTypeAux(S:K, A:K, L:List, T:K)
-           => toAbsTypeAuxAux(A, L ListItem(toAbsType(S, T))) [owise]
 
    rule toAbsTypeAuxAux(typeConst(X:K, L:List), L1:List)
              => typeConst(X:K, L L1)
+   rule toAbsTypeAuxAux(error(A:K), L2:List) => error(A)
    rule toAbsTypeAuxAux(A:K, L:List) => typeConst(A, L) [owise]
 
-   rule toAbsTypeTuple(S:K, 'twoTypeTuple(A:K,, B:K))
-                     => ListItem(toAbsType(S, A)) ListItem(toAbsType(S, B))
-   rule toAbsTypeTuple(S:K, 'typeTupleCon(A:K,, B:TypeTuple))
-                     => ListItem(toAbsType(S, A)) toAbsTypeTuple(S, B)
+
+   rule toAbsTypeTupleAux(A:K, error(B:K)) => error(B)
+   rule toAbsTypeTupleAux(A:K, resultList(L:List)) => typeConst(A, L)
+
+   rule toAbsTypeTuple(S:K, 'twoTypeTuple(A:K,, B:K),
+                .K, L:List, As:Set, Ts:Set, Is:Set)
+                => toAbsTypeTuple(S, B, toAbsType(S,
+                     A, As:Set, Ts:Set, Is:Set),L, As:Set, Ts:Set, Is:Set)
+   rule toAbsTypeTuple(S:K, 'typeTupleCon(A:K,, B:TypeTuple),
+                .K, L:List, As:Set, Ts:Set, Is:Set)
+                => toAbsTypeTuple(S, B, toAbsType(S,
+                     A, As:Set, Ts:Set, Is:Set), L, As:Set, Ts:Set, Is:Set)
+   rule toAbsTypeTuple(S:K, A:Type, .K, L:List, As:Set, Ts:Set, Is:Set)
+                => toAbsTypeTuple(S, .K, toAbsType(S,
+                     A, As:Set, Ts:Set, Is:Set),L, As:Set, Ts:Set, Is:Set)
+   rule toAbsTypeTuple(S:K, .K, .K, L:List, As:Set, Ts:Set, Is:Set)
+                => resultList(L)
+   rule toAbsTypeTuple(S:K, A:K, error(B:K), L:List, As:Set, Ts:Set, Is:Set)
+               => error(B)
+   rule toAbsTypeTuple(S:K, A:K, T:KItem, L:List, As:Set, Ts:Set, Is:Set)
+            => toAbsTypeTuple(S, A, .K, L ListItem(T), As, Ts, Is)
+        requires  notBool isError(T)
+
+
+   //for simple type-vars-title
+   syntax List ::= toAbsTypeTuple(K, K) [function]//curr-mod, type-tuple
+                 | toAbsTypeList(K, ATypeList) [function]//curr-mod, typelist
    rule toAbsTypeTuple(S:K, 'twoTypeVarTuple(A:K,, B:K))
                      => ListItem(A) ListItem(B)
    rule toAbsTypeTuple(S:K, 'typeVarTupleCon(A:K,, B:TypeTuple))

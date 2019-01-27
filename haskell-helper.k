@@ -214,6 +214,10 @@ module HASKELL-HELPER
    rule isIntersect(S:Set, A:KItem, S':Set) => true
         requires A in S'
 
+   syntax Bool ::= isError(K) [function]
+   rule isError(error(A:K)) => true
+   rule isError(A:K) => false [owise]
+
    syntax Set ::= getIntersect(Set, K, Set) [function]
    rule getIntersect(.Set, .K, S':Set) => .Set
    rule getIntersect(SetItem(A:K) S:Set, .K, S':Set)

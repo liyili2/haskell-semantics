@@ -27,6 +27,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "instanceMethodArgsNoMatch"
     syntax KItem ::= "moreThanOneDefault"
     syntax KItem ::= "importFromNoSource"
+    syntax KItem ::= "ambiguousTypeName"
 
     syntax KItem ::= "startChecks"
     syntax KItem ::= "nextChecks"

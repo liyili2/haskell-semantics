@@ -183,9 +183,12 @@ module HASKELL-PREPROCESSING
          <kindVarCounter> N:Int </kindVarCounter>
          <kindVarSet> S:Set </kindVarSet>
 
-    rule <k> makeAlphaMap => makeAlphaM(Mod, S, .Map, .Map) ...</k>
+    rule <k> makeAlphaMap => makeAlphaM(Mod, S, .Map, .Map, keys(KM), Is) ...</k>
          <tempModule> S:K </tempModule>
          <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <kindMap> KM:Map </kindMap>
+         <imports> Is:Set </imports>
 
     rule <k> putAlphaMap(M:Map) => .K ...</k>
          <currModule> Mod:K </currModule>

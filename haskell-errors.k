@@ -44,6 +44,9 @@ module HASKELL-ERRORS
     rule <k> error(ambiguousTypeVar) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type class whose method does not define the type var for the type class, so it is an ambiguous type variable.")) </output>
 
+    rule <k> error(ambiguousTypeName) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type whose names are defined previously.")) </output>
+
     rule <k> error(classVarCollipse) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type class/method whose name or method name copplipses with the type variables or the methods names.")) </output>
 
