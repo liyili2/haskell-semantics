@@ -286,6 +286,210 @@ module HASKELL-KINDINFER
    rule resolveKindEntry(N:Int, S:Set, 'typeVars(A:TyVar,,B:TyVars), T:List)
           => resolveKindEntry(N +Int 1, S SetItem(kindVar(N)), B, T ListItem(kindVar(N)))
 
+   syntax KItem ::= collectCheckDefs(K, Set) [function]
+                  | collectCheckDefsField(K, Set) [function]
+                  | collectCheckDefsFieldAux(K, Set) [function]
+                  | collectCheckDefsFieldAux1(K, K) [function]
+                  | collectCheckDefsAux(K, K) [function]
+
+   rule collectCheckDefsField('emptyConstrs(.KList), S:Set) => resultSet(S)
+   rule collectCheckDefsField('nonemptyConstrs(Cs:Constrs), S:Set)
+           => collectCheckDefsField(Cs, S)
+   rule collectCheckDefsField(C:Constr, S:Set)
+            => collectCheckDefsFieldAux1(.K, collectCheckDefsFieldAux(C, S))
+   rule collectCheckDefsField('multConstr(N:Con {Fs:FieldDeclList},, B:K), S:Set)
+          => collectCheckDefsFieldAux1(B, collectCheckDefsFieldAux(Fs, S))
+   rule collectCheckDefsField('newConField(N:Con,, V:Var,, T:Type), S:Set)
+                 => resultSet(S SetItem(funName(pillVar(V))))
+        requires notBool funName(pillVar(V)) in S
+      rule collectCheckDefsField('newConField(N:Con,, V:Var,, T:Type), S:Set)
+                 => error(repeatedNames)
+        requires funName(pillVar(V)) in S
+   rule collectCheckDefsField('newConstrCon(N:Con,, V:AType), S:Set) => resultSet(S)
+
+   rule collectCheckDefsFieldAux1(A:K, error(B:K)) => error(B)
+   rule collectCheckDefsFieldAux1(.K, resultSet(S:Set)) => resultSet(S)
+   rule collectCheckDefsFieldAux1(Cs:Constrs, resultSet(S:Set))
+             => collectCheckDefsField(Cs, S)
+
+   rule collectCheckDefsFieldAux(N:Con {Fs:FieldDeclList}, S:Set)
+         => collectCheckDefsFieldAux(Fs, S)
+   rule collectCheckDefsFieldAux(.FieldDeclList, S:Set) => resultSet(S)
+   rule collectCheckDefsFieldAux('fieldCon('varAssign(A:Vars,, T:Type),, B:K), S:Set)
+           => collectCheckDefsFieldAux(B, collectFunVars(A) S)
+        requires notBool isIntersect(collectFunVars(A), .K, S)
+   rule collectCheckDefsFieldAux('fieldCon('varAssign(A:Vars,, T:Type),, B:K), S:Set)
+           => error(repeatedNames)
+        requires isIntersect(collectFunVars(A), .K, S)
+   rule collectCheckDefsFieldAux('fieldCon(Vs:Vars :: ! A:AType,, B:K), S:Set)
+           => collectCheckDefsFieldAux(B, collectFunVars(Vs) S)
+        requires notBool isIntersect(collectFunVars(Vs), .K, S)
+   rule collectCheckDefsFieldAux('fieldCon(Vs:Vars :: ! A:AType,, B:K), S:Set)
+           => error(repeatedNames)
+        requires isIntersect(collectFunVars(Vs), .K, S)
+   rule collectCheckDefsFieldAux(A:K, S:Set) => resultSet(S) [owise]
+
+   rule collectCheckDefs('bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), S:Set)
+          => collectCheckDefs(Ts, S)
+   rule collectCheckDefs('bodyimpdecls(Is:ImpDecls), S:Set) => putDefSet(S)
+   rule collectCheckDefs('bodytopdecls(Ts:TopDecls), S:Set) => collectCheckDefs(Ts, S)
+   rule collectCheckDefs(.TopDecls, S:Set) => putDefSet(S)
+   rule collectCheckDefs('topdeclslist(type 'simpleTypeCon(N:TyCon,, Ts:TyVars) = B:Type,,
+           As:TopDecls), S:Set)
+          => collectCheckDefs(As, S SetItem(typeName(N)))
+        requires notBool typeName(N) in S
+   rule collectCheckDefs('topdeclslist('data(
+              'simpleTypeCon(N:K,, Vs:K),, Cons:K,, Od:K),,As:TopDecls), S:Set)
+          => collectCheckDefsAux(As,
+                   collectCheckDefsField(Cons, S SetItem(typeName(N))))
+        requires notBool typeName(N) in S
+   rule collectCheckDefs('topdeclslist('newtype(
+              'simpleTypeCon(N:K,, Vs:K),, Cons:NewConstr,, Od:K),,As:TopDecls), S:Set)
+          => collectCheckDefsAux(As,
+                   collectCheckDefsField(Cons, S SetItem(typeName(N))))
+        requires notBool typeName(N) in S
+   rule collectCheckDefs('topdeclslist(type 'simpleTypeCon(N:TyCon,, Ts:TyVars) = B:Type,,
+           As:TopDecls), S:Set) => error(repeatedNames)
+        requires typeName(N) in S
+   rule collectCheckDefs('topdeclslist('data(
+              'simpleTypeCon(N:K,, Vs:K),, Cons:K,, Od:K),,
+           As:TopDecls), S:Set) => error(repeatedNames)
+        requires typeName(N) in S
+   rule collectCheckDefs('topdeclslist('newtype(
+              'simpleTypeCon(N:K,, Vs:K),, Cons:K,, Od:K),,
+           As:TopDecls), S:Set) => error(repeatedNames)
+        requires typeName(N) in S
+   rule collectCheckDefs('topdeclslist('class(Op:OptContext,,
+                C:ConId,, Ts:TyVar,, Od:OptCDecls),,
+           As:TopDecls), S:Set) => error(repeatedNames)
+        requires className(C) in S
+   rule collectCheckDefs('topdeclslist('class(Op:OptContext,,
+                C:ConId,, Ts:TyVar,, Od:OptCDecls),, As:TopDecls), S:Set)
+             => collectCheckDefs(As, S SetItem(className(C)))
+        requires notBool className(C) in S
+   rule collectCheckDefs('topdeclslist('declPatRhs(P:Pat,, R:Rhs),, As:TopDecls), S:Set)
+             => collectCheckDefs(As, S getFreeVarsInPat(P))
+        requires notBool isIntersect(getFreeVarsInPat(P),.K, S)
+   rule collectCheckDefs('topdeclslist('declPatRhs(P:Pat,, R:Rhs),, As:TopDecls), S:Set)
+             => error(repeatedNames)
+        requires isIntersect(getFreeVarsInPat(P),.K, S)
+   rule collectCheckDefs('topdeclslist(
+                  'declFunLhsRhs(P:FunLhs,, R:Rhs),, As:TopDecls), S:Set)
+             => collectCheckDefs(As, S SetItem(getCoreVar(P)))
+        requires notBool getCoreVar(P) in S
+   rule collectCheckDefs('topdeclslist(
+                  'declFunLhsRhs(P:FunLhs,, R:Rhs),, As:TopDecls), S:Set)
+             => error(repeatedNames)
+        requires getCoreVar(P) in S
+   rule collectCheckDefs('topdeclslist(D:GenDecl,, As:TopDecls), S:Set)
+             => collectCheckDefs(As, S)
+
+   rule collectCheckDefsAux(As:K, error(B:K)) => error(B)
+   rule collectCheckDefsAux(As:K, resultSet(S:Set)) => collectCheckDefs(As, S)
+
+   //check if all decl in a module is defined in the same module
+   syntax KItem ::= checkAllDeclMakeSense(K, Set) [function]
+                  | checkAllDeclMakeSenseAux(K, K, Set) [function]
+
+   rule checkAllDeclMakeSense('bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), S:Set)
+          => checkAllDeclMakeSense(Ts, S)
+   rule checkAllDeclMakeSense('bodyimpdecls(Is:ImpDecls), S:Set) => .K
+   rule checkAllDeclMakeSense('bodytopdecls(Ts:TopDecls), S:Set)
+                 => checkAllDeclMakeSense(Ts, S)
+   rule checkAllDeclMakeSense(.TopDecls, S:Set) => .K
+   rule checkAllDeclMakeSense('topdeclslist(
+               'varAssign(Vs:Vars,, T:Type),, Ts:K), S:Set)
+         => checkAllDeclMakeSenseAux(Vs, Ts, S)
+      rule checkAllDeclMakeSense('topdeclslist(
+            'genAssignContext(Vs:Vars,, C:Context,, T:Type),, Ts:K), S:Set)
+         => checkAllDeclMakeSenseAux(Vs, Ts, S)
+   rule checkAllDeclMakeSense('topdeclslist(
+               A:K,, Ts:K), S:Set)
+         => checkAllDeclMakeSense(Ts, S) [owise]
+
+   rule checkAllDeclMakeSenseAux(V:Var, Ts:K, S:Set)
+          => checkAllDeclMakeSense(Ts, S)
+        requires funName(pillVar(V)) in S
+   rule checkAllDeclMakeSenseAux(V:Var, Ts:K, S:Set)
+          => error(declNoInstance)
+        requires notBool funName(pillVar(V)) in S
+   rule checkAllDeclMakeSenseAux('varCon(V:Var,, Vs:Vars), Ts:K, S:Set)
+          => checkAllDeclMakeSenseAux(Vs, Ts, S)
+        requires funName(pillVar(V)) in S
+   rule checkAllDeclMakeSenseAux('varCon(V:Var,, Vs:Vars), Ts:K, S:Set)
+          => error(declNoInstance)
+        requires notBool funName(pillVar(V)) in S
+
+   //generate functions for getting record content
+   syntax KItem ::= genRecordFunctions(Int, K, Map) [function]
+                  | genRecordFunctionsAux(K, K) [function]
+                  | genRecordFunctionsField(K, K, Map) [function]
+                  | genRecordFunctionsFieldAux(K, K) [function]
+                  | genRecordFunctionsSingle(K, K, Map) [function]
+                  | genRecordFunctionsSingleAux(K, K, K, Map) [function]
+                  | genRecordFunctionsSingleAux1(K, K, K,K, Map) [function]
+
+   rule genRecordFunctions(N:Int, 'bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map)
+          => genRecordFunctions(N:Int, Ts, M)
+   rule genRecordFunctions(N:Int, 'bodyimpdecls(Is:ImpDecls), M:Map)
+              => putGenFieldMap(N, M)
+   rule genRecordFunctions(N:Int, 'bodytopdecls(Ts:TopDecls), M:Map)
+                 => genRecordFunctions(N, Ts, M)
+   rule genRecordFunctions(N:Int, .TopDecls, M:Map) => putGenFieldMap(N, M)
+   rule genRecordFunctions(N:Int, 'topdeclslist(
+             'data(S:SimpleType,, Cs:OptConstrs,, Od:OptDeriving),, Ts:K), M:Map)
+         => genRecordFunctionsAux(genRecordFunctionsField(N, Cs, M), Ts)
+   rule genRecordFunctions(N:Int, 'topdeclslist(
+             'newType(S:SimpleType,, Cs:NewConstr,, Od:OptDeriving),, Ts:K), M:Map)
+         => genRecordFunctionsAux(genRecordFunctionsField(N, Cs, M), Ts)
+   rule genRecordFunctions(N:Int, 'topdeclslist(
+            C:K,, Ts:K), M:Map) => genRecordFunctions(N, Ts, M) [owise]
+
+   rule genRecordFunctionsAux(error(A:K), C:K) => error(A)
+   rule genRecordFunctionsAux(putGenFieldMap(N:Int, M:Map), C:K)
+            => genRecordFunctions(N, C, M)
+
+   rule genRecordFunctionsField(N:Int, 'emptyConstrs(.KList), M:Map)
+           => putGenFieldMap(N, M)
+   rule genRecordFunctionsField(N:Int, 'nonemptyConstrs(Cs:Constrs), M:Map)
+           => genRecordFunctionsField(N, Cs, M)
+   rule genRecordFunctionsField(N:Int, 'multConstr(C:Constr,, Cs:Constrs), M:Map)
+         => genRecordFunctionsFieldAux(genRecordFunctionsSingle(N, C, M), Cs)
+   rule genRecordFunctionsField(N:Int, C:Constr, M:Map)
+         => genRecordFunctionsSingle(N, C, M)
+   rule genRecordFunctionsField(N:Int, 'newConField(C:Con,, V:Var,, T:Type), M:Map)
+          =>  putGenFieldMap(N +Int 1, M
+           (funName(pillVar(V)) |-> resultList(ListItem(funAssign(ListItem(genVar(N)), 
+             findLabelResult(constrName(pillVar(C)), funName(pillVar(V)), genVar(N)))))))
+   rule genRecordFunctionsField(N:Int, C:K, M:Map) => putGenFieldMap(N, M) [owise]
+
+   rule genRecordFunctionsFieldAux(error(A:K), Cs:K) => error(A)
+   rule genRecordFunctionsFieldAux(putGenFieldMap(N:Int, M:Map), Cs:K)
+            => genRecordFunctionsField(N, Cs, M)
+
+   rule genRecordFunctionsSingle(N:Int, C:Con { Fs:FieldDeclList }, M:Map)
+          => genRecordFunctionsSingleAux(N, constrName(pillVar(C)), Fs, M)
+   rule genRecordFunctionsSingle(N:Int, C:K, M:Map)
+              => putGenFieldMap(N, M) [owise]
+
+   rule genRecordFunctionsSingleAux(N:Int, C:K, .FieldDeclList, M:Map)
+            => putGenFieldMap(N, M)
+   rule genRecordFunctionsSingleAux(N:Int, C:K,
+               'fieldCon('varAssign(Vs:Vars,, T:K),, Fs:K), M:Map)
+          => genRecordFunctionsSingleAux1(N, C, Vs, Fs, M)
+   rule genRecordFunctionsSingleAux(N:Int, C:K,
+               'fieldCon(Vs:Vars :: ! T:AType,, Fs:K), M:Map)
+          => genRecordFunctionsSingleAux1(N, C, Vs, Fs, M)
+
+   rule genRecordFunctionsSingleAux1(N:Int, C:K, V:Var, Fs:K, M:Map)
+          =>  genRecordFunctionsSingleAux(N +Int 1, C, Fs, M
+           (funName(pillVar(V)) |-> resultList(ListItem(funAssign(ListItem(genVar(N)), 
+             findLabelResult(C, funName(pillVar(V)), genVar(N)))))))
+   rule genRecordFunctionsSingleAux1(N:Int, C:K, 'varCon(V:Var, Vs:Vars), Fs:K, M:Map)
+          =>  genRecordFunctionsSingleAux1(N +Int 1, C, Vs, Fs, M
+           (funName(pillVar(V)) |-> resultList(ListItem(funAssign(ListItem(genVar(N)), 
+             findLabelResult(C, funName(pillVar(V)), genVar(N)))))))
+
    syntax KItem ::= collectTypes(Int, Set, K, K, Map) [function]
              //couonter, kind-var=set, curr-mod, decls, store-kind-map
                   | collectTypesAux(K, K, K, Map) [function]
@@ -299,10 +503,10 @@ module HASKELL-KINDINFER
    rule collectTypes(N:Int, S:Set, Mod:K,
             'topdeclslist(type A:SimpleType = B:Type,, As:TopDecls), M:Map)
               => collectTypesAux(Mod:K, As, parKindEntry(N, S, Mod, A), M)
-   rule collectTypes(N:Int, S:Set, Mod:K, 'topdeclslist(data Oc:OptContext A:SimpleType
+   rule collectTypes(N:Int, S:Set, Mod:K, 'topdeclslist(data A:SimpleType
                         B:OptConstrs D:OptDeriving,, As:TopDecls), M:Map)
               => collectTypesAux(Mod:K, As, parKindEntry(N, S, Mod, A), M)
-   rule collectTypes(N:Int, S:Set, Mod:K, 'topdeclslist(newtype Oc:OptContext A:SimpleType
+   rule collectTypes(N:Int, S:Set, Mod:K, 'topdeclslist(newtype A:SimpleType
                        = B:NewConstr D:OptDeriving,, As:TopDecls), M:Map)
               => collectTypesAux(Mod:K, As, parKindEntry(N,S, Mod, A), M)
    rule collectTypes(N:Int, S:Set, Mod:K, 'topdeclslist(A:TopDecl,, As:TopDecls),
@@ -385,6 +589,30 @@ module HASKELL-KINDINFER
           => findGoodNameNoQualified(A, .K, S)
         requires notBool A in Es 
 
+   //find the original mod-name not the as mod-name
+   syntax KItem ::= findGoodNameWithMod(K, K, K, Set) [function]
+   rule findGoodNameWithMod(A:K, B:K, .K, .Set) => 0
+   rule findGoodNameWithMod(A:K,B:K, .K, SetItem(C:K) S:Set)
+           => findGoodNameWithMod(A,B, C, S)
+   rule findGoodNameWithMod(A:K, B:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set) => Ma
+        requires A in Es andBool Ma ==K B andBool Mb ==K .K
+   rule findGoodNameWithMod(A:K, B:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set) => Ma
+        requires A in Es andBool Mb ==K B
+   rule findGoodNameWithMod(A:K, B:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => findGoodNameWithMod(A,B, .K, S)
+        requires notBool A in Es
+   rule findGoodNameWithMod(A:K, B:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => findGoodNameWithMod(A,B, .K, S)
+        requires Ma =/=K B andBool Mb ==K .K
+   rule findGoodNameWithMod(A:K, B:K, importElem(
+                  Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => findGoodNameWithMod(A,B, .K, S)
+        requires Mb =/=K B andBool Mb =/=K .K
+
    syntax KItem ::= countGoodName(K, K, Set) [function]
    rule countGoodName(A:K, .K, .Set) => 0
    rule countGoodName(A:K, .K, SetItem(B:K) S:Set)
@@ -451,7 +679,7 @@ module HASKELL-KINDINFER
    rule countGoodNameWithMod(A:K, B:K, importElem(
                   Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
             => countGoodNameWithMod(A,B, .K, S)
-        requires Mb =/=K B
+        requires Mb =/=K B andBool Mb =/=K .K
 
    //a function to get the as name in an import
    syntax KItem ::= getAsNameType(K, K, Set) [function]
@@ -468,6 +696,14 @@ module HASKELL-KINDINFER
 
    //a set of functions to transform type to ast-type
    // and check if all type-con and typevars are valid
+   syntax KItem ::= toAbsTypeStrict(K, K, Set, Set, Set) [function]
+                  | toAbsTypeStrictAux(K) [function]
+
+   rule toAbsTypeStrict(S:K, T:K, As:Set, Ts:Set, Is:Set)
+          => toAbsTypeStrictAux(toAbsType(S, T, As, Ts, Is))
+   rule toAbsTypeStrictAux(error(A:K)) => error(A)
+   rule toAbsTypeStrictAux(T:K) => aType(true, T) [owise]
+
    syntax KItem ::= toAbsType(K, K, Set, Set, Set) [function]
                     //current module name, type,
                    //set-of-type-vars, curr-types, imports
@@ -520,7 +756,8 @@ module HASKELL-KINDINFER
         requires notBool typeName(A) in Ts
                 andBool countGoodNameWithMod(typeName(A), N, .K, Is) ==K 0
    rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon), As:Set, Ts:Set, Is:Set)
-             => typeConst(fullName(N,typeName(A)), .List)
+             => typeConst(fullName(findGoodNameWithMod(
+                        typeName(A), N, .K, Is),typeName(A)), .List)
         requires notBool typeName(A) in Ts
                 andBool countGoodNameWithMod(typeName(A), N, .K, Is) ==K 1
    rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon), As:Set, Ts:Set, Is:Set)
@@ -547,9 +784,9 @@ module HASKELL-KINDINFER
              => typeConst(fullName(Prelude, typeName([])), ListItem(A))
    rule toAbsType(S:K, 'typeVarFun(A:K,, B:K), As:Set, Ts:Set, Is:Set)
              => typeConst(fullName(Prelude, typeName((->))), ListItem(A) ListItem(B))
-   rule toAbsType(S:K, 'instTupleCover(Ts:TyVarTuple), As:Set, Ts:Set, Is:Set)
-             => typeConst(fullName(Prelude, typeName(tupleType(countOnTypeTuple(Ts)))),
-                 toAbsTypeTuple(S, Ts))
+   rule toAbsType(S:K, 'instTupleCover(Tsa:TyVarTuple), As:Set, Ts:Set, Is:Set)
+             => typeConst(fullName(Prelude, typeName(tupleType(countOnTypeTuple(Tsa)))),
+                 toAbsTypeTuple(S, Tsa))
    rule toAbsType(S:K, 'instAppType(A:GTyCon,, B:TyVars), As:Set, Ts:Set, Is:Set)
              => toAbsTypeAuxAux(toAbsType(S, A, As:Set, Ts:Set, Is:Set),
                    typeVarsToList(B))
@@ -558,10 +795,10 @@ module HASKELL-KINDINFER
    rule toAbsType(S:K, 'tupleFun(Gs:GConCommas), As:Set, Ts:Set, Is:Set)
              => typeConst(fullName(Prelude,
                      typeName(tupleType(countOnCommas(Gs) +Int 1))), .List)
-   rule toAbsType(S:K, 'tupleCover(Ts:TypeTuple), As:Set, Ts:Set, Is:Set)
+   rule toAbsType(S:K, 'tupleCover(Tsa:TypeTuple), As:Set, Ts:Set, Is:Set)
              => toAbsTypeTupleAux(fullName(Prelude,
-                  typeName(tupleType(countOnTypeTuple(Ts)))),
-               toAbsTypeTuple(S, Ts,.K, .List, As:Set, Ts:Set, Is:Set))
+                  typeName(tupleType(countOnTypeTuple(Tsa)))),
+               toAbsTypeTuple(S, Tsa,.K, .List, As:Set, Ts:Set, Is:Set))
    rule toAbsType(S:K, 'group(T:K), As:Set, Ts:Set, Is:Set)
               => toAbsType(S, T, As:Set, Ts:Set, Is:Set)
 
@@ -639,55 +876,149 @@ module HASKELL-KINDINFER
                          | Con "{" FieldDeclList "}"
    */
 
-   syntax List ::= toAbsBangType(K, K) [function]
-                 //curr-mod-name, types
-   rule toAbsBangType(S:K, .OptBangATypes) => .List
+   syntax Bool ::= dealWithBang(OptBang) [function]
+   rule dealWithBang('emptyBang(.KList)) => false
+   rule dealWithBang(!) => true
+
+   syntax KItem ::= toAbsBangType(K, K, List, Set, Set, Set) [function]
+                 //curr-mod-name, types,result,
+                // set-of-type-vars, curr-types, imports
+                  | toAbsBangTypeAux(K, Bool, K, K, List, Set, Set, Set) [function]
+   rule toAbsBangType(S:K, .OptBangATypes, L:List, As:Set, Ts:Set, Is:Set)
+              => resultList(L)
    rule toAbsBangType(S:K, 'optBangATypes('optBangAType(Op:OptBang,, A:AType)
-        ,, As:OptBangATypes)) => ListItem(toAbsType(S, A)) toAbsBangType(S:K, As)
+        ,, ATs:OptBangATypes), L:List, As:Set, Ts:Set, Is:Set)
+            => toAbsBangTypeAux(S,dealWithBang(Op),
+                         toAbsType(S, A, As, Ts, Is), ATs,L, As, Ts, Is)
+   rule toAbsBangTypeAux(S:K, F:Bool, error(A:K), AT:K,
+              L:List, As:Set, Ts:Set, Is:Set) => error(A)
+   rule toAbsBangTypeAux(S:K, F:Bool, T:K, AT:K,
+              L:List, As:Set, Ts:Set, Is:Set)
+          => toAbsBangType(S, AT, L ListItem(aType(F, T)), As, Ts, Is) [owise]
 
    syntax List ::= expandRecordType(K, Vars, K) [function]
    rule expandRecordType(S:K, A:Var, T:K)
              => ListItem(typeConst(fullName(Prelude, recordTypeAssign),
-                    ListItem(tyVar(S, pillVar(A))) ListItem(T)))
+                    ListItem(tyVar(S, funName(pillVar(A)))) ListItem(T)))
    rule expandRecordType(S:K, 'varCon(A:Var,, As:Vars), T:K)
            => ListItem(typeConst(fullName(Prelude, recordTypeAssign),
-                      ListItem(tyVar(S, pillVar(A))) ListItem(T))) expandRecordType(S, As, T)
+                      ListItem(tyVar(S, funName(pillVar(A))))
+                               ListItem(T))) expandRecordType(S, As, T)
 
-   syntax List ::= toAbsBangTypeInRecord(K, K) [function]
-                 //curr-mod-name, types
-   rule toAbsBangTypeInRecord(S:K, .FieldDeclList) => .List
+   syntax KItem ::= toAbsBangTypeInRecord(K, K, List, Set, Set, Set) [function]
+                 //curr-mod-name, types, results
+                 //set-of-type-vars, curr-types, imports
+                 | toAbsBangTypeInRecordAux(K, K, Bool, K, K, List, Set, Set, Set) [function]
+   rule toAbsBangTypeInRecord(S:K, .FieldDeclList, L:List,
+         As:Set, Ts:Set, Is:Set) => resultList(L)
    rule toAbsBangTypeInRecord(S:K, 'fieldCon(Vs:Vars :: ! A:AType
-           ,, Fs:FieldDeclList)) => expandRecordType(S, Vs,
-                       toAbsType(S, A)) toAbsBangTypeInRecord(S, Fs)
+           ,, Fs:FieldDeclList),L:List, As:Set, Ts:Set, Is:Set)
+              => toAbsBangTypeInRecordAux(S, Vs, true,
+                         toAbsType(S, A, As, Ts, Is), Fs, L, As, Ts, Is)
    rule toAbsBangTypeInRecord(S:K, 'fieldCon('varAssign(Vs:Vars,, A:AType)
-           ,, Fs:FieldDeclList)) => expandRecordType(S, Vs,
-                       toAbsType(S, A)) toAbsBangTypeInRecord(S, Fs)
+           ,, Fs:FieldDeclList),L:List, As:Set, Ts:Set, Is:Set)
+            => toAbsBangTypeInRecordAux(S, Vs, false,
+                         toAbsType(S, A, As, Ts, Is), Fs, L, As, Ts, Is)
 
-   syntax Map ::= makeSinglePreBeta(K, K, K) [function]
-          //curr-mod-name, target-type, constrs/newconstr
+   rule toAbsBangTypeInRecordAux(S:K, Vs:K, F:Bool, error(A:K),
+            Fs:K, L:List, As:Set, Ts:Set, Is:Set) => error(A)
+   rule toAbsBangTypeInRecordAux(S:K, Vs:K, F:Bool, T:K,
+            Fs:K, L:List, As:Set, Ts:Set, Is:Set)
+         => toAbsBangTypeInRecord(S, Fs,
+                 L expandRecordType(S, Vs, aType(F, T)), As, Ts, Is) [owise]
+
+   syntax KItem ::= dealWithSubCons(K, List, List, Set, Set, Set) [function]
+                  | dealWithSubConsAux(K, K, List, List, Set, Set, Set) [function]
+   rule dealWithSubCons(S:K, .List, L:List, As:Set, Ts:Set, Is:Set) => resultList(L)
+   rule dealWithSubCons(S:K, ListItem(A:BType) L1:List, L:List, As:Set, Ts:Set, Is:Set)
+        => dealWithSubConsAux(S, toAbsType(S, A, As, Ts, Is), L1, L, As, Ts, Is)
+   rule dealWithSubCons(S:K, ListItem('strictSubCon(A:AType)) L1:List,
+               L:List, As:Set, Ts:Set, Is:Set)
+        => dealWithSubConsAux(S, toAbsTypeStrict(S, A, As, Ts, Is), L1, L, As, Ts, Is)
+
+   rule dealWithSubConsAux(S:K, error(A:K), L1:List, L:List,
+           As:Set, Ts:Set, Is:Set)  => error(A)
+   rule dealWithSubConsAux(S:K, T:K, L1:List, L:List,As:Set, Ts:Set, Is:Set)
+             => dealWithSubCons(S, L1, L ListItem(T), As, Ts, Is) [owise]
+
+
+   syntax KItem ::= makeMultiPreBeta(K, K, K, Set, Set, Set) [function]
+                  | makeMultiPreBeta1(K, K, K, Map, Set, Set, Set) [function]
+                  | makeMultiPreBeta2(K, K, K,K, Map, Set, Set, Set) [function]
+                  | makeSinglePreBeta(K, K, K, Set, Set, Set) [function]
+          //curr-mod-name, target-type, constrs/newconstr, result
+         // set-of-type-vars, curr-types, imports
    //deal with constrs
-   rule makeSinglePreBeta(S:K, T:K, 'emptyConstrs(.KList)) => .Map
-   rule makeSinglePreBeta(S:K, T:K, 'nonemptyConstrs(Cs:Constrs))
-                => makeSinglePreBeta(S, T, Cs)
-   rule makeSinglePreBeta(S:K, T:K, 'constrCon(N:Con,, Ts:OptBangATypes))
-           => (pillVar(N) |-> curryTypes(toAbsBangType(S, Ts), T))
-   rule makeSinglePreBeta(S:K, T:K, N:Con { F:FieldDeclList })
-           => (pillVar(N) |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
-              fullName(Prelude, recordType), toAbsBangTypeInRecord(S, F))) ListItem(T)))
-   rule makeSinglePreBeta(S:K, T:K, 'multConstr(
-           'constrCon(N:Con,, Ts:OptBangATypes),, Cs:Constrs))
-           => (pillVar(N) |-> curryTypes(toAbsBangType(S, Ts), T)) makeSinglePreBeta(S, T, Cs)
-   rule makeSinglePreBeta(S:K, T:K, 'multConstr(N:Con { F:FieldDeclList },, Cs:Constrs))
-           => (pillVar(N) |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
-              fullName(Prelude, recordType), toAbsBangTypeInRecord(S, F))) ListItem(T)))
-            makeSinglePreBeta(S, T, Cs)
-   //deal with newConstr
-   rule makeSinglePreBeta(S:K, T:K, 'newConstrCon(N:Con,, A:AType))
-           => (pillVar(N) |-> curryTypes(ListItem(toAbsType(S, A)), T))
-   rule makeSinglePreBeta(S:K, T:K, 'newConField(N:Con,, V:Var,, T':Type))
-           => (pillVar(N) |-> typeConst(fullName(Prelude, (->)), ListItem(typeConst(
-              fullName(Prelude, recordType), ListItem(typeConst(fullName(Prelude, recordTypeAssign),
-                 ListItem(tyVar(S, pillVar(V))) ListItem(toAbsType(S, T')))))) ListItem(T)))
+                  | makeSinglePreBetaField(K, K, K) [function]
+                  | makeSinglePreBetaCon(K, K, K) [function]
+                  | makeSinglePreBetaNewType(K, K, K) [function]
+                  | makeSinglePreBetaNewField(K,K, K, K) [function]
+
+   rule makeSinglePreBeta(S:K, T:K, 'emptyConstrs(.KList),
+          As:Set, Ts:Set, Is:Set) => resultMap(.Map)
+   rule makeSinglePreBeta(S:K, T:K, 'nonemptyConstrs(Cs:Constrs),
+            As:Set, Ts:Set, Is:Set) => makeSinglePreBeta(S, T, Cs, As, Ts, Is)
+   rule makeSinglePreBeta(S:K, T:K, 'constrCon(N:Con,, Tk:OptBangATypes),
+           As:Set, Ts:Set, Is:Set)
+           => makeSinglePreBetaCon(constrName(pillVar(N)),
+                     toAbsBangType(S, Tk, .List, As, Ts, Is), T)
+   rule makeSinglePreBeta(S:K, T:K, 'mixfixbinCon(
+           T1:SubConstr,, C:ConOp,, T2:SubConstr), As:Set, Ts:Set, Is:Set)
+           => makeSinglePreBetaCon(constrName(pillVar(N)), dealWithSubCons(
+                    S, ListItem(T1) ListItem(T2), .List, As, Ts, Is), T)
+   rule makeSinglePreBeta(S:K, T:K, N:Con { F:FieldDeclList }, As:Set, Ts:Set, Is:Set)
+           => makeSinglePreBetaField(constrName(pillVar(N)), 
+                  toAbsBangTypeInRecord(S, F, .List, As, Ts, Is), T)
+   rule makeSinglePreBeta(S:K, T:K, 'newConstrCon(N:Con,, A:AType),
+            As:Set, Ts:Set, Is:Set)
+         => makeSinglePreBetaNewType(constrName(pillVar(N)),
+                toAbsType(S, A, As, Ts, Is), T)
+   rule makeSinglePreBeta(S:K, T:K, 'newConField(N:Con,, V:Var,, T':Type),
+             As:Set, Ts:Set, Is:Set)
+           => makeSinglePreBetaNewField(constrName(pillVar(N)),
+               tyVar(S, funName(pillVar(V))), toAbsType(S, T', As, Ts, Is), T)
+
+   rule makeSinglePreBetaField(A:K, error(B:K), T:K) => error(B)
+   rule makeSinglePreBetaField(A:K, resultList(L:List), T:K)
+            => resultMap(A |-> typeConst(fullName(Prelude, typeName((->))),
+             ListItem(typeConst(
+              fullName(Prelude, typeName(recordType)), L)) ListItem(T)))
+
+   rule makeSinglePreBetaCon(A:K, error(B:K), T:K) => error(B)
+   rule makeSinglePreBetaCon(A:K, resultList(L:List), T2:K)
+               => resultMap(A |-> curryTypes(L, T2))
+
+   rule makeSinglePreBetaNewField(A:K, V:K, error(B:K), T:K) => error(B)
+   rule makeSinglePreBetaNewField(A:K, V:K, T1:K, T:K)
+            => resultMap(A |-> typeConst(fullName(Prelude, typeName((->))),
+                     ListItem(typeConst(fullName(Prelude, typeName(recordType)),
+                     ListItem(typeConst(fullName(Prelude, typeName(recordTypeAssign)),
+                     ListItem(V) ListItem(T1))))) ListItem(T)))
+
+   rule makeSinglePreBetaNewType(A:K, error(B:K), T:K) => error(B)
+   rule makeSinglePreBetaNewType(A:K, T:K, T1:K)
+                => resultMap(A |-> curryTypes(ListItem(T), T1)) [owise]
+
+   rule makeMultiPreBeta(S:K, error(A:K), Cons:K, As:Set, Ts:Set, Is:Set)
+           => error(A)
+   rule makeMultiPreBeta(S:K, T:K, Cons:K, As:Set, Ts:Set, Is:Set)
+          => makeMultiPreBeta1(S, T, Cons, .Map, As, Ts, Is)
+        requires notBool isError(T)
+   rule makeMultiPreBeta1(S:K, T:K, 'multConstr(
+               C:Constr,, Cs:Constrs), M:Map, As:Set, Ts:Set, Is:Set)
+          => makeMultiPreBeta2(S, T, makeSinglePreBeta(S, T, C, As, Ts, Is),
+                  Cs, M, As, Ts, Is)
+   rule makeMultiPreBeta1(S:K, T:K, C:K, M:Map, As:Set, Ts:Set, Is:Set)
+          => makeMultiPreBeta2(S, T, makeSinglePreBeta(S, T, C, As, Ts, Is),
+                  .K, M, As, Ts, Is)  [owise]
+
+   rule makeMultiPreBeta2(S:K, T:K, error(A:K), Cs:K, M:Map, As:Set, Ts:Set, Is:Set)
+             => error(A)
+   rule makeMultiPreBeta2(S:K, T:K, resultMap(M:Map), Cs:Constrs, M':Map,
+                  As:Set, Ts:Set, Is:Set)
+             => makeMultiPreBeta1(S, T, Cs, M M', As, Ts, Is)
+   rule makeMultiPreBeta2(S:K, T:K, resultMap(M:Map), .K, M':Map,
+                  As:Set, Ts:Set, Is:Set) => resultMap(M M')
 
    //functions to convert class name to abs form and convert context to a set of classes
 
@@ -707,122 +1038,139 @@ module HASKELL-KINDINFER
    rule contextToSetAux(S:K, 'classesCon(A:Class,, B:Classes))
            => contextToSet(S, A) contextToSetAux(S, B)
 
-   syntax Set ::= derivingToSet(K, K) [function]//curr-mod, opt-deriving
-                | derivingToSetAux(K, DClassList) [function]//curr-mod, DClassList
-   rule derivingToSet(S:K, 'emptyDeriving(.KList)) => .Set
-   rule derivingToSet(S:K, deriving D:DClass) => SetItem(toAbsTypeCon(S, D))
-   rule derivingToSet(S:K, deriving (Ds:DClassList)) => derivingToSetAux(S, Ds)
-   rule derivingToSetAux(S:K, .DClassList) => .Set
-   rule derivingToSetAux(S:K, 'dclassCon(A:DClass,, B:DClassList))
-             => derivingToSet(S,A) derivingToSetAux(S, B)
+   syntax KItem ::= derivingToSet(K, K, Set, Set) [function]
+         //curr-mod, opt-deriving, set of types, imports
+                | derivingToSetAux(K, DClassList, Set, Set, Set) [function]
+            //curr-mod, DClassList
+   rule derivingToSet(N:K, 'emptyDeriving(.KList), Ts:Set, Is:Set) => resultSet(.Set)
+   rule derivingToSet(N:K, deriving D:DClass, Ts:Set, Is:Set)
+           => derivingToSetAux(N, 'dclassCon(D, .DClassList), .Set, Ts, Is)
+   rule derivingToSet(N:K, deriving (Ds:DClassList), Ts:Set, Is:Set)
+           => derivingToSetAux(N, Ds, .Set, Ts, Is)
+   rule derivingToSetAux(N:K, .DClassList, S:Set, Ts:Set, Is:Set) => resultSet(S)
+   rule derivingToSetAux(N:K, 'dclassCon(A:TyCon,,
+                        B:DClassList), S:Set, Ts:Set, Is:Set)
+           => derivingToSetAux(N, B, S SetItem(fullName(S, className(A))), Ts, Is)
+        requires className(A) in Ts
+                 andBool countGoodNameNoQualified(className(A), .K, Is) ==K 0
+   rule derivingToSetAux(N:K, 'dclassCon(A:TyCon,,
+                        B:DClassList), S:Set, Ts:Set, Is:Set)
+           => error(ambiguousClassName)
+        requires className(A) in Ts
+                 andBool countGoodNameNoQualified(className(A), .K, Is) >Int 0
+   rule derivingToSetAux(N:K, 'dclassCon(A:TyCon,,
+                        B:DClassList), S:Set, Ts:Set, Is:Set)
+           => derivingToSetAux(N, B, S SetItem(fullName(
+                 findGoodNameNoQualified(className(A), .K, Is), className(A))), Ts, Is)
+        requires notBool className(A) in Ts
+                 andBool countGoodNameNoQualified(className(A), .K, Is) ==K 1
+   rule derivingToSetAux(N:K, 'dclassCon(A:TyCon,,
+                        B:DClassList), S:Set, Ts:Set, Is:Set)
+           => error(classNotInScope)
+        requires notBool className(A) in Ts
+                 andBool countGoodNameNoQualified(className(A), .K, Is) ==K 0
+   rule derivingToSetAux(N:K, 'dclassCon(A:TyCon,,
+                        B:DClassList), S:Set, Ts:Set, Is:Set)
+           => error(ambiguousClassName)
+        requires notBool className(A) in Ts
+                 andBool countGoodNameNoQualified(className(A), .K, Is) >Int 1
+   rule derivingToSetAux(N:K, 'dclassCon('conTyCon(N1:ModId,, A:TyCon),,
+                        B:DClassList), S:Set, Ts:Set, Is:Set)
+           => derivingToSetAux(N, B, S SetItem(fullName(N, className(A))), Ts, Is)
+        requires className(A) in Ts andBool N ==K N1
+                 andBool countGoodNameWithMod(className(A),N, .K, Is) ==K 0
+   rule derivingToSetAux(N:K, 'dclassCon('conTyCon(N1:ModId,, A:TyCon),,
+                        B:DClassList), S:Set, Ts:Set, Is:Set)
+           => error(ambiguousClassName)
+        requires className(A) in Ts andBool N ==K N1
+                 andBool countGoodNameWithMod(className(A),N, .K, Is) >Int 0
+   rule derivingToSetAux(N:K, 'dclassCon('conTyCon(N1:ModId,, A:TyCon),,
+                        B:DClassList), S:Set, Ts:Set, Is:Set)
+           => derivingToSetAux(N, B, S SetItem(fullName(findGoodNameWithMod(
+               className(A),N, .K, Is), className(A))), Ts, Is)
+        requires notBool className(A) in Ts
+                 andBool countGoodNameWithMod(className(A),N1, .K, Is) ==K 1
+   rule derivingToSetAux(N:K, 'dclassCon('conTyCon(N1:ModId,, A:TyCon),,
+                        B:DClassList), S:Set, Ts:Set, Is:Set)
+           => error(classNotInScope)
+        requires notBool className(A) in Ts
+                 andBool countGoodNameWithMod(className(A),N1, .K, Is) ==K 0
+   rule derivingToSetAux(N:K, 'dclassCon('conTyCon(N1:ModId,, A:TyCon),,
+                        B:DClassList), S:Set, Ts:Set, Is:Set)
+           => error(ambiguousClassName)
+        requires notBool className(A) in Ts
+                 andBool countGoodNameWithMod(className(A),N1, .K, Is) >Int 1
 
-   syntax KItem ::= makePreBetaFun(K, K, Map) [function]
-                | makePreBetaFunAux(K, K, K, Map) [function]
+   syntax KItem ::= makePreBetaFun(K, K, Map, Set, Set) [function]
+           //curr-mod, term, store, set-of-args, set-of-types, imports
+                | makePreBetaFunAux(K, K, K, Map, Set, Set) [function]
+                | makePreBetaFunAux1(K, K, K, List, K, K, Map, Set, Set) [function]
+   rule makePreBetaFun(S:K, 'bodyimpandtop(Is:ImpDecls,, Ts:TopDecls)
+          , M:Map, Ts:Set, Is:Set)
+          => makePreBetaFun(S, Ts, M, Ts, Is)
+   rule makePreBetaFun(S:K, 'bodyimpdecls(Is:ImpDecls),
+                    M:Map, Ts:Set, Is:Set) => .K
+   rule makePreBetaFun(S:K, 'bodytopdecls(Ts:TopDecls)
+                  , M:Map, Ts:Set, Is:Set)
+                    => makePreBetaFun(S, Ts, M, Ts, Is)
+   rule makePreBetaFun(S:K, .TopDecls, M:Map,
+              Ts:Set, Is:Set) => putPreBetaMap(M)
+   rule makePreBetaFun(S:K, 'topdeclslist(A:TopDecl,, As:TopDecls)
+               , M:Map, Ts:Set, Is:Set)
+              => makePreBetaFunAux(S, A, As, M, Ts:Set, Is:Set)
 
-   rule makePreBetaFun(S:K, 'bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map)
-          => makePreBetaFun(S, Ts, M)
-   rule makePreBetaFun(S:K, 'bodyimpdecls(Is:ImpDecls), M:Map) => .K
-   rule makePreBetaFun(S:K, 'bodytopdecls(Ts:TopDecls), M:Map) => makePreBetaFun(S, Ts, M)
-   rule makePreBetaFun(S:K, .TopDecls, M:Map) => putPreBetaMap(M)
-   rule makePreBetaFun(S:K, 'topdeclslist(A:TopDecl,, As:TopDecls), M:Map)
-              => makePreBetaFunAux(S, A, As, M)
+   rule makePreBetaFunAux(S:K, 'data(
+              'simpleTypeCon(N:K,, Vs:K),, Cons:K,, Od:K),
+                 As:K, M:Map, Ts:Set, Is:Set)
+          =>  makePreBetaFunAux1(S, As, buildVar(N),toTypeList(Ts),
+                  makeMultiPreBeta(S, buildVar(N), Cons, toTypeSet(Vs), Ts, Is),
+               derivingToSet(S, Od, Ts, Is), M, Ts, Is)
+        requires size(toTypeList(Vs)) ==K size(toTypeSet(Vs))
+   rule makePreBetaFunAux(S:K, 'data(
+              'simpleTypeCon(N:K,, Vs:K),, Cons:K,, Od:K)
+                  , As:K, M:Map, Ts:Set, Is:Set)
+          => error(typeVarNotUnique)
+        requires size(toTypeList(Vs)) =/=K size(toTypeSet(Vs))
+   rule makePreBetaFunAux(S:K, 'newtype('simpleTypeCon(N:K,, Vs:K),,
+               Cons:NewConstr,, Od:K), As:K, M:Map, Ts:Set, Is:Set)
+          =>  makePreBetaFunAux1(S, As, buildVar(N),toTypeList(Ts),
+                  makeMultiPreBeta(S, buildVar(N), Cons, toTypeSet(Vs), Ts, Is),
+               derivingToSet(S, Od, Ts, Is), M, Ts, Is)
+        requires size(toTypeList(Vs)) ==K size(toTypeSet(Vs))
+   rule makePreBetaFunAux(S:K, 'newtype('simpleTypeCon(N:K,, Vs:K),,
+               Cons:NewConstr,, Od:K), As:K, M:Map, Ts:Set, Is:Set)
+          => error(typeVarNotUnique)
+        requires size(toTypeList(Vs)) =/=K size(toTypeSet(Vs))
+   rule makePreBetaFunAux(S:K, A:TopDecl, As:K, TM:Map, Ts:Set, Is:Set)
+                  => makePreBetaFun(S, As, TM, Ts:Set, Is:Set) [owise]
 
-   rule makePreBetaFunAux(S:K, 'data(Oc:K,,
-              'simpleTypeCon(N:K,, Ts:K),, Cons:K,, Od:K), As:K, M:Map)
-          =>  makePreBetaFun(S, As, (buildVar(N)
-              |-> preBetaEntry(contextToSet(S, Oc), toTypeList(Ts),
-                  makeSinglePreBeta(S, toAbsType(S, N), Cons), derivingToSet(S, Od))) M)
-   rule makePreBetaFunAux(S:K, 'newtype(Oc:K,,
-              'simpleTypeCon(N:K,, Ts:K),, Cons:NewConstr,, Od:K), As:K, M:Map)
-          =>  makePreBetaFun(S, As, (buildVar(N)
-              |-> preBetaEntry(contextToSet(S, Oc), toTypeList(Ts),
-                  makeSinglePreBeta(S, toAbsType(S, N), Cons), derivingToSet(S, Od))) M)
-   rule makePreBetaFunAux(S:K, A:TopDecl, As:K, TM:Map)
-                  => makePreBetaFun(S, As, TM) [owise]
-
-   //a function to check if all used type cons are in the set, return .K or errors
-   //a typeConst contains a con that is a fullName (a real Con) or a typeVar
-   // that is scoped by the title of the data definition
-   syntax Bool ::= isTypeValid(K, Set) [function]
-                 | isTypeValidCore(K, Set) [function]
-                 | isTypeValidInList(List, Set) [function]
-   rule isTypeValid(typeConst(A:K, B:List), S:Set)
-         => isTypeValidCore(A, S) andBool isTypeValidInList(B, S)
-   rule isTypeValid(A:K, S:Set) => true [owise]
-
-   rule isTypeValidCore(fullName(A:K, tupleType(X:Int)), S:Set)
-             => (fullName(Prelude, tupleTypeAll)) in S
-   rule isTypeValidCore(A:K, S:Set) => A in S [owise]
-
-   rule isTypeValidInList(.List, S:Set) => true
-   rule isTypeValidInList(ListItem(A:K) L:List, S:Set)
-             => isTypeValid(A, S) andBool isTypeValidInList(L, S)
-
-   syntax KItem ::= isAllValidTypes(Map, K, K, Set) [function]
-                  | isValidTypes(Map, Map, K, K, Set) [function]
-   rule isAllValidTypes(.Map, .K, .K, S:Set) => .K
-   rule isAllValidTypes((A:K |-> B:K) M:Map, .K, .K, S:Set)
-          => isAllValidTypes(M, A, B, S)
-   rule isAllValidTypes(M, A:K, preBetaEntry(Os:Set,
-             L:List, Body:Map, Oc:Set), S:Set)
-          => isValidTypes(M, Body, .K, .K, listToSet(L) S)
- 
-   rule isAllValidTypes(M, A:K, alphaTuple(L:List, Body:K), S:Set)
-          => isAllValidTypes(M, .K, .K, listToSet(L) S)
-        requires isTypeValid(Body, listToSet(L) S)
-   rule isAllValidTypes(M, A:K, alphaTuple(L:List, Body:K), S:Set)
-          => error(typeNotInScope)
-        requires notBool isTypeValid(Body, listToSet(L) S)
-
-   rule isValidTypes(M:Map, .Map, .K, .K, S:Set) => isAllValidTypes(M, .K, .K, S)
-   rule isValidTypes(M:Map, (A:K |-> B:K) BM:Map, .K, .K, S:Set)
-             => isValidTypes(M, BM, A, B, S)
-   rule isValidTypes(M:Map, BM:Map, A:KItem, T:Type, S:Set)
-                   => isValidTypes(M, BM, .K, .K, S)
-        requires isTypeValid(T, S)
-   rule isValidTypes(M:Map, BM:Map, A:KItem, T:Type, S:Set)
-                   => error(typeNotInScope)
-        requires notBool isTypeValid(T, S)
-
-   //a function to check if all typeVar in a data definition is within scope
-   syntax Bool ::= isTypeVarValid(K, Set) [function]
-                 | isTypeVarValidInList(List, Set) [function]
-   rule isTypeVarValid(typeConst(A:K, B:List), S:Set)
-         => isTypeValidInList(B, S)
-   rule isTypeVarValid(T:TyVar, S:Set) => T in S
-   rule isTypeVarValid(A:K, S:Set) => true [owise]
-
-   rule isTypeVarValidInList(.List, S:Set) => true
-   rule isTypeVarValidInList(ListItem(A:K) L:List, S:Set)
-             => isTypeVarValid(A, S) andBool isTypeVarValidInList(L, S)
-
-   syntax KItem ::= isAllValidTypeVars(Map, K, K) [function]
-                  | isValidTypeVars(Map, Map, K, K, Set) [function]
-
-   rule isAllValidTypeVars(.Map, .K, .K) => .K
-   rule isAllValidTypeVars((A:K |-> B:K) M:Map, .K, .K)
-            => isAllValidTypeVars(M, A, B)
-   rule isAllValidTypeVars(M:Map, A:K, preBetaEntry(Os:Set,
-             L:List, Body:Map, Oc:Set))
-            => isValidTypeVars(M, Body, .K, .K, listToSet(L))
-   rule isAllValidTypeVars(M:Map, A:K, alphaTuple(L:List, Body:K))
-            => isAllValidTypeVars(M, .K, .K)
-        requires isTypeVarValid(Body, listToSet(L))
-   rule isAllValidTypeVars(M:Map, A:K, alphaTuple(L:List, Body:K))
-            => error(typeVarNotInScope)
-        requires notBool isTypeVarValid(Body, listToSet(L))
-
-   rule isValidTypeVars(M:Map, .Map, .K, .K, S:Set) => isAllValidTypeVars(M, .K, .K)
-   rule isValidTypeVars(M:Map, (A:K |-> B:K) BM:Map, .K, .K, S:Set)
-           => isValidTypeVars(M:Map, BM, A, B, S)
-   rule isValidTypeVars(M:Map, BM:Map, A:KItem, B:Type, S:Set)
-           => isValidTypeVars(M, BM, .K, .K, S)
-        requires isTypeVarValid(B, S)
-   rule isValidTypeVars(M:Map, BM:Map, A:KItem, B:Type, S:Set)
-                  => error(typeVarNotInScope)
-        requires notBool isTypeVarValid(B, S)
+   rule makePreBetaFunAux1(S:K, As:K, A:K, Vs:List, error(C:K),
+             D:K, M:Map, Ts:Set, Is:Set) => error(C)
+   rule makePreBetaFunAux1(S:K, As:K, A:K, Vs:List, C:K,
+             error(D:K), M:Map, Ts:Set, Is:Set) => error(D)
+   rule makePreBetaFunAux1(S:K, As:K, A:K, Vs:List, resultMap(C:Map),
+             resultSet(D:Set), M:Map, Ts:Set, Is:Set)
+           => makePreBetaFun(S, As, (A |-> preBetaEntry(Vs, C, D)) M, Ts, Is)
 
    //kind inference function
+   syntax Map ::= addKindToMap(K, K, Set, Map, Map) [function]
+               //mod, execution, term-set, kind-map, store
+   rule addKindToMap(Mod:K, .K, .Set, SM:Map, KM:Map) => KM
+   rule addKindToMap(Mod:K, .K, SetItem(A:K) S:Set, SM:Map, KM:Map)
+           => addKindToMap(Mod:K, A, S, SM, KM)
+   rule addKindToMap(Mod:K, className(A:K), S:Set,
+                     (className(A:K) |-> V:K) SM:Map, KM:Map)
+           => addKindToMap(Mod:K, .K, S, SM,
+                       (fullName(Mod, className(A:K)) |-> V:K) KM)
+        requires notBool fullName(Mod, className(A:K)) in keys(KM)
+   rule addKindToMap(Mod:K, typeName(A:K), S:Set,
+                     (typeName(A:K) |-> V:K) SM:Map, KM:Map)
+           => addKindToMap(Mod:K, .K, S, SM,
+                       (fullName(Mod, typeName(A:K)) |-> V:K) KM)
+        requires notBool fullName(Mod, typeName(A:K)) in keys(KM)
+   rule addKindToMap(Mod:K, A:K, S:Set, SM:Map, KM:Map)
+           => addKindToMap(Mod:K, .K, S, SM, KM) [owise]
+
    syntax Bool ::= isTheKind(K, K, K, Map) [function]
    rule isTheKind(A:K, B:K, .K, M:Map) => false
         requires notBool A in keys(M)
@@ -854,131 +1202,181 @@ module HASKELL-KINDINFER
    rule toKindTupleSet((A:K |-> B:K) M:Map)
            => SetItem(kindTuple(A,B)) toKindTupleSet(M)
 
-   syntax KItem ::= kindInfer(Int, Set, K, K, Map, Map, Set) [function]
+   //starting kind inference algorithm
+   syntax KItem ::= genArrowKinds(Int, Set, Int, List) [function]
+   rule genArrowKinds(N:Int, S:Set, 0, L:List)
+           => resultTransSetTerm(N, S, listToKind(L))
+   rule genArrowKinds(N:Int, S:Set, I:Int, L:List)
+           => genArrowKinds(N +Int 1, S SetItem(kindVar(N)),
+                 I -Int 1, L ListItem(kindVar(N)))
+        requires I >Int 0
+
+   syntax KItem ::= genInitKindMap(Int, Set, K, K, Map, Map) [function]
+                  | genInitKindMapAux(K, K, Map, Map) [function]
+
+   rule genInitKindMap(N:Int, S:Set, .K, .K, .Map, M:Map)
+              => resultTyVarKindMap(N, S, M)
+   rule genInitKindMap(N:Int, S:Set, .K, .K, (A:K |-> B:K) M:Map, TM:Map)
+           => genInitKindMap(N, S, A, B, M, TM)
+   rule genInitKindMap(N:Int, S:Set, A:K, preBetaEntry(
+                      L:List, SM:Map, SS:Set), M:Map, TM:Map)
+          => genInitKindMapAux(A, genArrowKinds(N, S, size(L), .List), M, TM)
+   rule genInitKindMap(N:Int, S:Set, A:K, alphaTuple(L:List, T:K), M:Map, TM:Map)
+          => genInitKindMapAux(A, genArrowKinds(N, S, size(L), .List), M, TM)
+
+   rule genInitKindMapAux(A:K, resultTransSetTerm(N:Int, S:Set, T:K), M:Map, TM:Map)
+          => genInitKindMap(N, S, .K, .K, M, (A |-> T) TM)
+
+   syntax KItem ::= kindInfer(Int, Set,K, K, K, Map, Map, Set, Set, Map) [function]
          //counter, kind-var-set, name, entry, beta, kind env, gen-kind-tuples
-                  | kindInferAux(Int, Set, K, K, Map, Map, Map, Set) [function]
+          //set of imports, import kind map-map(mod to kind-map)
+                  | kindInferAux(Int, Set,K, K, K, Map, Map, Map, Set, Set, Map) [function]
                      //counter, kind-var-set, result-type-var-kind, curr-ty-name,
-                    //body map, beta, kind-map, gen-kind,tuples
-                  | kindInferAuxAlpha(Int, Set, K, K, K, Map, Map, Set) [function]
+                    //body map, beta, kind-map, gen-kind,tuples, imports, import kind map-map
+                  | kindInferAuxAlpha(Int, Set,K, K, K, K, Map, Map, Set, Set, Map) [function]
                      //counter, kind-var-set, result-type-var-kind, curr-ty-name,
-                    //body, beta, kind-map, gen-kind,tuples
-                  | kindInferSec(K, K, Map, Map, Set) [function]
-                   //name, execution, beta, kind-env
-                  | kindInferThird(Int, Set, K, K, Map, Map, Set) [function]
-                  | kindInferLast(Int, Set, K, K, Map, Map, Set) [function]
-                  | kindNext(Int, Set, K, Map, Map, Set) [function]
-                  | kindNextList(Int, Set, K, List, Map, Map, Set) [function]
+                    //body, beta, kind-map, gen-kind,tuples, imports, import kind map-map
+                  | kindInferSec(K, K, K, Map, Map, Set, Set, Map) [function]
+                   //name, execution, beta, kind-env,
+                   // gen-kind-tuples, imports, import kind map-map
+                  | kindInferThird(Int, Set,K, K, K, Map, Map, Set, Set, Map) [function]
+                  | kindInferLast(Int, Set,K, K, K, Map, Map, Set, Set, Map) [function]
+                  | kindNext(Int, Set,K, K, Map, Map, Set, Set, Map) [function]
+                  | kindNextList(Int, Set,K, K, List, Map, Map, Set, Set, Map) [function]
                   | kindInferFinal(Int, Set, K, Map) [function]
 
    rule kindInferFinal(N:Int, S:Set, resultMap(M:Map), KM:Map)
         => resultTyVarKindMap(N, S, replaceAllKindInMap(M, KM))
 
-   rule kindInfer(N:Int, S:Set, .K, .K, .Map, KM:Map, Tu:Set)
+   rule kindInfer(N:Int, S:Set,Mod:K, .K, .K, .Map, KM:Map, Tu:Set, Is:Set, PM:Map)
              => kindInferFinal(N, S, unifInKind(.K, .Set, Tu, .Map), KM)
-   rule kindInfer(N:Int, S:Set, .K, .K, (A:K |-> B:K) BM:Map, KM:Map, Tu:Set)
-          => kindInfer(N, S, A, B, BM, KM, Tu)
-   rule kindInfer(N:Int, S:Set, A:K, preBetaEntry(Oc:Set,
-                Vl:List, Body:Map, Od:Set), BM:Map, (A |-> T:K) KM:Map, Tu:Set)
-          => kindInferAux(N, S, genTyVarKind(T,
-                          .Map, Vl), A, Body, BM, (A |-> T:K) KM, Tu)
-   rule kindInfer(N:Int, S:Set, A:K, alphaTuple(Vl:List, Body:K),
-                 BM:Map, (A |-> T:K) KM:Map, Tu:Set)
-          => kindInferAuxAlpha(N, S, genTyVarKind(T,
-                          .Map, Vl), A, Body, BM, (A |-> T:K) KM, Tu)
+   rule kindInfer(N:Int, S:Set,Mod:K, .K, .K,
+              (A:K |-> B:K) BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
+          => kindInfer(N, S,Mod, A, B, BM, KM, Tu, Is, PM)
+   rule kindInfer(N:Int, S:Set,Mod:K, A:K, preBetaEntry(
+                Vl:List, Body:Map, Od:Set), BM:Map,
+                   (A |-> T:K) KM:Map, Tu:Set, Is:Set, PM:Map)
+          => kindInferAux(N, S,Mod:K, genTyVarKind(T,
+                          .Map, Vl), A, Body, BM, (A |-> T:K) KM, Tu, Is, PM)
+   rule kindInfer(N:Int, S:Set,Mod:K, A:K, alphaTuple(Vl:List, Body:K),
+                 BM:Map, (A |-> T:K) KM:Map, Tu:Set, Is:Set, PM:Map)
+          => kindInferAuxAlpha(N, S, Mod:K, genTyVarKind(T,
+                          .Map, Vl), A, Body, BM, (A |-> T:K) KM, Tu, Is, PM)
 
-   rule kindInferAuxAlpha(N:Int, S:Set, resultMap(M:Map), A:K,
-                 Body:K, BM:Map, KM:Map, Tu:Set)
-          => kindInferSec(A, kindNext(N, S, Body, .Map, KM M, .Set), BM, KM, Tu)
+   rule kindInferAuxAlpha(N:Int, S:Set,Mod:K, resultMap(M:Map), A:K,
+                 Body:K, BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
+          => kindInferSec(Mod,A, kindNext(N, S,Mod:K, Body, .Map,
+                           KM M, .Set, Is, PM), BM, KM, Tu, Is, PM)
 
-   rule kindInferAux(N:Int, S:Set, resultMap(M:Map),
-                      A:K, Body:Map, BM:Map, KM:Map, Tu:Set)
-             => kindInferSec(A, kindNext(N, S, .K, Body, KM M, .Set), BM, KM, Tu)
+   rule kindInferAux(N:Int, S:Set, Mod:K,resultMap(M:Map),
+                      A:K, Body:Map, BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
+             => kindInferSec(Mod, A, kindNext(N, S,Mod:K, .K, Body,
+                             KM M, .Set, Is, PM), BM, KM, Tu, Is, PM)
 
-   rule kindInferSec(A:K, returnKind(N:Int, S:Set, Tus:Set), BM:Map, KM:Map, Tu:Set)
-             => kindInferThird(N, S, A, checkAndRemoveNoVarTerms(
-                                     .K, Tus, .Set), BM:Map, KM:Map, Tu)
-   rule kindInferSec(A:K, error(X:K), BM:Map, KM:Map, Tu:Set) => error(X)
-   rule kindInferThird(N:K, S:Set, A:K, error(X:K), BM:Map, KM:Map, Tu:Set) => error(X)
-   rule kindInferThird(N:K, S1:Set, A:K, resultSet(S:Set), BM:Map, KM:Map, Tu:Set)
-            => kindInferLast(N, S1, A, unifInKind(.K, .Set, S, .Map), BM, KM, Tu)
+   rule kindInferSec(Mod:K, A:K, returnKind(N:Int, S:Set, Tus:Set),
+                       BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
+             => kindInferThird(N, S,Mod:K, A, checkAndRemoveNoVarTerms(
+                                     .K, Tus, .Set), BM:Map, KM:Map, Tu, Is, PM)
+   rule kindInferSec(Mod:K,A:K, error(X:K), BM:Map, KM:Map,
+                          Tu:Set, Is:Set, PM:Map) => error(X)
+   rule kindInferThird(N:K, S:Set,Mod:K, A:K, error(X:K),
+                    BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map) => error(X)
+   rule kindInferThird(N:K, S1:Set,Mod:K, A:K,
+                    resultSet(S:Set), BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
+            => kindInferLast(N, S1, Mod:K, A,
+                    unifInKind(.K, .Set, S, .Map), BM, KM, Tu, Is:Set, PM:Map)
 
-   rule kindInferLast(N:Int, S:Set, A:K, error(X:K), BM:Map, KM:Map, Tu:Set) => error(X)
-   rule kindInferLast(N:Int, S:Set, A:K, resultMap(TuM:Map), BM:Map, KM:Map, Tu:Set)
-           => kindInfer(N, S, .K, .K, BM, KM, toKindTupleSet(TuM) Tu)
+   rule kindInferLast(N:Int, S:Set,Mod:K, A:K,
+            error(X:K), BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map) => error(X)
+   rule kindInferLast(N:Int, S:Set,Mod:K, A:K,
+            resultMap(TuM:Map), BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
+           => kindInfer(N, S,Mod:K, .K, .K, BM, KM, toKindTupleSet(TuM) Tu, Is, PM)
 
-   rule kindNext(N:Int, S:Set, .K, .Map, M:Map, Tus:Set) => returnKind(N, S, Tus)
-   rule kindNext(N:Int, S:Set, .K, (A:K |-> B:K) Body:Map, M:Map, Tus:Set)
-          => kindNext(N:Int, S:Set, B, Body, M, Tus)
-   rule kindNext(N:Int, S:Set, curryTypes(L:List, T:K), Body:Map, M:Map, Tus:Set)
-          => kindNextList(N, S, .K, L, Body, M, Tus)
-   rule kindNext(N:Int, S:Set, T:KItem, Body:Map, M:Map, Tus:Set)
-          => kindNextList(N, S, .K, ListItem(T), Body, M, Tus)
+   rule kindNext(N:Int, S:Set,Mod:K, .K, .Map,
+                M:Map, Tus:Set, Is:Set, PM:Map) => returnKind(N, S, Tus)
+   rule kindNext(N:Int, S:Set,Mod:K, .K,
+               (A:K |-> B:K) Body:Map, M:Map, Tus:Set, Is:Set, PM:Map)
+          => kindNext(N:Int, S:Set,Mod:K, B, Body, M, Tus, Is, PM)
+   rule kindNext(N:Int, S:Set,Mod:K,
+             curryTypes(L:List, T:K), Body:Map, M:Map, Tus:Set, Is:Set, PM:Map)
+          => kindNextList(N, S,Mod:K, .K, L, Body, M, Tus, Is, PM)
+   rule kindNext(N:Int, S:Set,Mod:K, T:KItem, Body:Map, M:Map, Tus:Set, Is:Set, PM:Map)
+          => kindNextList(N, S,Mod:K, .K, ListItem(T), Body, M, Tus, Is, PM)
         requires notBool isCurryType(T)
 
-   rule kindNextList(N:Int, S:Set, .K, .List, Body:Map, M:Map, Tus:Set)
-            => kindNext(N, S, .K, Body, M, Tus)
-   rule kindNextList(N:Int, S:Set, .K, ListItem(A:K) L:List, Body:Map, M:Map, Tus:Set)
-           => kindNextList(N, S, kindInference(N, S, A, star, M), L, Body, M, Tus)
-   rule kindNextList(N:Int, S:Set, error(X:K), L:List, Body:Map, M:Map, Tus:Set)
-           => error(X)
-   rule kindNextList(N:Int, S:Set, returnKind(N1:Int, S1:Set, Tu1:Set),
-              L:List, Body:Map, M:Map, Tus:Set)
-          => kindNextList(N1, S1, .K, L, Body, M, Tus Tu1)
+   rule kindNextList(N:Int, S:Set,Mod:K, .K,
+                 .List, Body:Map, M:Map, Tus:Set, Is:Set, PM:Map)
+            => kindNext(N, S,Mod:K, .K, Body, M, Tus,Is, PM)
+   rule kindNextList(N:Int, S:Set,Mod:K, .K,
+               ListItem(A:K) L:List, Body:Map, M:Map, Tus:Set, Is:Set, PM:Map)
+           => kindNextList(N, S,Mod:K, kindInference(N, S,Mod, A,
+                    star, M, Is, PM), L, Body, M, Tus, Is, PM)
+   rule kindNextList(N:Int, S:Set,Mod:K, error(X:K),
+            L:List, Body:Map, M:Map, Tus:Set, Is:Set, PM:Map) => error(X)
+   rule kindNextList(N:Int, S:Set, Mod:K, returnKind(N1:Int, S1:Set, Tu1:Set),
+              L:List, Body:Map, M:Map, Tus:Set, Is:Set, PM:Map)
+          => kindNextList(N1, S1,Mod:K, .K, L, Body, M, Tus Tu1, Is, PM)
 
 
    //kind inference rule -- generate kind unifiers
-   syntax KItem ::= kindInference(Int, Set, K, K, Map) [function]
-               //counter, kind-var-set, exp, assume kind, kind env
-                  | kindInferenceAux(Int, Set, Set, List, List, Map) [function]
-               //counter, kind-var-set, kind-unifiers, args, arg-types, kind env.
-                  | kindInferenceAuxAux(List, List, Set, K, Map) [function]
-                  | kindInferenceTyVar(Int, Set, K, K, Int, List, Map) [function]
-               //counter, kind-var-set, con-type, assume-type, arg-length, args, kind env
+   syntax KItem ::= kindInference(Int, Set, K, K, K, Map, Set, Map) [function]
+               //counter, kind-var-set, mod, exp, assume kind,
+               // kind env, imports, import-map
+                  | kindInferenceList(Int, Set, K, List, K, K, Set, Map, Set, Map) [function]
+               //counter, kind-var-set, mod, list-of-types, assume-kind-of-arrow, execution, 
+                //kind-unifiers, kind env., imports, import-map
+                  | kindInferenceTyVar(K, K, List, K, K, Map, Set, Map) [function]
+               //mod, target-assume, list-of-types, found-assume, execution, args,
+                // kind env., imports, import-map
 
-   rule kindInference(N:Int, S:Set, fullName(A:K, B:K), star, M:Map)
-          => returnKind(N, S, .Set)
-   rule kindInference(N:Int, S:Set, fullName(A:K, B:K), C:K, M:Map)
-          => error(typeConKindBad)
-        requires notBool isTheKind(fullName(A:K, B:K), star, .K, M)
-   rule kindInference(N:Int, S:Set, fullName(A:K, B:K), C:K, M:Map)
-          => returnKind(N, S, SetItem(kindTuple(C, star)))
-        requires C =/=K star andBool isTheKind(fullName(A:K, B:K), star, .K, M)
-
-   rule kindInference(N:Int, S:Set, A:TyVar, C:K, (A |-> D:K) M:Map)
+   rule kindInference(N:Int, S:Set, Mod:K,
+                        A:TyVar, C:K, (A |-> D:K) M:Map, Is:Set, PM:Map)
              => returnKind(N, S, SetItem(kindTuple(C,D)))
-   rule kindInference(N:Int, S:Set, A:TyVar, C:K, M:Map)
-             => error(typeVarNotInScope)
+   rule kindInference(N:Int, S:Set, Mod:K,
+                        aType(X:Bool, A:K), C:K, M:Map, Is:Set, PM:Map)
+             => kindInference(N, S, Mod, A, C, M, Is, PM)
+   rule kindInference(N:Int, S:Set, Mod:K, tyVar(Mod:K, Fn:K),
+                     C:K, M:Map, Is:Set, PM:Map)
+                => returnKind(N, S, SetItem(kindTuple(C,star)))
+   rule kindInference(N:Int, S:Set, Mod:K, typeConst(
+               fullName(Mod, B:K), L:List), C:K, (B |-> D:K) M:Map, Is:Set, PM:Map)
+          => kindInferenceList(N, S, Mod, L, D, .K,
+                   SetItem(kindTuple(C,star)), (B |-> D:K) M:Map, Is:Set, PM:Map)
+   rule kindInference(N:Int, S:Set, Mod:K, typeConst(fullName(Mod, B:K), L:List),
+                C:K, M:Map, Is:Set, (fullName(Mod, B:K) |-> D:K) PM:Map)
+          => kindInferenceList(N, S, Mod, L, D, .K,
+                SetItem(kindTuple(C,star)), M:Map, Is:Set, (fullName(Mod, B:K) |-> D:K) PM:Map)
+   rule kindInference(N:Int, S:Set, Mod:K, typeConst(
+               fullName(Mod, B:K), L:List), C:K, M:Map, Is:Set, PM:Map)
+          => error(typeNotInScope)
+        requires notBool B in keys(M) orBool notBool fullName(Mod, B:K) in keys(PM)
+   rule kindInference(N:Int, S:Set, Mod:K, typeConst(
+               A:TyVar, L:List), C:K, (A |-> D:K) M:Map, Is:Set, PM:Map)
+          => kindInferenceTyVar(Mod, C, L, D, genArrowKinds(N, S,
+                size(L), .List), (A |-> D:K) M:Map, Is:Set, PM:Map)
+   rule kindInference(N:Int, S:Set, Mod:K, typeConst(
+               A:TyVar, L:List), C:K, M:Map, Is:Set, PM:Map)
+          => error(typeVarNotInScope)
         requires notBool A in keys(M)
 
-   rule kindInference(N:Int, S:Set, typeConst(fullName(X:K, Y:K), B:List),
-                 C:K, (fullName(X:K, Y:K) |-> D:K) M:Map)
-          => kindInferenceAux(N, S, SetItem(kindTuple(C, D)),
-                  B, formListKind(D), (fullName(X:K, Y:K) |-> D:K) M:Map)
-        requires size(B) ==K countKindLength(D)
-   rule kindInference(N:Int, S:Set, typeConst(fullName(X:K, Y:K), B:List),
-                 C:K, (fullName(X:K, Y:K) |-> D:K) M:Map)
-          => error(typeConKindNumError)
-        requires size(B) =/=K countKindLength(D)
-   rule kindInference(N:Int, S:Set, typeConst(X:TyVar, B:List),
-                 C:K, (X |-> D:K) M:Map)
-          => kindInferenceTyVar(N, S, C, D, size(B), B, (X |-> D:K) M:Map)
-
-   rule kindInferenceTyVar(N:Int, S:Set, C:K, D:K, 0, B:List, M:Map)
-         => kindInferenceAux(N, S, SetItem(kindTuple(C, D)), B, formListKind(C), M)
-   rule kindInferenceTyVar(N:Int, S:Set, C:K, D:K, I:Int, B:List, M:Map)
-         => kindInferenceTyVar(N +Int 1, SetItem(kindVar(N)) S,
-                       kindArrow(kindVar(N), C), D, I -Int 1, B, M)
-        requires I >Int 0
-
-   rule kindInferenceAux(N:Int, S:Set, Tus:Set, .List, .List, M:Map)
-                    => returnKind(N, S, Tus)
-   rule kindInferenceAux(N:Int, S:Set, Tus:Set, ListItem(A:K) L:List,
-                  ListItem(A':K) L':List, M:Map)
-          => kindInferenceAuxAux(L, L', Tus, kindInference(N,
-                             S, A, A', M), M)
-   rule kindInferenceAuxAux(L:List, L':List, Tus:Set, returnKind(N:Int, S:Set, A:Set), B:Map)
-           => kindInferenceAux(N, S, Tus A, L, L', B)
-   rule kindInferenceAuxAux(L:List, L'L:List, Tus:Set, error(X:K), B:Map) => error(X)
+   rule kindInferenceTyVar(Mod:K, C:K, L:List, D:K,
+           resultTransSetTerm(N:Int, S:Set, D':K), M:Map, Is:Set, PM:Map)
+         => kindInferenceList(N, S, Mod, L, D', .K, SetItem(kindTuple(C, star))
+               SetItem(kindTuple(D, D')),M, Is, PM)
+   rule kindInferenceList(N:Int, S:Set, Mod:K,
+                   .List, D:K, .K, Ks:Set, M:Map, Is:Set, PM:Map)
+           => returnKind(N, S, SetItem(kindTuple(D, star)) Ks)
+   rule kindInferenceList(N:Int, S:Set, Mod:K, C:K,
+                ListItem(A:K) L:List, kindArrow(D1:K, D2:K),
+                  .K, Ks:Set, M:Map, Is:Set, PM:Map)
+         => kindInferenceList(N, S, Mod, C, L, D2,
+              kindInference(N, S, Mod, A, D1, M, Is, PM), Ks, M, Is, PM)
+   rule kindInferenceList(N:Int, S:Set, Mod:K,
+            L:List, D:K, error(E:K), Ks:Set, M:Map, Is:Set, PM:Map) => error(E)
+   rule kindInferenceList(N:Int, S:Set, Mod:K, C:K,
+            L:List, D:K, returnKind(N':Int, S':Set, Ks':Set),
+                Ks:Set, M:Map, Is:Set, PM:Map)
+           => kindInferenceList(N', S', Mod, C, L, D, .K, Ks' Ks, M, Is, PM)
 
    //a function to check and remove unifiers that have no variables.
    syntax Bool ::= hasVar(K) [function]

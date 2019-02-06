@@ -34,6 +34,7 @@ module HASKELL-HELPER
    rule pillVar('varSymBracket(A:VarSym)) => A
    rule pillVar('varIdQuote(A:VarId)) => A
    rule pillVar('conSymBracket(C:ConSym)) => C
+   rule pillVar('conIdQuote(A:ConId)) => A
    rule pillVar(V:K) => V [owise]
 
    syntax KItem ::= buildVar(K) [function]
@@ -70,6 +71,11 @@ module HASKELL-HELPER
    rule transTypeVar(S:K, 'qVarBracket(C:ConSym)) => tyVar(S, C)
    rule transTypeVar(S:K, 'qVarBracket(
            'qConSymCon(A:ModId,, B:ConSym))) => tyVar(S, B)
+
+   syntax Set ::= collectFunVars(K) [function]
+   rule collectFunVars(A:Var) => SetItem(funName(pillVar(A)))
+   rule collectFunVars('varCon(A:Var,, As:Vars))
+           => SetItem(funName(pillVar(A))) collectFunVars(As)
 
    syntax Map ::= updateMapItem(Map, K, K, Set) [function]
    rule updateMapItem(M:Map, .K, A:K, V:Set)
@@ -333,6 +339,12 @@ module HASKELL-HELPER
                => checkOnlyDefaultNext(X, As)
         requires notBool isTheDefault(A)
 
+   //get the core var of an exp
+   syntax KItem ::= getCoreVar(FunLhs) [function]
+   rule getCoreVar('normalLhs(X:Var,, As:APatList)) => funName(pillVar(X))
+   rule getCoreVar('binLhs(A:Pat,, B:VarOp,, C:Pat)) => funName(pillVar(B))
+   rule getCoreVar('groupLhs(A:FunLhs,, B:APatList)) => getCoreVar(A)
+
    syntax Set ::= getFreeVarsInPat(K) [function]
    rule getFreeVarsInPat('binPattern(P1:LPat,, Op:QConOp,, P2:Pat))
             => getFreeVarsInPat(P1) getFreeVarsInPat(P2)
@@ -341,9 +353,9 @@ module HASKELL-HELPER
            => getFreeVarsInPat(As)
    rule getFreeVarsInPat('apatCon(A:K,, As:K))
           => getFreeVarsInPat(A) getFreeVarsInPat(As)
-   rule getFreeVarsInPat(A:Var) => SetItem(pillVar(A))
+   rule getFreeVarsInPat(A:Var) => SetItem(funName(pillVar(A)))
    rule getFreeVarsInPat(A:Var @ P:APat)
-            => SetItem(pillVar(A)) getFreeVarsInPat(P)
+            => SetItem(funName(pillVar(A))) getFreeVarsInPat(P)
    rule getFreeVarsInPat(A:GCon) => .Set
    rule getFreeVarsInPat('recordPat(A:GCon,, F:FPats))
           => getFreeVarsInPat(F)
@@ -364,7 +376,7 @@ module HASKELL-HELPER
    rule getFreeVarsInPat('recordConAssign(P1:QVar,, P2:Pat))
              => getFreeVarsInPat(P2)
    rule getFreeVarsInPat('varCon(A:Var,, As:Vars))
-           => SetItem(pillVar(A)) getFreeVarsInPat(As)
+           => SetItem(funName(pillVar(A))) getFreeVarsInPat(As)
 
    syntax Set ::= getRidWrapper(K) [function]
    rule getRidWrapper(resultSet(S:Set)) => S

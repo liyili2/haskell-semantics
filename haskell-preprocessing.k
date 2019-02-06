@@ -38,25 +38,57 @@ module HASKELL-PREPROCESSING
 
     rule startChecks => genImportSet
                 ~> (collectKindInfo
+                ~> (checkDefs
                 ~> (makeAlphaMap
-                ~> nextChecks))
+                ~> nextChecks)))
+
+    rule checkDefs => collectCheckDefs
+                        ~> (checkAllDeclMakeSense
+                        ~> genRecordFunctions)
 
     rule nextChecks => makePreBetaMap
                 ~> (grabAllTypeNames
-                ~> (checkPreBetaInScope
                 ~> (genKindMap
-                ~> nextNextChecks)))
+                ~> nextNextChecks))
 
     rule nextNextChecks => (checkOnlyDefault
                  ~> (checkArgSortsAreTargets
                 ~> (checkParUsed
                  ~> (collectClassInfo
+                //TODO: check kind for class and derivings for data types are all star -> star kind
                 ~> (collectExpressions
                 ~> genModuleChecks)))))
 
     rule genModuleChecks => genAllModuleNames
                          ~> (genExportSet
                          ~> checkAllImportsGoodFromExports)
+
+    //collect all defs in a module
+    rule <k> collectCheckDefs => collectCheckDefs(B, .Set) ...</k>
+         <tempModule> B:K </tempModule>
+
+    rule <k> putDefSet(S:Set) => .K ...</k>
+         <currModule> X:K </currModule>
+         <moduleName> X </moduleName>
+         <moduleDefs> .Set </moduleDefs>
+
+   //check if all decl in a module is defined in the module also
+   rule <k> checkAllDeclMakeSense => checkAllDeclMakeSense(B, S) ...</k>
+         <tempModule> B:K </tempModule>
+         <currModule> X:K </currModule>
+         <moduleName> X </moduleName>
+         <moduleDefs> S:Set </moduleDefs>
+
+   //generate a map for all functions of getting field content for a module
+    rule <k> genRecordFunctions => genRecordFunctions(N, B, .Map) ...</k>
+         <tempModule> B:K </tempModule>
+         <genVarCounter> N:Int </genVarCounter>
+
+    rule <k> putGenFieldMap(N:Int, M:Map) => .K ...</k>
+         <genVarCounter> _:Int => N </genVarCounter>
+         <currModule> X:K </currModule>
+         <moduleName> X </moduleName>
+         <moduleMethods> S:Map (.Map => M) </moduleMethods>
 
 
     //grabing all type names from the current module
@@ -204,11 +236,49 @@ module HASKELL-PREPROCESSING
       REMEMBER to turn type structure into an abstract form.
       second step is to do kind check on the input datatype
       third step, resolve the pre-beta-map to beta map for the module. */
-    rule <k> makePreBetaMap => makePreBetaFun(Mod, S, .Map) ...</k>
+    rule <k> makePreBetaMap => makePreBetaFun(Mod, S, .Map, Ts, Is) ...</k>
          <tempModule> S:K </tempModule>
          <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <moduleNames> Ts:Set </moduleNames>
+         <imports> Is:Set </imports>
 
     //finish
+    rule <k> genKindMap => grabImportKindMaps(.K, S, .Map) ...</k>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <imports> S:Set </imports>
+
+    rule <k> grabImportKindMaps(.K, .Set, Ks:Map)
+           => grabImportKindMapsAux(genInitKindMap(N, S, .K, .K, AM BM)) ...</k>
+         <tempImportKindMap> _:Map => Ks </tempImportKindMap>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <tempBetaMap> BM:Map </tempBetaMap>
+         <moduleAlpha> AM:Map </moduleAlpha>
+         <kindVarCounter> N:Int </kindVarCounter>
+         <kindVarSet> S:Set </kindVarSet>
+
+    rule <k> grabImportKindMapsAux(resultTyVarKindMap(N:Int, S:Set, TM:Map)) =>
+               kindInfer(N, S, Mod, .K, .K, AM BM, TM, .Set, Is, Ks) ...</k>
+         <tempImportKindMap> Ks:Map </tempImportKindMap>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <tempBetaMap> BM:Map </tempBetaMap>
+         <moduleAlpha> AM:Map </moduleAlpha>
+         <imports> Is:Set </imports>
+
+    rule grabImportKindMaps(.K, SetItem(A:K) S:Set, KM:Map)
+                => grabImportKindMaps(A, S, As, KM)
+
+    rule <k> grabImportKindMaps(importElem(Mod:K, _:K, _:Bool,
+                   Ts:Set, _:Map), S:Set, KM:Map)
+                => grabImportKindMaps(.K, S, As,
+                             addKindToMap(Mod, .K, Ts, SM, KM) ...</k>
+         <moduleName> Mod </moduleName>
+         <kindMap> SM:Map </kindMap>
+         requires notBool Mod in As
+
     rule <k> genKindMap => kindInfer(N, S, .K, .K, AM BM, M, .Set) ...</k>
          <currModule> Mod:K </currModule>
          <moduleName> Mod </moduleName>
@@ -224,15 +294,6 @@ module HASKELL-PREPROCESSING
          <kindMap> _:Map => M </kindMap>
          <kindVarCounter> _:Int => N </kindVarCounter>
          <kindVarSet> _:Set => S </kindVarSet>
-
-    rule <k> checkPreBetaInScope
-               => isAllValidTypes(AM M, .K, .K, keys(KM))
-                  ~> isAllValidTypeVars(AM M, .K, .K) ...</k>
-         <currModule> Mod:K </currModule>
-         <moduleName> Mod </moduleName>
-         <tempBetaMap> M:Map </tempBetaMap>
-         <kindMap> KM:Map </kindMap>
-         <moduleAlpha> AM:Map </moduleAlpha>
 
     //check there is only one default in a module
     rule <k> checkOnlyDefault => checkOnlyDefault(TM) ...</k>

@@ -14,14 +14,23 @@ module HASKELL-ERRORS
     rule <k> error(typeVarNoInclusive) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type whose typevars are not inclusive with the type declaration.")) </output>
 
+    rule <k> error(typeVarNotUnique) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type whose at least two of the typevars having the same name.")) </output>
+
     rule <k> error(repeatedNames) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type/data-type whose name is repeated once in the module.")) </output>
 
+    rule <k> error(declNoInstance) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type/data-type whose name is repeated once in the module.")) </output>
+
     rule <k> error(cycleAlpha) ~> K:K => .K </k>
-         <output> L:List (.List => ListItem("The modules have type delcarations having cycles in the renaming.")) </output>
+         <output> L:List (.List => ListItem("The modules have a type signature lacking an accompanying binding.")) </output>
 
     rule <k> error(typeNotInScope) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type delcaration whose type cons might not be properly imported or created.")) </output>
+
+    rule <k> error(classNotInScope) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module uses a class name that might not be properly imported or created.")) </output>
 
     rule <k> error(typeVarNotInScope) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type delcaration whose used type vars might not be properly declared in the title of the type.")) </output>
@@ -45,7 +54,10 @@ module HASKELL-ERRORS
          <output> L:List (.List => ListItem("The modules have a type class whose method does not define the type var for the type class, so it is an ambiguous type variable.")) </output>
 
     rule <k> error(ambiguousTypeName) ~> K:K => .K </k>
-         <output> L:List (.List => ListItem("The modules have a type whose names are defined previously.")) </output>
+         <output> L:List (.List => ListItem("The module uses a type whose names are defined previously.")) </output>
+
+    rule <k> error(ambiguousClassName) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module uses a class whose names are defined previously.")) </output>
 
     rule <k> error(classVarCollipse) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type class/method whose name or method name copplipses with the type variables or the methods names.")) </output>
@@ -70,5 +82,7 @@ module HASKELL-ERRORS
 
     rule <k> error(importFromNoSource) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The module have an import a construct/type/function that is not in the original module.")) </output>
+
+    rule exnExp(S:String) => error(S)
 
 endmodule

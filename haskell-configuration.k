@@ -15,6 +15,7 @@ module HASKELL-CONFIGURATION
             <tempAlpha> .K </tempAlpha>
             <tempBetaMap> .Map </tempBetaMap>
             <tempT> .K </tempT>
+            <tempImportKindMap> .Map </tempImportKindMap>
             <tempExports> .K </tempExports>
             <currModule> .K </currModule>
             <importTree> .List </importTree>
@@ -34,6 +35,7 @@ module HASKELL-CONFIGURATION
                     <moduleName> .K </moduleName>
                     <moduleAlpha> .Map </moduleAlpha>
                     <moduleBeta> .Map </moduleBeta>
+                    <moduleDefs> .Set </moduleDefs>
                     <kindMap> .Map </kindMap>
                        //a module storing all elements of operators that are possibly outputed
                     <imports> .Set </imports>

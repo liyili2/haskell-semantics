@@ -31,8 +31,9 @@ module HASKELL-SYNTAX
   | ([\:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)
   | ([\<][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \~ \:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)
   | ([\=][\! \# \$ \% \& \* \+ \. \/ \< \= \? \@ \\ \^ \| \~ \:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*)} [onlyLabel]
+                   | "-" [klabel('minusCon), onlyLabel, prefer]
+
     syntax ConSym ::= Token{[\:][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~][\! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \:]*}   [onlyLabel]
-                    | "-" [klabel('minusCon), onlyLabel, prefer]
 
     syntax IntFloat ::= "(" Integer ")"  [bracket] //NOT OFFICIAL SYNTAX
                       | "(" CusFloat ")" [bracket]
@@ -136,8 +137,8 @@ module HASKELL-SYNTAX
 
     syntax TopDecl ::= Decl
                      > "type" SimpleType "=" Type [klabel('atype)]
-                     | "data" OptContext SimpleType OptConstrs OptDeriving  [klabel('data)]
-                     | "newtype" OptContext SimpleType "=" NewConstr OptDeriving [klabel('newtype)]
+                     | "data" SimpleType OptConstrs OptDeriving  [klabel('data)]
+                     | "newtype" SimpleType "=" NewConstr OptDeriving [klabel('newtype)]
                      | "class" OptContext ConId TyVar OptCDecls [klabel('class)]
                               //Liyi: place a check on this to check if the optContext is a SContext
                      | "instance" OptContext QTyCon Inst OptIDecls [klabel('instance)]
@@ -271,16 +272,17 @@ module HASKELL-SYNTAX
                       | Exp "," ExpTuple      [right, klabel('expTupleCon), onlyLabel]
 
     //constr datatypes
-    syntax OptConstrs  ::= "=" Constrs [klabel('nonemptyConstrs)] | "" [onlyLabel, klabel('emptyConstrs)]
+    syntax OptConstrs  ::= "=" Constrs [klabel('nonemptyConstrs)]
+                         | "" [onlyLabel, klabel('emptyConstrs)]
     syntax Constrs     ::= Constr | Constr "|" Constrs [klabel('multConstr)]
     syntax Constr      ::= Con OptBangATypes [klabel('constrCon)] // (arity con  =  k, k ≥ 0) UNFINISHED
-                         | SubConstr ConOp SubConstr
+                         | SubConstr ConOp SubConstr  [klabel('mixfixbinCon)]
                          | Con "{" FieldDeclList "}"
 
-    syntax NewConstr   ::= Con AType [klabel('newConstrCon), onlyLabel]
+    syntax NewConstr ::= Con AType [klabel('newConstrCon), onlyLabel]
                          | Con "{" Var "::" Type "}"  [klabel('newConField), onlyLabel]
 
-    syntax SubConstr   ::= BType | "!" AType
+    syntax SubConstr   ::= BType | "!" AType  [klabel('strictSubCon)]
     syntax FieldDeclList ::= List{FieldDecl, ","}  [klabel('fieldCon)]
     syntax FieldDecl ::= VarsType
                        | Vars "::" "!" AType

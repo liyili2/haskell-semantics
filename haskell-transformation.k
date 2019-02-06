@@ -114,12 +114,6 @@ module HASKELL-TRANSFORMATION
    rule updatePatMapInExp(M:Map, A:K, C:K)
                   => M (A |-> methodDef(.Set, .K, ListItem(C))) [owise]
 
-   //get the core var of an exp
-   syntax KItem ::= getCoreVar(FunLhs) [function]
-   rule getCoreVar('normalLhs(X:Var,, As:APatList)) => pillVar(X)
-   rule getCoreVar('binLhs(A:Pat,, B:VarOp,, C:Pat)) => pillVar(B)
-   rule getCoreVar('groupLhs(A:FunLhs,, B:APatList)) => getCoreVar(A)
-
    syntax KItem ::= toAstPat(Int, K, K, K, K, Map) [function]
       //var-counter, curr-mod, CDecls, var, exp, class-map
                   | transCDecl(K, K) [function]

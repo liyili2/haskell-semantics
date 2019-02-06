@@ -9,9 +9,11 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KResult ::= error(K) //error with message
     syntax KItem ::= "cyclicImports"
     syntax KItem ::= "typeVarNoInclusive"
+    syntax KItem ::= "typeVarNotUnique"
     syntax KItem ::= "repeatedNames"
     syntax KItem ::= "cycleAlpha"
     syntax KItem ::= "typeNotInScope"
+    syntax KItem ::= "classNotInScope"
     syntax KItem ::= "typeVarNotInScope"
     syntax KItem ::= "typeConKindBad"
     syntax KItem ::= "typeConKindNumError"
@@ -28,7 +30,11 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "moreThanOneDefault"
     syntax KItem ::= "importFromNoSource"
     syntax KItem ::= "ambiguousTypeName"
+    syntax KItem ::= "ambiguousClassName"
+    syntax KItem ::= "declNoInstance"
 
+
+    //checking steps
     syntax KItem ::= "startChecks"
     syntax KItem ::= "nextChecks"
     syntax KItem ::= "nextNextChecks"
@@ -40,9 +46,20 @@ module HASKELL-ABSTRACT-SYNTAX
         //make map for alpha
     syntax KItem ::= "genKindMap"
         //make map for alpha
+    syntax KItem ::= grabImportKindMaps(K, Set, Map)
+               //execute, import-set, kind-map-with-mod
+                   | grabImportKindMapsAux(K)
+
+    //post happened results
     syntax KItem ::= putAlphaMap(Map)
     syntax KItem ::= putPreBetaMap(Map)
+    syntax KItem ::= putDefSet(Set) 
+    syntax KItem ::= putGenFieldMap(Int, Map) 
     syntax KItem ::= "collectKindInfo"
+    syntax KItem ::= "checkDefs"
+    syntax KItem ::= "collectCheckDefs"
+    syntax KItem ::= "checkAllDeclMakeSense"
+    syntax KItem ::= "genRecordFunctions"
 
    //transformation of classes
     syntax KItem ::= "collectClassInfo"
@@ -74,8 +91,9 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= alphaTuple(List, K) //list-of-vars, type
 
     //preprocessing of validity checks
-    syntax KItem ::= "checkPreBetaInScope"
+    //syntax KItem ::= "checkPreBetaInScope"
         //check if the beta map generated for the module is within the scope
+          //has been merged into toAbsType
 
     /*syntax KItem ::= "checkAlphaNoLoops"
         //alpha check for no loops
@@ -173,6 +191,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KResult ::= resultTransSetTerm(Int, Set, K) //int, fun-sets, map
 
     //abstract syntax for type constrs
+    syntax KItem ::= aType(Bool, K) //isStrict?, type
     syntax KResult ::= TypeResult
     syntax Type ::= TypeResult
     syntax TypeResult ::= TyVar | modVar(TyVar)
@@ -181,9 +200,9 @@ module HASKELL-ABSTRACT-SYNTAX
                         | forall(Set, K) //set of vars, type
     syntax KResult ::= fullName(K, K) //module name, type con
     syntax KResult ::= moduleNameAst(K) //module name, type con
-    syntax KResult ::= preBetaEntry(Set, List, Map, Set)
-           //optContext, list_of_vars, Body, optDeriving
-    syntax TyVar ::= tyVar(K, K)
+    syntax KResult ::= preBetaEntry(List, Map, Set)
+           //list_of_vars, Body, optDeriving
+    syntax KItem ::= tyVar(K, K)
           //curr-name, convert a var to a tyVar, every record label name is a type
     syntax KResult ::= "recordType" | "recordTypeAssign"
                      | "recordParen" | "recordAssign" | "recordUpdate"
@@ -234,6 +253,13 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= singleCase(K, K, List)//pat, exp, where
     syntax KItem ::= seq(K, K)//first stmt, next
     syntax KItem ::= typedExp(Set, K, K) //contexts, type, exp
+    syntax KItem ::= exnExp(String) //exception 
+   
+    //built-in construct to generate functions for field label
+    syntax KItem ::= labelFactor(K, K, K) //label name, constr name, target type
+    syntax KItem ::= findLabelResult(K, K, K)
+         //field-constr, label-name, input result will be either the field-content or exnExp
+    
 
     //1 gendecls are signatures
     syntax KItem ::= typeSig(List,K,K) //contexts, var, type
