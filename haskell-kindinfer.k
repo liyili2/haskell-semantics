@@ -580,12 +580,12 @@ module HASKELL-KINDINFER
                 andBool countGoodNameWithMod(className(A), S, .K, Is) =/=K 0
                 andBool countGoodNameWithMod(typeName(A), S, .K, Is) ==K 0
    rule toAbsClassCon(S:K, 'conTyCon(S,, A:TyCon), Ts:Set, Is:Set)
-         => error(typeNotInScope)
+         => error(classNotInScope)
         requires notBool typeName(A) in Ts andBool notBool className(A) in Ts
                 andBool countGoodNameWithMod(typeName(A), S, .K, Is) ==K 0
                 andBool countGoodNameWithMod(className(A), S, .K, Is) ==K 0
    rule toAbsClassCon(S:K, 'conTyCon(N:K,, A:TyCon), Ts:Set, Is:Set)
-         => error(typeNotInScope)
+         => error(classNotInScope)
         requires S =/=K N
                 andBool countGoodNameWithMod(typeName(A), N, .K, Is) ==K 0
                 andBool countGoodNameWithMod(className(A), N, .K, Is) ==K 0
@@ -1162,66 +1162,24 @@ module HASKELL-KINDINFER
 
    syntax KItem ::= derivingToSet(K, K, Set, Set) [function]
          //curr-mod, opt-deriving, set of types, imports
-                | derivingToSetAux(K, DClassList, Set, Set, Set) [function]
-            //curr-mod, DClassList
+                | derivingToSetAux(K, DClassList, K, Set, Set, Set) [function]
+            //curr-mod, DClassList, execution, store, types, imports
    rule derivingToSet(N:K, 'emptyDeriving(.KList), Ts:Set, Is:Set) => resultSet(.Set)
    rule derivingToSet(N:K, deriving D:DClass, Ts:Set, Is:Set)
-           => derivingToSetAux(N, 'dclassCon(D, .DClassList), .Set, Ts, Is)
+           => derivingToSetAux(N, 'dclassCon(D, .DClassList),.K, .Set, Ts, Is)
    rule derivingToSet(N:K, deriving (Ds:DClassList), Ts:Set, Is:Set)
-           => derivingToSetAux(N, Ds, .Set, Ts, Is)
-   rule derivingToSetAux(N:K, .DClassList, S:Set, Ts:Set, Is:Set) => resultSet(S)
-   rule derivingToSetAux(N:K, 'dclassCon(A:TyCon,,
-                        B:DClassList), S:Set, Ts:Set, Is:Set)
-           => derivingToSetAux(N, B, S SetItem(fullName(S, className(A))), Ts, Is)
-        requires className(A) in Ts
-                 andBool countGoodNameNoQualified(className(A), .K, Is) ==K 0
-   rule derivingToSetAux(N:K, 'dclassCon(A:TyCon,,
-                        B:DClassList), S:Set, Ts:Set, Is:Set)
-           => error(ambiguousClassName)
-        requires className(A) in Ts
-                 andBool countGoodNameNoQualified(className(A), .K, Is) >Int 0
-   rule derivingToSetAux(N:K, 'dclassCon(A:TyCon,,
-                        B:DClassList), S:Set, Ts:Set, Is:Set)
-           => derivingToSetAux(N, B, S SetItem(fullName(
-                 findGoodNameNoQualified(className(A), .K, Is), className(A))), Ts, Is)
-        requires notBool className(A) in Ts
-                 andBool countGoodNameNoQualified(className(A), .K, Is) ==K 1
-   rule derivingToSetAux(N:K, 'dclassCon(A:TyCon,,
-                        B:DClassList), S:Set, Ts:Set, Is:Set)
-           => error(classNotInScope)
-        requires notBool className(A) in Ts
-                 andBool countGoodNameNoQualified(className(A), .K, Is) ==K 0
-   rule derivingToSetAux(N:K, 'dclassCon(A:TyCon,,
-                        B:DClassList), S:Set, Ts:Set, Is:Set)
-           => error(ambiguousClassName)
-        requires notBool className(A) in Ts
-                 andBool countGoodNameNoQualified(className(A), .K, Is) >Int 1
-   rule derivingToSetAux(N:K, 'dclassCon('conTyCon(N1:ModId,, A:TyCon),,
-                        B:DClassList), S:Set, Ts:Set, Is:Set)
-           => derivingToSetAux(N, B, S SetItem(fullName(N, className(A))), Ts, Is)
-        requires className(A) in Ts andBool N ==K N1
-                 andBool countGoodNameWithMod(className(A),N, .K, Is) ==K 0
-   rule derivingToSetAux(N:K, 'dclassCon('conTyCon(N1:ModId,, A:TyCon),,
-                        B:DClassList), S:Set, Ts:Set, Is:Set)
-           => error(ambiguousClassName)
-        requires className(A) in Ts andBool N ==K N1
-                 andBool countGoodNameWithMod(className(A),N, .K, Is) >Int 0
-   rule derivingToSetAux(N:K, 'dclassCon('conTyCon(N1:ModId,, A:TyCon),,
-                        B:DClassList), S:Set, Ts:Set, Is:Set)
-           => derivingToSetAux(N, B, S SetItem(fullName(findGoodNameWithMod(
-               className(A),N, .K, Is), className(A))), Ts, Is)
-        requires notBool className(A) in Ts
-                 andBool countGoodNameWithMod(className(A),N1, .K, Is) ==K 1
-   rule derivingToSetAux(N:K, 'dclassCon('conTyCon(N1:ModId,, A:TyCon),,
-                        B:DClassList), S:Set, Ts:Set, Is:Set)
-           => error(classNotInScope)
-        requires notBool className(A) in Ts
-                 andBool countGoodNameWithMod(className(A),N1, .K, Is) ==K 0
-   rule derivingToSetAux(N:K, 'dclassCon('conTyCon(N1:ModId,, A:TyCon),,
-                        B:DClassList), S:Set, Ts:Set, Is:Set)
-           => error(ambiguousClassName)
-        requires notBool className(A) in Ts
-                 andBool countGoodNameWithMod(className(A),N1, .K, Is) >Int 1
+           => derivingToSetAux(N, Ds,.K, .Set, Ts, Is)
+   rule derivingToSetAux(N:K, .DClassList, .K, S:Set, Ts:Set, Is:Set) => resultSet(S)
+   rule derivingToSetAux(N:K, 'dclassCon(A:QTyCon,,
+                        B:DClassList), .K,  S:Set, Ts:Set, Is:Set)
+           => derivingToSetAux(N, B, toAbsClassCon(N, A, Ts, Is), S, Ts, Is)
+   rule derivingToSetAux(N:K, D:K, error(A:K), S:Set, Ts:Set, Is:Set) => error(A)
+   rule derivingToSetAux(N:K, D:K, fullName(X:K, Y:K), S:Set, Ts:Set, Is:Set)
+              => derivingToSetAux(N, D, .K, S SetItem(fullName(X:K, Y:K)), Ts, Is)
+        requires notBool fullName(X:K, Y:K) in S
+   rule derivingToSetAux(N:K, D:K, fullName(X:K, Y:K), S:Set, Ts:Set, Is:Set)
+              => error(duplicateDeriving)
+        requires fullName(X:K, Y:K) in S
 
    syntax KItem ::= makePreBetaFun(K, K, Map, Set, Set) [function]
            //curr-mod, term, store, set-of-args, set-of-types, imports

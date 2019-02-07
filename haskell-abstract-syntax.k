@@ -33,7 +33,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "ambiguousClassName"
     syntax KItem ::= "messuseClassTypeName"
     syntax KItem ::= "declNoInstance"
-
+    syntax KItem ::= "duplicateDeriving"
 
     //checking steps
     syntax KItem ::= "startChecks"

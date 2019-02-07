@@ -48,13 +48,16 @@ module HASKELL-ERRORS
          <output> L:List (.List => ListItem("The modules have a type delcaration having a type variable that has wrong number of arguments.")) </output>
 
     rule <k> error(kindUnifierFail) ~> K:K => .K </k>
-         <output> L:List (.List => ListItem("The modules have a type delcaration that uses a type variable or type con in the wrong position causing kind inference failure.")) </output>
+         <output> L:List (.List => ListItem("The modules have a type declaration that uses a type variable or type con in the wrong position causing kind inference failure.")) </output>
 
     rule <k> error(ambiguousTypeVar) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type class whose method does not define the type var for the type class, so it is an ambiguous type variable.")) </output>
 
     rule <k> error(ambiguousTypeName) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The module uses a type whose names are defined previously.")) </output>
+
+    rule <k> error(duplicateDeriving) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module has a type declaration that has derived with duplicate classes.")) </output>
 
     rule <k> error(ambiguousClassName) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The module uses a class whose names are defined previously.")) </output>
