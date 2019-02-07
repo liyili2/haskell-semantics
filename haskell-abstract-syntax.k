@@ -31,6 +31,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "importFromNoSource"
     syntax KItem ::= "ambiguousTypeName"
     syntax KItem ::= "ambiguousClassName"
+    syntax KItem ::= "messuseClassTypeName"
     syntax KItem ::= "declNoInstance"
 
 
@@ -98,9 +99,9 @@ module HASKELL-ABSTRACT-SYNTAX
     /*syntax KItem ::= "checkAlphaNoLoops"
         //alpha check for no loops
         //check alpha to make sure that everything points to a T */
-    syntax KItem ::= "checkArgSortsAreTargets"
+    //syntax KItem ::= "checkArgSortsAreTargets", checked by kind-inference-already
            //Make sure argument sorts [U] [W,V] are in the set of keys of alpha and targets of T, (keys of T)
-    syntax KItem ::= "checkParUsed"
+    //syntax KItem ::= "checkParUsed", checked by kind-inference
 //NEED TO CHECK all the polymorphic parameters from right appear on left. RIGHT SIDE ONLY
 //NEED TO CHECK UNIQUENESS FOR POLY PARAM ON LEFT SIDE ONLY
 

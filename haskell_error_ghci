@@ -42,5 +42,9 @@ module D where
 import C
 a = x ---> error
 
+9. Haskell unnecessary restriction. If module A has defined a class named ClassA, and module B defines a type name ClassA. If module B imports all items from module A, the place that can use a type name with ClassA will give an error of getting confused with ClassA as a class in module A, which is completely unnecessary, since the place can be used as a type and a class are clearly distinguished in Haskell.
+
+
+
 
 

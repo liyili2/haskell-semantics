@@ -52,12 +52,11 @@ module HASKELL-PREPROCESSING
                 ~> nextNextChecks))
 
     rule nextNextChecks => (checkOnlyDefault
-                 ~> (checkArgSortsAreTargets
-                ~> (checkParUsed
+            //checkArgSortsAreTargets //checkParUsed
                  ~> (collectClassInfo
                 //TODO: check kind for class and derivings for data types are all star -> star kind
                 ~> (collectExpressions
-                ~> genModuleChecks)))))
+                ~> genModuleChecks)))
 
     rule genModuleChecks => genAllModuleNames
                          ~> (genExportSet
@@ -70,7 +69,7 @@ module HASKELL-PREPROCESSING
     rule <k> putDefSet(S:Set) => .K ...</k>
          <currModule> X:K </currModule>
          <moduleName> X </moduleName>
-         <moduleDefs> .Set </moduleDefs>
+         <moduleDefs> _:Set => S </moduleDefs>
 
    //check if all decl in a module is defined in the module also
    rule <k> checkAllDeclMakeSense => checkAllDeclMakeSense(B, S) ...</k>
@@ -321,21 +320,29 @@ module HASKELL-PREPROCESSING
          
     rule <k> getClassInfo('topdeclslist('class(Cs:OptContext,,
                   Name:ConId,, Tv:TyVar,, Ds:OptCDecls),, As:TopDecls))
-               => getClassInfoAux(transVar(Mod, Name),Tv, contextToSet(Mod, Cs),
+               => getClassInfoAux(className(Name),Tv,
+                    contextToSet(Mod, Cs, .K, .Set, Ts, Is),
                     toAstTypeClass(Mod, Tv, Ds, .Map,
                     getMethodSet(Mod, .K, CM)), Ds, As) ...</k>
          <currModule> Mod:K </currModule>
-         <classMethodNames> CM:Map </classMethodNames>
+         <moduleName> Mod </moduleName>
+         <moduleDefs> Ts:Set </moduleDefs>
+         <imports> Is:Set </imports>
+        <moduleElems> Ms:Set (.Set => SetItem(className(Name))) </moduleElems>
          <classNames> NM:Map => updateMapItem(NM,
-                          .K, Mod, transVar(Mod, Name)) </classNames>
-         requires notBool hasClassName(Mod, Name, .K, NM)
+                          .K, Mod, className(Name)) </classNames>
+         requires notBool buildVar(Name) in Ms
+                      andBool notBool className(Name) in Ms
 
     rule <k> getClassInfo('topdeclslist('class(Cs:OptContext,,
                   Name:ConId,, Tv:TyVar,, Ds:OptCDecls),, As:TopDecls))
                => error(classVarCollipse) ...</k>
          <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+        <moduleElems> Ms:Set </moduleElems>
          <classNames> NM:Map </classNames>
-         requires hasClassName(Mod, Name, .K, NM)
+         requires buildVar(Name) in Ms
+                      orBool className(Name) in Ms
 
    rule getClassInfoAux(Name:K, Tv:K, S:Set, error(A:K), Ds:K, As:K) => error(A)
    rule <k> getClassInfoAux(Name:K, Tv:K, S:Set,

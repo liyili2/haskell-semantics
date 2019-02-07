@@ -59,6 +59,9 @@ module HASKELL-ERRORS
     rule <k> error(ambiguousClassName) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The module uses a class whose names are defined previously.")) </output>
 
+    rule <k> error(messuseClassTypeName) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module uses a type name in a class name position or a class name in a type name position.")) </output>
+
     rule <k> error(classVarCollipse) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type class/method whose name or method name copplipses with the type variables or the methods names.")) </output>
 

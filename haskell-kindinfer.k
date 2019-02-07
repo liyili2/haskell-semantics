@@ -534,9 +534,77 @@ module HASKELL-KINDINFER
            => toTypeList(B)
 
    //convert a type con to abs form (fullname)
-   syntax KItem ::= toAbsTypeCon(K, K) [function] //curr-mod-name, type-con
-   rule toAbsTypeCon(Mod:K, T:TyCon) => fullName(Mod, T)
-   rule toAbsTypeCon(Mod:K, 'conTyCon(Mod':K,, T:K)) => fullName(Mod', T)
+   //complicated, basic idea is to fully investigate the use of class/type in the curr-mod
+   //and in import mods. 
+   syntax KItem ::= toAbsClassCon(K, K, Set, Set) [function]
+     //curr-mod-name, type-con, curr-types, imports
+   rule toAbsClassCon(Mod:K, T:TyCon, Ts:Set, Is:Set) => fullName(Mod, className(T))
+        requires className(T) in Ts andBool notBool typeName(T) in Ts
+                andBool countGoodNameNoQualified(className(T), .K, Is) ==K 0
+                andBool countGoodNameNoQualified(typeName(T), .K, Is) ==K 0
+   rule toAbsClassCon(Mod:K, T:TyCon, Ts:Set, Is:Set)
+         => fullName(findGoodNameNoQualified(className(T), .K, Is), className(T))
+        requires notBool className(T) in Ts andBool notBool typeName(T) in Ts
+                andBool countGoodNameNoQualified(className(T), .K, Is) ==K 1
+                andBool countGoodNameNoQualified(typeName(T), .K, Is) ==K 0
+   rule toAbsClassCon(Mod:K, T:TyCon, Ts:Set, Is:Set) => error(messuseClassTypeName)
+        requires typeName(T) in Ts
+   rule toAbsClassCon(Mod:K, T:TyCon, Ts:Set, Is:Set) => error(messuseClassTypeName)
+        requires countGoodNameNoQualified(typeName(T), .K, Is) =/=K 0
+   rule toAbsClassCon(Mod:K, T:TyCon, Ts:Set, Is:Set) => error(ambiguousClassName)
+        requires className(T) in Ts
+                   andBool countGoodNameNoQualified(className(A), .K, Is) =/=K 0
+   rule toAbsClassCon(Mod:K, A:TyCon, Ts:Set, Is:Set) => error(ambiguousClassName)
+        requires notBool typeName(A) in Ts andBool notBool className(A) in Ts
+            andBool countGoodNameNoQualified(className(A), .K, Is) >Int 1
+            andBool countGoodNameNoQualified(typeName(A), .K, Is) ==K 0
+   rule toAbsClassCon(Mod:K, A:TyCon, Ts:Set, Is:Set) => error(classNotInScope)
+        requires notBool typeName(A) in Ts andBool notBool className(A) in Ts
+            andBool countGoodNameNoQualified(typeName(A), .K, Is) ==K 0
+            andBool countGoodNameNoQualified(className(A), .K, Is) ==K 0
+
+   rule toAbsClassCon(S:K, 'conTyCon(S,, A:TyCon), Ts:Set, Is:Set)
+         => fullName(Mod, className(T))
+        requires className(A) in Ts andBool notBool typeName(A) in Ts
+                andBool countGoodNameWithMod(typeName(A), S, .K, Is) ==K 0
+                andBool countGoodNameWithMod(className(A), S, .K, Is) ==K 0
+   rule toAbsClassCon(S:K, 'conTyCon(S,, A:TyCon), Ts:Set, Is:Set)
+         => error(messuseClassTypeName)
+        requires typeName(A) in Ts
+   rule toAbsClassCon(S:K, 'conTyCon(N:K,, A:TyCon), Ts:Set, Is:Set)
+         => error(messuseClassTypeName)
+        requires countGoodNameWithMod(typeName(A), N, .K, Is) =/=K 0
+   rule toAbsClassCon(S:K, 'conTyCon(S,, A:TyCon), Ts:Set, Is:Set)
+         => error(ambiguousTypeName)
+        requires className(A) in Ts andBool notBool typeName(A) in Ts
+                andBool countGoodNameWithMod(className(A), S, .K, Is) =/=K 0
+                andBool countGoodNameWithMod(typeName(A), S, .K, Is) ==K 0
+   rule toAbsClassCon(S:K, 'conTyCon(S,, A:TyCon), Ts:Set, Is:Set)
+         => error(typeNotInScope)
+        requires notBool typeName(A) in Ts andBool notBool className(A) in Ts
+                andBool countGoodNameWithMod(typeName(A), S, .K, Is) ==K 0
+                andBool countGoodNameWithMod(className(A), S, .K, Is) ==K 0
+   rule toAbsClassCon(S:K, 'conTyCon(N:K,, A:TyCon), Ts:Set, Is:Set)
+         => error(typeNotInScope)
+        requires S =/=K N
+                andBool countGoodNameWithMod(typeName(A), N, .K, Is) ==K 0
+                andBool countGoodNameWithMod(className(A), N, .K, Is) ==K 0
+   rule toAbsClassCon(S:K, 'conTyCon(N:K,, A:TyCon), Ts:Set, Is:Set)
+         => fullName(findGoodNameWithMod(
+                        className(A), N, .K, Is),className(A))
+        requires S =/=K N
+                andBool countGoodNameWithMod(className(A), N, .K, Is) ==K 1
+                andBool countGoodNameWithMod(typeName(A), N, .K, Is) ==K 0
+   rule toAbsClassCon(S:K, 'conTyCon(S,, A:TyCon), Ts:Set, Is:Set)
+         => fullName(findGoodNameWithMod(
+                        className(A), S, .K, Is),className(A))
+        requires notBool typeName(A) in Ts andBool notBool className(A) in Ts
+                andBool countGoodNameWithMod(className(A), S, .K, Is) ==K 1
+                andBool countGoodNameWithMod(typeName(A), S, .K, Is) ==K 0
+   rule toAbsClassCon(S:K, 'conTyCon(S,, A:TyCon), Ts:Set, Is:Set)
+             => error(ambiguousTypeName)
+        requires countGoodNameWithMod(className(A), N, .K, Is) >Int 1
+
 
    syntax KItem ::= transExpCon(K, K) [function] //curr-mod-name, ExpCon
    rule transExpCon(Mod:K, 'unitType(.KList)) => fullName(Prelude, 'unitType(.KList))
@@ -575,17 +643,13 @@ module HASKELL-KINDINFER
    rule findGoodNameNoQualified(A:K, .K, SetItem(B:K) S:Set)
             => findGoodNameNoQualified(A, B, S)
    rule findGoodNameNoQualified(A:K, importElem(Ma:K, Mb:K,
-             T:Bool, Es:Set, M:Map), S:Set) => Ma
+             false, Es:Set, M:Map), S:Set) => Ma
         requires A in Es 
    rule findGoodNameNoQualified(A:K, importElem(Ma:K, Mb:K,
-             T:Bool, Es:Set, M:Map), S:Set) => Ma
-        requires A in Es andBool Mb ==K .K
-   rule findGoodNameNoQualified(A:K, importElem(Ma:K, Mb:K,
-             T:Bool, Es:Set, M:Map), S:Set)
+             true, Es:Set, M:Map), S:Set)
             => findGoodNameNoQualified(A, .K, S)
-        requires A in Es andBool Mb =/=K .K
    rule findGoodNameNoQualified(A:K, importElem(Ma:K, Mb:K,
-             T:Bool, Es:Set, M:Map), S:Set)
+             false, Es:Set, M:Map), S:Set)
           => findGoodNameNoQualified(A, .K, S)
         requires notBool A in Es 
 
@@ -696,6 +760,18 @@ module HASKELL-KINDINFER
 
    //a set of functions to transform type to ast-type
    // and check if all type-con and typevars are valid
+   syntax KItem ::= toAbsTypeList(K, ATypeList, K, List, Set, Set, Set) [function]
+          //mod, type-list, execution, store, tyvars, curr-types, imports
+   rule toAbsTypeList(S:K, .ATypeList, .K, L:List, As:Set, Ts:Set, Is:Set) => resultList(L)
+   rule toAbsTypeList(S:K, 'atypeList(A:K,, L:ATypeList),
+                           .K, SL:List, As:Set, Ts:Set, Is:Set)
+             => toAbsTypeList(S, L, toAbsType(S, A, As, Ts, Is), SL, As, Ts, Is)
+   rule toAbsTypeList(S:K, L:ATypeList, error(A:K),
+                SL:List, As:Set, Ts:Set, Is:Set) => error(A)
+   rule toAbsTypeList(S:K, L:ATypeList, T:KItem, SL:List, As:Set, Ts:Set, Is:Set)
+          => toAbsTypeList(S, L, .K, SL ListItem(T), As, Ts, Is)
+        requires notBool isError(T)
+
    syntax KItem ::= toAbsTypeStrict(K, K, Set, Set, Set) [function]
                   | toAbsTypeStrictAux(K) [function]
 
@@ -723,47 +799,77 @@ module HASKELL-KINDINFER
         requires notBool A in As
    rule toAbsType(S:K, A:TyCon, As:Set, Ts:Set, Is:Set)
                       => typeConst(fullName(S,typeName(A)), .List)
-        requires typeName(A) in Ts
+        requires typeName(A) in Ts andBool notBool className(A) in Ts
                    andBool countGoodNameNoQualified(typeName(A), .K, Is) ==K 0
+                   andBool countGoodNameNoQualified(className(A), .K, Is) ==K 0
+   rule toAbsType(S:K, A:TyCon, As:Set, Ts:Set, Is:Set) => error(messuseClassTypeName)
+        requires className(A) in Ts
    rule toAbsType(S:K, A:TyCon, As:Set, Ts:Set, Is:Set)
                       => error(ambiguousTypeName)
         requires typeName(A) in Ts
                    andBool countGoodNameNoQualified(typeName(A), .K, Is) =/=K 0
    rule toAbsType(S:K, A:TyCon, As:Set, Ts:Set, Is:Set)
+                      => error(messuseClassTypeName)
+        requires countGoodNameNoQualified(className(A), .K, Is) =/=K 0
+   rule toAbsType(S:K, A:TyCon, As:Set, Ts:Set, Is:Set)
               => typeConst(fullName(findGoodNameNoQualified(
                         typeName(A), .K, Is),typeName(A)), .List)
-        requires notBool typeName(A) in Ts
+        requires notBool typeName(A) in Ts andBool notBool className(A) in Ts
             andBool countGoodNameNoQualified(typeName(A), .K, Is) ==K 1
+            andBool countGoodNameNoQualified(className(A), .K, Is) ==K 0
    rule toAbsType(S:K, A:TyCon, As:Set, Ts:Set, Is:Set)
               => error(typeNotInScope)
-        requires notBool typeName(A) in Ts
+        requires notBool typeName(A) in Ts andBool notBool className(A) in Ts
             andBool countGoodNameNoQualified(typeName(A), .K, Is) ==K 0
+            andBool countGoodNameNoQualified(className(A), .K, Is) ==K 0
    rule toAbsType(S:K, A:TyCon, As:Set, Ts:Set, Is:Set)
               => error(ambiguousTypeName)
-        requires notBool typeName(A) in Ts
+        requires notBool typeName(A) in Ts andBool notBool className(A) in Ts
             andBool countGoodNameNoQualified(typeName(A), .K, Is) >Int 1
+            andBool countGoodNameNoQualified(className(A), .K, Is) ==K 0
 
-   rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon), As:Set, Ts:Set, Is:Set)
-             => typeConst(fullName(N,typeName(A)), .List)
-        requires typeName(A) in Ts andBool S ==K N
-                andBool countGoodNameNoQualified(typeName(A), .K, Is) ==K 0
-   rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon), As:Set, Ts:Set, Is:Set)
+   rule toAbsType(S:K,'conTyCon(S,, A:TyCon), As:Set, Ts:Set, Is:Set)
+             => typeConst(fullName(S,typeName(A)), .List)
+        requires typeName(A) in Ts andBool notBool className(A) in Ts
+                andBool countGoodNameWithMod(typeName(A), S, .K, Is) ==K 0
+                andBool countGoodNameWithMod(className(A), S, .K, Is) ==K 0
+   rule toAbsType(S:K,'conTyCon(S,, A:TyCon), As:Set, Ts:Set, Is:Set)
+             => error(messuseClassTypeName)
+        requires className(A) in Ts
+   rule toAbsType(S:K,'conTyCon(N:K,, A:TyCon), As:Set, Ts:Set, Is:Set)
+             => error(messuseClassTypeName)
+        requires countGoodNameWithMod(className(A), N, .K, Is) =/=K 0
+   rule toAbsType(S:K,'conTyCon(S,, A:TyCon), As:Set, Ts:Set, Is:Set)
              => error(ambiguousTypeName)
-        requires typeName(A) in Ts andBool S ==K N
-                andBool countGoodNameWithMod(typeName(A), N, .K, Is) =/=K 0
-   rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon), As:Set, Ts:Set, Is:Set)
+        requires typeName(A) in Ts andBool notBool className(A) in Ts
+                andBool countGoodNameWithMod(typeName(A), S, .K, Is) =/=K 0
+                andBool countGoodNameWithMod(className(A), S, .K, Is) ==K 0
+   rule toAbsType(S:K,'conTyCon(S,, A:TyCon), As:Set, Ts:Set, Is:Set)
              => error(typeNotInScope)
-        requires notBool typeName(A) in Ts
-                andBool countGoodNameWithMod(typeName(A), N, .K, Is) ==K 0
-   rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon), As:Set, Ts:Set, Is:Set)
+        requires notBool typeName(A) in Ts andBool notBool className(A) in Ts
+                andBool countGoodNameWithMod(typeName(A), S, .K, Is) ==K 0
+                andBool countGoodNameWithMod(className(A), S, .K, Is) ==K 0
+   rule toAbsType(S:K,'conTyCon(N:K,, A:TyCon), As:Set, Ts:Set, Is:Set)
+             => error(typeNotInScope)
+        requires S =/=K N andBool
+                countGoodNameWithMod(typeName(A), N, .K, Is) ==K 0
+                andBool countGoodNameWithMod(className(A), N, .K, Is) ==K 0
+   rule toAbsType(S:K,'conTyCon(N:K,, A:TyCon), As:Set, Ts:Set, Is:Set)
              => typeConst(fullName(findGoodNameWithMod(
                         typeName(A), N, .K, Is),typeName(A)), .List)
-        requires notBool typeName(A) in Ts
+        requires S =/=K N
                 andBool countGoodNameWithMod(typeName(A), N, .K, Is) ==K 1
+                andBool countGoodNameWithMod(className(A), N, .K, Is) ==K 0
+   rule toAbsType(S:K,'conTyCon(S,, A:TyCon), As:Set, Ts:Set, Is:Set)
+             => typeConst(fullName(findGoodNameWithMod(
+                        typeName(A), S, .K, Is),typeName(A)), .List)
+        requires notBool typeName(A) in Ts andBool notBool className(A) in Ts
+                andBool countGoodNameWithMod(typeName(A), S, .K, Is) ==K 1
+                andBool countGoodNameWithMod(className(A), S, .K, Is) ==K 0
    rule toAbsType(S:K,'conTyCon(N:ModId,, A:TyCon), As:Set, Ts:Set, Is:Set)
              => error(ambiguousTypeName)
-        requires notBool typeName(A) in Ts
-                andBool countGoodNameWithMod(typeName(A), N, .K, Is) >Int 1
+        requires countGoodNameWithMod(typeName(A), N, .K, Is) >Int 1
+
    rule toAbsType(S:K,(->), As:Set, Ts:Set, Is:Set)
              => typeConst(fullName(Prelude, typeName((->))), .List)
    rule toAbsType(S:K,[], As:Set, Ts:Set, Is:Set)
@@ -861,7 +967,6 @@ module HASKELL-KINDINFER
 
    //for simple type-vars-title
    syntax List ::= toAbsTypeTuple(K, K) [function]//curr-mod, type-tuple
-                 | toAbsTypeList(K, ATypeList) [function]//curr-mod, typelist
    rule toAbsTypeTuple(S:K, 'twoTypeVarTuple(A:K,, B:K))
                      => ListItem(A) ListItem(B)
    rule toAbsTypeTuple(S:K, 'typeVarTupleCon(A:K,, B:TypeTuple))
@@ -1021,22 +1126,39 @@ module HASKELL-KINDINFER
                   As:Set, Ts:Set, Is:Set) => resultMap(M M')
 
    //functions to convert class name to abs form and convert context to a set of classes
+   syntax KItem ::= toAbsClass(K, Class, Set, Set) [function]
+           //curr-mod-name, class, curr-types, imports
+                  | toAbsClassNext(K, List)        [function]
+                  | toAbsClassAux(K, K, K)         [function]
+   rule toAbsClass(Mod:K, 'classCon(T:QTyCon,, V:TyVar), Ts:Set, Is:Set)
+             => toAbsClassNext(toAbsClassCon(Mod, T, Ts, Is), ListItem(V))
+   rule toAbsClass(Mod:K, 'multiClass(T:QTyCon,, A:TyVar,, As:ATypeList), Ts:Set, Is:Set)
+                  => toAbsClassAux(toAbsClassCon(Mod, T, Ts, Is), A,
+                        toAbsTypeList(Mod, As, .K, .List, SetItem(A), Ts, As))
 
-   syntax KItem ::= toAbsClass(K, Class) [function] //curr-mod-name, class
-   rule toAbsClass(Mod:K, 'classCon(T:QTyCon,, V:TyVar))
-                  => classTitle(toAbsTypeCon(Mod, T), ListItem(V))
-   rule toAbsClass(Mod:K, 'multiClass(T:QTyCon,, A:TyVar,, As:ATypeList))
-                  => classTitle(toAbsTypeCon(Mod, T), ListItem(A) toAbsTypeList(Mod, As))
+   rule toAbsClassAux(error(A:K), B:K, C:K) => error(A)
+   rule toAbsClassAux(A:K, B:K, error(C:K)) => error(C)
+   rule toAbsClassAux(A:K, B:K, resultList(L:List))
+             => toAbsClassNext(A, ListItem(B) L)
+        requires notBool isError(A)
+   rule toAbsClassNext(error(A:K), B:List) => error(A)
+   rule toAbsClassNext(A:K, B:List) => classTitle(A, B) [owise]
 
-   syntax Set ::= contextToSet(K, K) [function] //curr-mod-name, class
-                | contextToSetAux(K, Classes) [function]//curr-mod, classes
-   rule contextToSet(S:K, 'emptyContext(.KList)) => .Set
-   rule contextToSet(S:K, C:Class =>) => SetItem(toAbsClass(S, C))
-   rule contextToSet(S:K, 'contextClass(Cs:Classes) =>)
-             => contextToSetAux(S, Cs)
-   rule contextToSetAux(S:K, .Classes) => .Set
-   rule contextToSetAux(S:K, 'classesCon(A:Class,, B:Classes))
-           => contextToSet(S, A) contextToSetAux(S, B)
+   syntax KItem ::= contextToSet(K, K, K, Set, Set, Set) [function]
+          //curr-mod-name, class, execution, store, curr-types, imports
+   rule contextToSet(S:K, .K, .K, S:Set, Ts:Set, Is:Set) => resultSet(S)
+   rule contextToSet(S:K, A:K, error(B:K), S:Set, Ts:Set, Is:Set) => error(B)
+   rule contextToSet(S:K, A:K, classTitle(X:K, Y:List), S:Set, Ts, Is)
+            => contextToSet(S, A, .K, SetItem(classTitle(X, Y)) S, Ts, Is)
+   rule contextToSet(S:K, 'emptyContext(.KList),
+               .K, S:Set, Ts:Set, Is:Set) => resultSet(S)
+   rule contextToSet(S:K, C:Class =>, X:K, S:Set, Ts:Set, Is:Set)
+             => contextToSet(S, .K, toAbsClass(S, C, Ts, Is), S, Ts, Is)
+   rule contextToSet(S:K, 'contextClass(Cs:Classes) =>, .K, S:Set, Ts:Set, Is:Set)
+             => contextToSet(S, Cs, .K, S, Ts, Is)
+   rule contextToSet(S:K, .Classes, .K, S:Set, Ts:Set, Is:Set) => resultSet(S)
+   rule contextToSet(S:K, 'classesCon(A:Class,, B:Classes), .K, S:Set, Ts:Set, Is:Set)
+           => contextToSet(S, B, toAbsClass(S, C, Ts, Is), .K, S, Ts, Is)
 
    syntax KItem ::= derivingToSet(K, K, Set, Set) [function]
          //curr-mod, opt-deriving, set of types, imports
@@ -1333,6 +1455,10 @@ module HASKELL-KINDINFER
                         A:TyVar, C:K, (A |-> D:K) M:Map, Is:Set, PM:Map)
              => returnKind(N, S, SetItem(kindTuple(C,D)))
    rule kindInference(N:Int, S:Set, Mod:K,
+                        A:TyVar, C:K, M:Map, Is:Set, PM:Map)
+             => error(typeVarNotInScope)
+        requires notBool A in keys(M)
+   rule kindInference(N:Int, S:Set, Mod:K,
                         aType(X:Bool, A:K), C:K, M:Map, Is:Set, PM:Map)
              => kindInference(N, S, Mod, A, C, M, Is, PM)
    rule kindInference(N:Int, S:Set, Mod:K, tyVar(Mod:K, Fn:K),
@@ -1342,14 +1468,14 @@ module HASKELL-KINDINFER
                fullName(Mod, B:K), L:List), C:K, (B |-> D:K) M:Map, Is:Set, PM:Map)
           => kindInferenceList(N, S, Mod, L, D, .K,
                    SetItem(kindTuple(C,star)), (B |-> D:K) M:Map, Is:Set, PM:Map)
-   rule kindInference(N:Int, S:Set, Mod:K, typeConst(fullName(Mod, B:K), L:List),
-                C:K, M:Map, Is:Set, (fullName(Mod, B:K) |-> D:K) PM:Map)
+   rule kindInference(N:Int, S:Set, Mod:K, typeConst(fullName(Mod':K, B:K), L:List),
+                C:K, M:Map, Is:Set, (fullName(Mod':K, B:K) |-> D:K) PM:Map)
           => kindInferenceList(N, S, Mod, L, D, .K,
-                SetItem(kindTuple(C,star)), M:Map, Is:Set, (fullName(Mod, B:K) |-> D:K) PM:Map)
+                SetItem(kindTuple(C,star)), M:Map, Is:Set, (fullName(Mod', B:K) |-> D:K) PM:Map)
    rule kindInference(N:Int, S:Set, Mod:K, typeConst(
-               fullName(Mod, B:K), L:List), C:K, M:Map, Is:Set, PM:Map)
+               fullName(Mod':K, B:K), L:List), C:K, M:Map, Is:Set, PM:Map)
           => error(typeNotInScope)
-        requires notBool B in keys(M) orBool notBool fullName(Mod, B:K) in keys(PM)
+        requires notBool B in keys(M) orBool notBool fullName(Mod', B:K) in keys(PM)
    rule kindInference(N:Int, S:Set, Mod:K, typeConst(
                A:TyVar, L:List), C:K, (A |-> D:K) M:Map, Is:Set, PM:Map)
           => kindInferenceTyVar(Mod, C, L, D, genArrowKinds(N, S,

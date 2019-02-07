@@ -332,7 +332,7 @@ module HASKELL-HELPER
    rule checkOnlyDefaultAux('typeCon(T:Type,, Ts:Types), As:K, T1:K, T2:K)
              => checkOnlyDefaultAux(Ts, As, T1, T2) [owise]
 
-   rule checkOnlyDefaultNext(A:K, .TopDecls) => A
+   rule checkOnlyDefaultNext(A:K, .TopDecls) => .K
    rule checkOnlyDefaultNext(A:K, 'topdeclslist('default(Ts:K),, As:TopDecls))
           => error(moreThanOneDefault)
    rule checkOnlyDefaultNext(X:K, 'topdeclslist(A:TopDecl,, As:TopDecls))
