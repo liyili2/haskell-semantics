@@ -26,11 +26,29 @@ module HASKELL-ERRORS
     rule <k> error(cycleAlpha) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type signature lacking an accompanying binding.")) </output>
 
+    rule <k> error(funNameDeclNotDef) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules declare a function but never define it.")) </output>
+
+    rule <k> error(funNameConflicting) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module has a pattern uses conflicting arguments where it has more than two pattern variables having the same name.")) </output>
+
     rule <k> error(typeNotInScope) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type delcaration whose type cons might not be properly imported or created.")) </output>
 
+    rule <k> error(labelConstrNotCorrect) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a use of field whose constructor is not correctly stated or misused.")) </output>
+
+    rule <k> error(labelNotInScope) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a use of field, and one of its label has wrongly declared module name, or the label is not in the definition of the labels of the field.")) </output>
+
     rule <k> error(classNotInScope) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The module uses a class name that might not be properly imported or created.")) </output>
+
+    rule <k> error(constrNotInScope) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module uses a constructor that might not be properly imported or created.")) </output>
+
+    rule <k> error(funNameNotInScope) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module uses a function name that has not defined.")) </output>
 
     rule <k> error(typeVarNotInScope) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type delcaration whose used type vars might not be properly declared in the title of the type.")) </output>
@@ -55,6 +73,15 @@ module HASKELL-ERRORS
 
     rule <k> error(ambiguousTypeName) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The module uses a type whose names are defined previously.")) </output>
+
+    rule <k> error(ambiguousConstrName) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module uses a constructor whose names are defined previously.")) </output>
+
+    rule <k> error(ambiguousFunName) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module uses a function that uses a function name from two different previous definitions.")) </output>
+
+    rule <k> error(badUseFunName) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module uses a local function name that has been quantified.")) </output>
 
     rule <k> error(duplicateDeriving) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The module has a type declaration that has derived with duplicate classes.")) </output>

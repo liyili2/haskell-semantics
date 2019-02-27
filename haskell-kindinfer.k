@@ -17,81 +17,6 @@ module HASKELL-KINDINFER
    rule dealWithTuple('tupleFun(A:GConCommas)) => tupleType(countOnCommas(A))
    rule dealWithTuple(A:K) => A [owise]
 
-   syntax KItem ::= toAbsTypeInClass(K, Set, K, Map, Map) [function]
-                  | toAbsTypeInClassApp(K, Set, K, List, Map,Map) [function]
-           //module, type expression, type map, import map
-                  | toAbsTypeInClassAppAux(K, Set, K, List, List, Map,Map) [function]
-   syntax List ::= toAbsTypeInClassTuple(K, Set, TypeTuple, Map, Map) [function]
-
-   rule toAbsTypeInClass(Mod:K, S:Set, 'typeArrow(B:BType,, T:Type), TM:Map, IM:Map)
-            => typeConst(fullName(Prelude, (->)), ListItem(toAbsTypeInClass(Mod,S, B, TM, IM))
-                             ListItem(toAbsTypeInClass(Mod,S, T, TM, IM)))
-        requires toAbsTypeInClass(Mod,S, B, TM, IM) =/=K none
-              andBool toAbsTypeInClass(Mod,S, T, TM, IM) =/=K none
-   rule toAbsTypeInClass(Mod:K, S:Set, 'baTypeCon(A:AType,, B:BType), TM:Map, IM:Map)
-                => toAbsTypeInClassApp(Mod, S, A, ListItem(B), TM, IM)
-   rule toAbsTypeInClass(Mod:K, S:Set, A:TyVar, TM:Map, IM:Map) => A
-        requires notBool A in S
-   rule toAbsTypeInClass(Mod:K, S:Set, A:TyVar, TM:Map, IM:Map) => modVar(A)
-        requires A in S
-   rule toAbsTypeInClass(Mod:K, S:Set, 'unitType(.KList), TM:Map, IM:Map)
-           => typeConst(fullName(Prelude, 'unitType(.KList)), .List)
-   rule toAbsTypeInClass(Mod:K, S:Set, 'tyList(B:K), TM:Map, IM:Map)
-           => typeConst(fullName(Prelude, []), ListItem(toAbsTypeInClass(Mod,S, B, TM, IM)))
-        requires toAbsTypeInClass(Mod,S, B, TM, IM) =/=K none
-   rule toAbsTypeInClass(Mod:K, S:Set, 'tupleCover(B:TypeTuple), TM:Map, IM:Map)
-           => typeConst(fullName(Prelude, tupleType(typeTupleCount(B))),
-                         ListItem(toAbsTypeInClassTuple(Mod,S, B, TM, IM)))
-        requires size(toAbsTypeInClassTuple(Mod,S, B, TM, IM)) =/=K 0
-   rule toAbsTypeInClass(Mod:K, S:Set, 'conTyCon(A:K,,T:K), TM:Map, IM:Map)
-            => typeConst(T, .List)
-        requires isFather(A, Mod, .K, IM) andBool getArity(TM, A, T, .K) ==K 0
-
-   rule toAbsTypeInClass(Mod:K, S:Set, A:K, TM:Map, IM:Map) => none [owise]
-
-
-   rule toAbsTypeInClassTuple(Mod:K, S:Set, 'twoTypeTuple(A:K,,B:K), TM:Map, IM:Map)
-          => ListItem(toAbsTypeInClass(Mod,S, A, TM, IM))
-                  ListItem(toAbsTypeInClass(Mod,S, B, TM, IM))
-        requires toAbsTypeInClass(Mod,S, A, TM, IM) =/=K none
-              andBool toAbsTypeInClass(Mod,S, B, TM, IM) =/=K none
-   rule toAbsTypeInClassTuple(Mod:K, S:Set, 'typeTupleCon(A:K,,B:TypeTuple), TM:Map, IM:Map)
-          => ListItem(toAbsTypeInClass(Mod,S, A, TM, IM))
-                 toAbsTypeInClassTuple(Mod, S, B, TM, IM)
-        requires toAbsTypeInClass(Mod,S, A, TM, IM) =/=K none
-              andBool size(toAbsTypeInClassTuple(Mod, S, B, TM, IM)) =/=K 0
-   rule toAbsTypeInClassTuple(Mod:K, S:Set, A:TypeTuple, TM:Map, IM:Map) => .List [owise]
-
-
-   rule toAbsTypeInClassApp(Mod:K, S:Set, 'baTypeCon(A:AType,, B:BType),
-            L:List, TM:Map, IM:Map) 
-            => toAbsTypeInClassApp(Mod, S, A, ListItem(B) L, TM, IM)
-   rule toAbsTypeInClassApp(Mod:K, S:Set, A:K, L:List, TM:Map, IM:Map)
-           => toAbsTypeInClassAppAux(Mod, S, A, L, .List, TM, IM)
-        requires notBool isBATypeCon(A)
-
-   rule toAbsTypeInClassAppAux(Mod:K, S:Set, A:K, .List, L:List, TM:Map, IM:Map)
-           => typeConst(modVar(A), L)
-        requires A in S
-   rule toAbsTypeInClassAppAux(Mod:K, S:Set, A:K, .List, L:List, TM:Map, IM:Map)
-           => typeConst(fullName(Prelude, dealWithTuple(A)), L)
-        requires notBool A in S andBool findArity(Mod, A, TM, IM) ==K size(L)
-   rule toAbsTypeInClassAppAux(Mod:K, S:Set, A:K, .List, L:List, TM:Map, IM:Map) => none
-        requires notBool A in S andBool findArity(Mod, A, TM, IM) =/=K size(L)
-
-   rule toAbsTypeInClassAppAux(Mod:K, S:Set, A:K,
-             ListItem('baTypeCon(C:AType,, B:BType)) BL:List, L:List, TM:Map, IM:Map)
-           => toAbsTypeInClassAppAux(Mod, S, A, ListItem(B) BL,
-                      L ListItem(toAbsTypeInClass(Mod, S, C, TM, IM)), TM, IM)
-        requires toAbsTypeInClass(Mod, S, C, TM, IM) =/=K none
-   rule toAbsTypeInClassAppAux(Mod:K, S:Set, A:K,
-             ListItem(C:AType) BL:List, L:List, TM:Map, IM:Map)
-           => toAbsTypeInClassAppAux(Mod, S, A, BL,
-                      L ListItem(toAbsTypeInClass(Mod, S, C, TM, IM)), TM, IM)
-        requires toAbsTypeInClass(Mod, S, C, TM, IM) =/=K none
-   rule toAbsTypeInClassAppAux(Mod:K, S:Set, A:K, BL:List, L:List, TM:Map, IM:Map)
-               => none   [owise]
-
    syntax Map ::= classContentToList(K, K, K, Map, Map, Map) [function]
                    //module, class, decls, type-map, constr-map, import-map
                 | singleContentToList(K,K, CDecl, Map, Map, Map) [function]
@@ -197,17 +122,19 @@ module HASKELL-KINDINFER
    rule getTypeNames(T:K) => .Set [owise]
 
    syntax Set ::= getFreeTypeVars(K) [function]
-                | getFreeTypeVarsInList(List) [function]
    rule getFreeTypeVars(T:TyVar) => SetItem(T)
-   rule getFreeTypeVars(typeConst(A:K, B:List))
-          => getFreeTypeVars(A) getFreeTypeVarsInList(B)
-   rule getFreeTypeVars(curryTypes(A:List, B:K))
-         => getFreeTypeVarsInList(A) getFreeTypeVars(A)
-   rule getFreeTypeVars(forall(A:Set, B:K))
-            => getFreeTypeVars(B) -Set A
-   rule getFreeTypeVarsInList(.List) => .Set
-   rule getFreeTypeVarsInList(ListItem(A:K) L:List)
-            => getFreeTypeVars(A) getFreeTypeVarsInList(L)
+   rule getFreeTypeVars(G:GTyCon) => .Set
+   rule getFreeTypeVars('tupleCover(As:TypeTuple)) => getFreeTypeVars(As)
+   rule getFreeTypeVars('twoTypeTuple(A1:Type,, A2:Type))
+        => getFreeTypeVars(A1) getFreeTypeVars(T2)
+   rule getFreeTypeVars('typeTupleCon(A1:Type,, A2:TypeTuple))
+        => getFreeTypeVars(A1) getFreeTypeVars(T2)
+   rule getFreeTypeVars('tyList(A1:Type)) => getFreeTypeVars(A1)
+   rule getFreeTypeVars('group(A1:Type)) => getFreeTypeVars(A1)
+   rule getFreeTypeVars('typeArrow(A1:BType,, A2:Type))
+        => getFreeTypeVars(A1) getFreeTypeVars(T2)
+   rule getFreeTypeVars('baTypeCon(A1:AType,, A2:BType))
+        => getFreeTypeVars(A1) getFreeTypeVars(T2)
 
    syntax Map ::= addEdges(Set, Set) [function]
    rule addEdges(SetItem(A:K), SetItem(B:K) S:Set)
@@ -564,7 +491,7 @@ module HASKELL-KINDINFER
             andBool countGoodNameNoQualified(className(A), .K, Is) ==K 0
 
    rule toAbsClassCon(S:K, 'conTyCon(S,, A:TyCon), Ts:Set, Is:Set)
-         => fullName(Mod, className(T))
+         => fullName(S, className(A))
         requires className(A) in Ts andBool notBool typeName(A) in Ts
                 andBool countGoodNameWithMod(typeName(A), S, .K, Is) ==K 0
                 andBool countGoodNameWithMod(className(A), S, .K, Is) ==K 0
@@ -605,25 +532,17 @@ module HASKELL-KINDINFER
              => error(ambiguousTypeName)
         requires countGoodNameWithMod(className(A), N, .K, Is) >Int 1
 
+   syntax KItem ::= toAbsTypeWithAll(K, K, Set, Set, Set, Set) [function]
+           //curr-mod, term, bound-vars, all-vars, types, imports
+                  | toAbsTypeWithAllAux(Set, Set, K) [function]
+   rule toAbsTypeWithAll(S:K, T:K, Bs:Set, As:Set, Ts:Set, Is:Set)
+             => toAbsTypeWithAllAux(Bs, As, toAbsType(S, T, As, Ts, Is))
+   rule toAbsTypeWithAllAux(Bs:Set, As:Set, error(A:K)) => error(A)
+   rule toAbsTypeWithAllAux(Bs:Set, As:Set, T:K) => T
+        requires notBool isError(T) andBool (As -Set Bs) <=Set .Set
+   rule toAbsTypeWithAllAux(Bs:Set, As:Set, T:K) => forall(As -Set Bs, T)
+        requires notBool isError(T) andBool notBool ((As -Set Bs) <=Set .Set)
 
-   syntax KItem ::= transExpCon(K, K) [function] //curr-mod-name, ExpCon
-   rule transExpCon(Mod:K, 'unitType(.KList)) => fullName(Prelude, 'unitType(.KList))
-   rule transExpCon(Mod:K, []) => fullName(Prelude, [])
-   rule transExpCon(Mod:K, 'tupleFun(Gs:GConCommas))
-          => fullName(Prelude, tupleType(countOnCommas(Gs) +Int 1))
-   rule transExpCon(Mod:K, T:TyCon) => fullName(Mod, T)
-   rule transExpCon(Mod:K, 'conTyCon(A:ModId,, T:TyCon))
-              => fullName(A, T)
-   rule transExpCon(Mod:K, 'gConBracket('colon(.KList)))
-              => fullName(Prelude, 'colon(.KList))
-   rule transExpCon(Mod:K, 'gConBracket(C:ConSym))
-              => fullName(Mod, C)
-   rule transExpCon(Mod:K, 'gConBracket('qConSymCon(A:ModId,, C:ConSym)))
-              => fullName(A, C)
-
-   syntax KItem ::= toAbsTypeWithAll(K, Set) [function]
-   rule toAbsTypeWithAll(T:K, .Set) => T
-   rule toAbsTypeWithAll(T:K, S:Set) => forall(S, T) [owise]
 
    //a function to find the module names of a type in imports
    syntax KItem ::= findGoodName(K, K, Set) [function]
@@ -1003,10 +922,10 @@ module HASKELL-KINDINFER
 
    syntax List ::= expandRecordType(K, Vars, K) [function]
    rule expandRecordType(S:K, A:Var, T:K)
-             => ListItem(typeConst(fullName(Prelude, recordTypeAssign),
+             => ListItem(typeConst(fullName(Prelude, typeName(recordTypeAssign)),
                     ListItem(tyVar(S, funName(pillVar(A)))) ListItem(T)))
    rule expandRecordType(S:K, 'varCon(A:Var,, As:Vars), T:K)
-           => ListItem(typeConst(fullName(Prelude, recordTypeAssign),
+           => ListItem(typeConst(fullName(Prelude, typeName(recordTypeAssign)),
                       ListItem(tyVar(S, funName(pillVar(A))))
                                ListItem(T))) expandRecordType(S, As, T)
 
@@ -1085,9 +1004,8 @@ module HASKELL-KINDINFER
 
    rule makeSinglePreBetaField(A:K, error(B:K), T:K) => error(B)
    rule makeSinglePreBetaField(A:K, resultList(L:List), T:K)
-            => resultMap(A |-> typeConst(fullName(Prelude, typeName((->))),
-             ListItem(typeConst(
-              fullName(Prelude, typeName(recordType)), L)) ListItem(T)))
+            => resultMap(A |-> curryTypes(ListItem(typeConst(
+              fullName(Prelude, typeName(recordType)), L)), T))
 
    rule makeSinglePreBetaCon(A:K, error(B:K), T:K) => error(B)
    rule makeSinglePreBetaCon(A:K, resultList(L:List), T2:K)

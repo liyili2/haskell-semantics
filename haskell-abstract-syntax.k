@@ -14,7 +14,11 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "cycleAlpha"
     syntax KItem ::= "typeNotInScope"
     syntax KItem ::= "classNotInScope"
+    syntax KItem ::= "constrNotInScope"
+    syntax KItem ::= "funNameNotInScope"
     syntax KItem ::= "typeVarNotInScope"
+    syntax KItem ::= "labelConstrNotCorrect"
+    syntax KItem ::= "labelNotInScope"
     syntax KItem ::= "typeConKindBad"
     syntax KItem ::= "typeConKindNumError"
     syntax KItem ::= "typeVarKindBad"
@@ -31,9 +35,14 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "importFromNoSource"
     syntax KItem ::= "ambiguousTypeName"
     syntax KItem ::= "ambiguousClassName"
+    syntax KItem ::= "ambiguousConstrName"
+    syntax KItem ::= "ambiguousFunName"
+    syntax KItem ::= "badUseFunName"
     syntax KItem ::= "messuseClassTypeName"
     syntax KItem ::= "declNoInstance"
     syntax KItem ::= "duplicateDeriving"
+    syntax KItem ::= "funNameDeclNotDef"
+    syntax KItem ::= "funNameConflicting"
 
     //checking steps
     syntax KItem ::= "startChecks"
@@ -65,9 +74,9 @@ module HASKELL-ABSTRACT-SYNTAX
    //transformation of classes
     syntax KItem ::= "collectClassInfo"
     syntax KItem ::= getClassInfo(K)
-    syntax KItem ::= getClassInfoAux(K, K, Set, K, K, K)
+    syntax KItem ::= getClassInfoAux(K, K, K, K, K, K)
     syntax KItem ::= getClassInfoAuxAux(K, K)
-    syntax KItem ::= putClassMethodNames(Set) [function]
+    //syntax KItem ::= putClassMethodNames(Set) [function]
     syntax KItem ::= putTypeClass(K, Set, K, K, K)
                //module, class contexts (super classes),
               // class name, class type-var, putClassMapSet
@@ -206,7 +215,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= tyVar(K, K)
           //curr-name, convert a var to a tyVar, every record label name is a type
     syntax KResult ::= "recordType" | "recordTypeAssign"
-                     | "recordParen" | "recordAssign" | "recordUpdate"
+                     | recordParen(K) | "recordAssign" | "recordUpdate"
 
             //two new type con names for records.
     //built-in type cons
@@ -240,13 +249,14 @@ module HASKELL-ABSTRACT-SYNTAX
     //expression syntax
     syntax KItem ::= appExp(K, List) //app-name, args
     syntax KItem ::= "arithSeq1" | "arithSeq2noEnd" | "arithSeq2hasEnd" | "arithSeq3"
-                   | "listCompre" | "qualAssignAst" | "qualLetAst"
+                   | "listCompre" | "leftArrow"
     syntax KItem ::= lambda(K, K) //var, exp
     syntax KItem ::= lambdaAssign(K, K) //pat-fun-rhs, body
     syntax KItem ::= funAssign(List, K) //args-with-pat, body
     syntax KItem ::= body(K, List) //expressions/guards, list-of-conditions
     syntax KItem ::= genVar(Int)
     syntax KItem ::= letIn(List, K) //var, exp
+    syntax KItem ::= letStmt(List) //list of (pat,exp)
     syntax KItem ::= ifElse(List, K, K) //generalized ifelse, can deal with guard
                                   //list of conditions, exp1, exp2
     syntax KItem ::= tempGuard(List, K) //temp guard holder in translation

@@ -195,8 +195,8 @@ module HASKELL-SYNTAX
 
     syntax GenDecl ::= VarsType
                      | Vars "::" Context "=>" Type   [klabel('genAssignContext)]
-                     | Fixity Ops
-                     | Fixity Integer Ops
+                     | Fixity Ops                    [klabel('fixityOp)]
+                     | Fixity Integer Ops            [klabel('fixityIntOp)]
                      | "" [onlyLabel, klabel('emptyGenDecl)]
 
     //three optional data type for the TopDecl data operator. 
@@ -357,7 +357,7 @@ module HASKELL-SYNTAX
                   | Var "@" APat
                   | GCon
                   | QCon "{" FPats "}"  [klabel('recordPat), onlyLabel]
-                  | Literal [klabel('apatLiteral)]
+                  | Literal
                   | "_"     [klabel('underscore), onlyLabel]
                   | "(" Pat ")"   [bracket]
                   | "(" PatTuple ")"  [klabel('patTuple), onlyLabel]

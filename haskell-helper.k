@@ -6,6 +6,11 @@ module HASKELL-HELPER
     imports HASKELL-SYNTAX
     imports HASKELL-ABSTRACT-SYNTAX
 
+   //a function to add funName wrapper
+   syntax KItem ::= addFunName(K) [function]
+   rule addFunName(fullName(X:K, B:K)) => funName(B)
+   rule addFunName(A:K) => funName(A) [owise]
+
    //add a set term to a warpper of set
    syntax KItem ::= addToSetInK(K, Set) [function]
    rule addToSetInK(resultSet(S:Set), S':Set) => resultSet(S S')
@@ -24,6 +29,10 @@ module HASKELL-HELPER
    rule typeVarsToList('typeVars(A:TyVar,, B:TyVars))
             => ListItem(A) typeVarsToList(B)
 
+   syntax List ::= qualsToList(Quals) [function]
+   rule qualsToList(A:Qual) => ListItem(A)
+   rule qualsToList('qualCon(A:Qual,, B:Quals)) => ListItem(A) qualsToList(B)
+
    //boolean functions to determine if a term has no certain klabel
    syntax Bool ::= isBATypeCon(K) [function]
    rule isBATypeCon('baTypeCon(A:AType,, B:BType)) => true
@@ -35,6 +44,13 @@ module HASKELL-HELPER
    rule pillVar('varIdQuote(A:VarId)) => A
    rule pillVar('conSymBracket(C:ConSym)) => C
    rule pillVar('conIdQuote(A:ConId)) => A
+   rule pillVar('qTyConQuote(A:K)) => pillVar(A)
+   rule pillVar('conTyCon(A:ModId,, B:TyCon)) => fullName(A, B)
+   rule pillVar('qConSymCon(A:K,, B:K)) => fullName(A, B)
+   rule pillVar('qVarBracket(A:K)) => pillVar(A)
+   rule pillVar('qVarIdCon(X:ModId,, Y:VarId)) => fullName(X, Y)
+   rule pillVar('qVarIdQuote(A:K)) => pillVar(A)
+   rule pillVar('qVarSymCon(A:ModId,, B:VarSym)) => fullName(A, B)
    rule pillVar(V:K) => V [owise]
 
    syntax KItem ::= buildVar(K) [function]
@@ -45,7 +61,7 @@ module HASKELL-HELPER
    rule buildVar('qConSymCon(M:ModId,, C:ConSym))
             => fullName(M, funName(C))
    rule buildVar(C:ConId) => typeName(C)
-
+/*
    syntax KItem ::= transVar(K, K) [function]
    rule transVar(Mod:K, 'colon(.KList)) => fullName(Mod, 'colon(.KList))
    rule transVar(Mod:K, C:ConSym) => fullName(Mod, C)
@@ -64,6 +80,7 @@ module HASKELL-HELPER
    rule transVar(Mod:K, C:TyCon) => fullName(Mod, C)
    rule transVar(Mod:K, C:ConId) => fullName(Mod, C)
    rule transVar(Mod:K, 'conSymBracket(C:ConSym)) => transVar(Mod, C)
+*/
 
    syntax KItem ::= transTypeVar(K, K) [function]
    rule transTypeVar(S:K, V:VarId) => tyVar(S, V)
@@ -184,6 +201,9 @@ module HASKELL-HELPER
    rule fbSize('fbCon(A:FBind,, As:FBindList))
             => 1 +Int fbSize(As)
 
+   syntax Bool ::= hasConflictVars(K) [function]
+   rule hasConflictVars(A:K) => size(getFreeVarsInPat(A)) ==K size(getFreeVarsInPatList(A))
+
    //check if a module contains the same class name before
    syntax Bool ::= hasClassName(K, K, K, Map) [function]
    rule hasClassName(A:K, C:K, .K, (A:K |-> B:K) M:Map)
@@ -224,6 +244,10 @@ module HASKELL-HELPER
    rule isError(error(A:K)) => true
    rule isError(A:K) => false [owise]
 
+   syntax Bool ::= isFullName(K) [function]
+   rule isFullName(fullName(A:K, B:K)) => true
+   rule isFullName(A:K) => false [owise]
+
    syntax Set ::= getIntersect(Set, K, Set) [function]
    rule getIntersect(.Set, .K, S':Set) => .Set
    rule getIntersect(SetItem(A:K) S:Set, .K, S':Set)
@@ -260,6 +284,11 @@ module HASKELL-HELPER
 
    syntax Set ::= "floatTypeSet" [function]
    rule floatTypeSet => SetItem("Float") SetItem("Double")
+
+   syntax Bool ::= isFunVar(K) [function]
+   rule isFunVar(A:VarId) => true
+   rule isFunVar(A:VarSym) => true
+   rule isFunVar(A:K) => false [owise]
 
    syntax Bool ::= isIntType(K) [function]
    rule isIntType(A:TyCon) => #tokenToString(A) in intTypeSet
@@ -345,6 +374,52 @@ module HASKELL-HELPER
    rule getCoreVar('binLhs(A:Pat,, B:VarOp,, C:Pat)) => funName(pillVar(B))
    rule getCoreVar('groupLhs(A:FunLhs,, B:APatList)) => getCoreVar(A)
 
+/*
+   a function to get all free variables in a decls, and all free vars in genDecl must
+   be binded with a definition by using funLhs Rhs or Guards funLhs
+*/
+   syntax Set ::= insertMod(K, Set) [function]
+   rule insertMod(A:K, .Set) => .Set
+   rule insertMod(A:K, SetItem(B:K) S:Set) => SetItem(fullName(A, B)) insertMod(A, S)
+
+   syntax Set ::= getFreeVarsInDecls(K) [function]
+   rule getFreeVarsInDecls(V:Var) => SetItem(funName(pillVar(A)))
+   rule getFreeVarsInDecls('varCon(V:Var,, Vs:Vars))
+         => SetItem(funName(pillVar(A))) getFreeVarsInDecls(Vs)
+   rule getFreeVarsInDecls('qualAssign(A:K,, B:K)) => getFreeVarsInDecls(A)
+   rule getFreeVarsInDecls('qualLet(A:K)) => getFreeVarsInDecls(A)
+   rule getFreeVarsInDecls('decls(Ds:K)) => getFreeVarsInDecls(Ds)
+   rule getFreeVarsInDecls(.DeclsList) => .Set
+   rule getFreeVarsInDecls('declsCon(A:K,, B:K))
+         => getFreeVarsInDecls(A) getFreeVarsInDecls(B)
+   rule getFreeVarsInDecls('varAssign(Vs:Vars,, T:Type))
+            => getFreeVarsInDecls(Vs)
+   rule getFreeVarsInDecls('genAssignContext(Vs:Vars,, C:Context,, T:Type))
+            => getFreeVarsInDecls(Vs)
+   rule getFreeVarsInDecls('fixityOp(A:K,, B:K)) => getFreeVarsInDecls(B)
+   rule getFreeVarsInDecls('fixityIntOp(A:K,, C:K,, B:K)) => getFreeVarsInDecls(B)
+   rule getFreeVarsInDecls('emptyGenDecl(.KList)) => .Set
+   rule getFreeVarsInDecls(A:K) => .Set [owise]
+
+   syntax Set ::= getFreeVarsInDefs(K) [function]
+   rule getFreeVarsInDefs(V:Var) => SetItem(funName(pillVar(A)))
+   rule getFreeVarsInDefs(V:VarOp) => SetItem(funName(pillVar(A)))
+   rule getFreeVarsInDefs('qualAssign(A:K,, B:K)) => getFreeVarsInDefs(A)
+   rule getFreeVarsInDefs('qualLet(A:K)) => getFreeVarsInDefs(A)
+   rule getFreeVarsInDefs('decls(Ds:K)) => getFreeVarsInDefs(Ds)
+   rule getFreeVarsInDefs(.DeclsList) => .Set
+   rule getFreeVarsInDefs('declsCon(A:K,, B:K))
+         => getFreeVarsInDefs(A) getFreeVarsInDefs(B)
+   rule getFreeVarsInDefs('declFunLhsRhs(A:FunLhs,, B:Rhs))
+            => getFreeVarsInDefs(A)
+   rule getFreeVarsInDefs('normalLhs(A:K,, B:K))
+               => getFreeVarsInDefs(A)
+   rule getFreeVarsInDefs('binLhs(A:K,, B:K,, C:K))
+            => getFreeVarsInDefs(B)
+   rule getFreeVarsInDefs('groupLhs(A:K,, B:K)) => getFreeVarsInDefs(A)
+   rule getFreeVarsInDefs('declPatRhs(A:K,, B:K)) => getFreeVarsInPat(A)
+   rule getFreeVarsInDefs(A:K) => .Set [owise]
+
    syntax Set ::= getFreeVarsInPat(K) [function]
    rule getFreeVarsInPat('binPattern(P1:LPat,, Op:QConOp,, P2:Pat))
             => getFreeVarsInPat(P1) getFreeVarsInPat(P2)
@@ -377,6 +452,39 @@ module HASKELL-HELPER
              => getFreeVarsInPat(P2)
    rule getFreeVarsInPat('varCon(A:Var,, As:Vars))
            => SetItem(funName(pillVar(A))) getFreeVarsInPat(As)
+
+   syntax List ::= getFreeVarsInPatList(K) [function]
+   rule getFreeVarsInPatList('binPattern(P1:LPat,, Op:QConOp,, P2:Pat))
+            => getFreeVarsInPatList(P1) getFreeVarsInPatList(P2)
+   rule getFreeVarsInPatList('minusPat(A:K)) => .List
+   rule getFreeVarsInPatList('lpatCon(G:GCon,, As:APatList))
+           => getFreeVarsInPatList(As)
+   rule getFreeVarsInPatList('apatCon(A:K,, As:K))
+          => getFreeVarsInPatList(A) getFreeVarsInPatList(As)
+   rule getFreeVarsInPatList(A:Var) => ListItem(funName(pillVar(A)))
+   rule getFreeVarsInPatList(A:Var @ P:APat)
+            => ListItem(funName(pillVar(A))) getFreeVarsInPatList(P)
+   rule getFreeVarsInPatList(A:GCon) => .List
+   rule getFreeVarsInPatList('recordPat(A:GCon,, F:FPats))
+          => getFreeVarsInPatList(F)
+   rule getFreeVarsInPatList(A:Literal) => .List
+   rule getFreeVarsInPatList('underscore(.KList)) => .List
+   rule getFreeVarsInPatList('patTuple(P:PatTuple)) => getFreeVarsInPatList(P)
+   rule getFreeVarsInPatList('patList(P:PatList)) => getFreeVarsInPatList(P)
+   rule getFreeVarsInPatList('irrefutablePat(P:APat)) => getFreeVarsInPatList(P)
+   rule getFreeVarsInPatList('twoPatTuple(P1:Pat,, P2:Pat))
+             => getFreeVarsInPatList(P1) getFreeVarsInPatList(P2)
+   rule getFreeVarsInPat('patTupleCon(P1:Pat,, P2:PatTuple))
+             => getFreeVarsInPatList(P1) getFreeVarsInPatList(P2)
+   rule getFreeVarsInPatList('patListCon(P1:Pat,, P2:PatList))
+             => getFreeVarsInPatList(P1) getFreeVarsInPatList(P2)
+   rule getFreeVarsInPatList(.FPats) => .List
+   rule getFreeVarsInPatList('fpatCon(P1:FPat,, P2:FPats))
+             => getFreeVarsInPatList(P1) getFreeVarsInPatList(P2)
+   rule getFreeVarsInPatList('recordConAssign(P1:QVar,, P2:Pat))
+             => getFreeVarsInPatList(P2)
+   rule getFreeVarsInPatList('varCon(A:Var,, As:Vars))
+           => ListItem(funName(pillVar(A))) getFreeVarsInPatList(As)
 
    syntax Set ::= getRidWrapper(K) [function]
    rule getRidWrapper(resultSet(S:Set)) => S

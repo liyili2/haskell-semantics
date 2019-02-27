@@ -44,6 +44,14 @@ a = x ---> error
 
 9. Haskell unnecessary restriction. If module A has defined a class named ClassA, and module B defines a type name ClassA. If module B imports all items from module A, the place that can use a type name with ClassA will give an error of getting confused with ClassA as a class in module A, which is completely unnecessary, since the place can be used as a type and a class are clearly distinguished in Haskell.
 
+10. if use deriving in a data type with a user defined type classes, need to add {-# LANGUAGE DeriveAnyClass #-}. this means that the definition is very restrictive to the built-in type classes of Haskell. In addition, if we define a type class without the definition of functions, and make an instance for it, the derivation will give warning saying that there is no definition for the type classes, which is wrong.
+
+11, irrefutable pattern fails
+ex:
+
+fun1 [] (~1) = 1 ; fun1 (x:xs) (~1) = 1 + fun1 xs 1
+
+but if we input fun1 [1,2,3,4] 4, the function works which is bad for irrefutable pattern.
 
 
 

@@ -42,6 +42,7 @@ module HASKELL-PREPROCESSING
                 ~> (makeAlphaMap
                 ~> nextChecks)))
 
+    //also checked if all defs are unique in a module in collectCheckDefs
     rule checkDefs => collectCheckDefs
                         ~> (checkAllDeclMakeSense
                         ~> genRecordFunctions)
@@ -109,7 +110,7 @@ module HASKELL-PREPROCESSING
         <tempModule> _:K => B </tempModule>
         <currModule> _:K => A </currModule>
         <moduleMethodNames> MM:Map => MM[A <- resultSet(.Set)] </moduleMethodNames>
-        <classMethodNames> CM:Map => CM[A <- resultSet(.Set)] </classMethodNames>
+        //<classMethodNames> CM:Map => CM[A <- resultSet(.Set)] </classMethodNames>
         <classNames> NM:Map => NM[A <- resultSet(.Set)] </classNames>
         (.Bag => <module>...
                     <moduleName> A </moduleName>
@@ -119,7 +120,7 @@ module HASKELL-PREPROCESSING
         <tempModule> _:K => B </tempModule>
         <currModule> _:K => A </currModule>
         <moduleMethodNames> MM:Map => MM[A <- resultSet(.Set)] </moduleMethodNames>
-        <classMethodNames> CM:Map => CM[A <- resultSet(.Set)] </classMethodNames>
+        //<classMethodNames> CM:Map => CM[A <- resultSet(.Set)] </classMethodNames>
         <classNames> NM:Map => NM[A <- resultSet(.Set)] </classNames>
         <exports> Ex:Map => Ex[A <- resultSet(SetItem(haveAll))] </exports>
         (.Bag => <module>...
@@ -130,7 +131,7 @@ module HASKELL-PREPROCESSING
         <tempModule> _:K => B </tempModule>
         <currModule> _:K => Main </currModule>
         <moduleMethodNames> MM:Map => MM[Main <- resultSet(.Set)] </moduleMethodNames>
-        <classMethodNames> CM:Map => CM[Main <- resultSet(.Set)] </classMethodNames>
+       // <classMethodNames> CM:Map => CM[Main <- resultSet(.Set)] </classMethodNames>
         <classNames> NM:Map => NM[Main <- resultSet(.Set)] </classNames>
         <exports> Ex:Map => Ex[Main <- resultSet(SetItem(main))] </exports>
         (.Bag => <module>...
@@ -173,7 +174,7 @@ module HASKELL-PREPROCESSING
         <imports> _:Set => S </imports>
 
    //collect names for each module, and then start checking imports/exports
-   rule <k> genAllModuleNames
+   /*rule <k> genAllModuleNames
             => genAllModuleNamesNext(collectTypeNames(keys(NM))
                collectTypeNames(keys(BM)) collectPreBetaNames(BM, .K)
                toClassNames(getRidWrapper(CM)) collectFunNames(getRidWrapper(CMM))
@@ -189,7 +190,7 @@ module HASKELL-PREPROCESSING
    rule <k> genAllModuleNamesNext(S:Set) => .Set ...</k>
         <currModule> X:K </currModule>
         <moduleName> X </moduleName>
-        <moduleElems> _:Set => S </moduleElems>
+        <moduleElems> _:Set => S </moduleElems> */
 
    //check if all import names are in scope.
    // first check if all imports are valid compared with exports
@@ -273,7 +274,7 @@ module HASKELL-PREPROCESSING
     rule <k> grabImportKindMaps(importElem(Mod:K, _:K, _:Bool,
                    Ts:Set, _:Map), S:Set, KM:Map)
                 => grabImportKindMaps(.K, S, As,
-                             addKindToMap(Mod, .K, Ts, SM, KM) ...</k>
+                             addKindToMap(Mod, .K, Ts, SM, KM)) ...</k>
          <moduleName> Mod </moduleName>
          <kindMap> SM:Map </kindMap>
          requires notBool Mod in As
@@ -322,13 +323,11 @@ module HASKELL-PREPROCESSING
                   Name:ConId,, Tv:TyVar,, Ds:OptCDecls),, As:TopDecls))
                => getClassInfoAux(className(Name),Tv,
                     contextToSet(Mod, Cs, .K, .Set, Ts, Is),
-                    toAstTypeClass(Mod, Tv, Ds, .Map,
-                    getMethodSet(Mod, .K, CM)), Ds, As) ...</k>
+                    toAstTypeClass(Mod, Tv, Ds, .Map, Ts, Is), Ds, As) ...</k>
          <currModule> Mod:K </currModule>
          <moduleName> Mod </moduleName>
          <moduleDefs> Ts:Set </moduleDefs>
          <imports> Is:Set </imports>
-        <moduleElems> Ms:Set (.Set => SetItem(className(Name))) </moduleElems>
          <classNames> NM:Map => updateMapItem(NM,
                           .K, Mod, className(Name)) </classNames>
          requires notBool buildVar(Name) in Ms
@@ -339,19 +338,21 @@ module HASKELL-PREPROCESSING
                => error(classVarCollipse) ...</k>
          <currModule> Mod:K </currModule>
          <moduleName> Mod </moduleName>
-        <moduleElems> Ms:Set </moduleElems>
          <classNames> NM:Map </classNames>
          requires buildVar(Name) in Ms
                       orBool className(Name) in Ms
 
-   rule getClassInfoAux(Name:K, Tv:K, S:Set, error(A:K), Ds:K, As:K) => error(A)
-   rule <k> getClassInfoAux(Name:K, Tv:K, S:Set,
+   rule getClassInfoAux(Name:K, Tv:K, error(A:K), T:K, Ds:K, As:K) => error(A)
+   rule getClassInfoAux(Name:K, Tv:K, A:K, error(B:K), Ds:K, As:K) => error(B)
+   rule <k> getClassInfoAux(Name:K, Tv:K, resultSet(S:Set),
                resultMap(Methods:Map), Ds:K, As:K)
-            => putClassMethodNames(genClassMethodNames(Ds)) ~>
-                 (getClassInfoAuxAux(Name, toAstPat(N, Mod, Ds, .K, .K, Methods))
+            => (getClassInfoAuxAux(Name, toAstPat(N, Mod, Ds, .K, .K, Methods, Ts, Is))
                  ~> getClassInfo(As)) ...</k>
          <genVarCounter> N:Int </genVarCounter>
          <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <moduleDefs> Ts:Set </moduleDefs>
+         <imports> Is:Set </imports>
          <classNames> NM:Map </classNames>
          (.Bag => <class>...
                      <classModule> Mod </classModule>
@@ -359,11 +360,6 @@ module HASKELL-PREPROCESSING
                      <classTypeVar> Tv </classTypeVar>
                      <classContext> S </classContext>
                   ...</class>)
-
-  rule <k> putClassMethodNames(S:Set) => .K ...</k>
-       <currModule> Mod:K </currModule>
-       <classMethodNames> NM:Map
-               => updateMapItem(NM, .K, Mod, S) </classMethodNames>
 
     rule getClassInfoAuxAux(Name:K, error(A:K)) => error(A)
     rule <k> getClassInfoAuxAux(Name:K, resultIntMap(N':Int, M:Map))

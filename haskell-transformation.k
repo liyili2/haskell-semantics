@@ -18,88 +18,678 @@ module HASKELL-TRANSFORMATION
    rule getTypeVarsInClass(classTitle(A:K, ListItem(C:K) B:List), S:Set)
             => SetItem(C) getTypeVarsInClass(.K, S)
 
-   //a function to generate class method names in a class
-   syntax Set ::= genClassMethodNames(K) [function]
-   rule genClassMethodNames('emptyOptCDecls(.KList)) => .Set
-   rule genClassMethodNames('cdeclWhere('cdeclBracket(Cs:CDecls)))
-         => genClassMethodNames(Cs)
-   rule genClassMethodNames('cdeclCon(C:CDecl,, Cs:CDeclsList))
-         => genClassMethodNames(C) genClassMethodNames(Cs)
-   rule genClassMethodNames('varAssign(Vs:Vars,, T:Type))
-           => genClassMethodNames(Vs)
-   rule genClassMethodNames(V:Var) => SetItem(pillVar(V))
-   rule genClassMethodNames('varCon(V:Var,, Vs:Vars))
-               => SetItem(pillVar(V)) genClassMethodNames(Vs)
-   rule genClassMethodNames('genAssignContext(Vs:Vars,, C:Context,, T:Type))
-               => genClassMethodNames(Vs)
-   rule genClassMethodNames(A:K) => .Set  [owise]
+   //forming a cons list from a K list
+   syntax KItem ::= formExpList(List) [function]
+   rule formExpList(.List) => fullName(Prelude,constrName([]))
+   rule formExpList(ListItem(A:K) L:List)
+          => appExp(fullName(Prelude, constrName('colon(.KList))), ListItem(A)
+                    ListItem(formExpList(L)))
 
-   syntax KItem ::= toAstTypeClass(K, K, K, Map, Set) [function]
-             //curr-mod, type-class-var, OptCDecls, gen-class-map, exist-ty-con-set
-                  | toAstTypeClassAux(K, K, K, CDeclsList, Map, Set) [function]
-            //curr-mod, type-class-var, CDecl,CDeclsList, gen-class-map, exist-ty-con-set
-                  | toAstTypeClassList(K, K, K, Set, K, CDeclsList, Map, Set, Set) [function]
+   //forming a cons list comprehension with syntactic suger
+   syntax KItem ::= formListCompre(K, List) [function]
+   rule formListCompre(A:K, .List) => A
+   rule formListCompre(A:K, ListItem(B:K) L:List)
+          => appExp(fullName(Prelude, constrName(listCompre)), ListItem(B)
+                    ListItem(formListCompre(A, L)))
+
+   syntax KItem ::= formLambdaList(List, K) [function]
+   rule formLambdaList(.List, A:K) => A
+   rule formLambdaList(ListItem(A:K) L:List, B:K)
+          => lambda(A, formLambdaList(L, B))
+
+   //transformation of funlhs and patterns in all cases
+   syntax KItem ::= transPosPat(K, K, Set, Set) [function]
+                  | transNegPat(K, K, Set, Set) [function]
+                  | transLiteral(K) [function]
+                  | transPatBinAux(K, K, K) [function]
+                  | transPatLPatCon(K, K) [function]
+                  | transPosPatList(K, K, Set, Set, K, List) [function]
+                  | transNegPatList(K, K, Set, Set, K, List) [function]
+                  | transAsPat(K, K) [function]
+                  | transPosRecordPat(K, K, K, Set, Set) [function]
+                  | transNegRecordPat(K, K, K, Set, Set) [function]
+                  | transPosRecordPatAux(K, K, K, Set, Set, K, K, List) [function]
+                  | transNegRecordPatAux(K, K, K, Set, Set, K, K, List) [function]
+                  | transPatIrreFut(K)  [function]
+                  | transPatPatList(K)  [function]
+                  | transPatPatTuple(K) [function]
+                  | transPosFunLhs(K, K, Set, Set) [function]
+                  | transFunPat(K) [function]
+                  | transFunPatNormal(K, K) [function]
+                  | transFunPatBin(K, K, K) [function]
+                  | transFunPatGroup(K, K)  [function]
+
+   rule transLiteral(I:Integer) => String2Int(#tokenToString(I))
+   rule transLiteral(I:CusFloat) => String2Float(#tokenToString(I))
+   rule transLiteral(I:CusChar) => #tokenToString(I)
+   rule transLiteral(I:CusString) => #tokenToString(I)
+
+
+   //transformation of funLhs on the top-decl, classes and instances
+   //not dealing with funLhs in the where statement of a fun body
+   rule transFunPat(error(A:K)) => error(A)
+   rule transFunPat(A:K) => funPat(ListItem(A)) [owise]
+
+   rule transFunPatNormal(error(A:K), B:K) => error(A)
+   rule transFunPatNormal(A:K, error(B:K)) => error(B)
+   rule transFunPat(A:K, resultList(L:List)) => funPat(ListItem(A) L) [owise]
+
+   rule transFunPatBin(error(A:K), B:K, C:K) => error(A)
+   rule transFunPatBin(A:K, error(B:K), C:K) => error(B)
+   rule transFunPatBin(A:K, B:K, error(C:K)) => error(C)
+   rule transFunPatBin(A:K, B:K, C:K)
+                => funPat(ListItem(A) ListItem(B) ListItem(C)) [owise]
+
+   rule transFunPatGroup(error(A:K), B:K) => error(A)
+   rule transFunPatGroup(A:K, error(B:K)) => error(B)
+   rule transFunPatGroup(funPat(L1:List), resultList(L2:List))
+             => funPat(L1 L2) [owise]
+
+   rule transPosFunLhs(Mod:K, P:Pat, Ts:Set, Is:Set)
+                => transFunPat(transPosPat(Mod, P, Ts, Is))
+   rule transPosFunLhs(Mod:K, 'normalLhs(V:Var,, As:APatList), Ts:Set, Is:Set)
+          => transFunPatNormal(fullName(Mod, funName(pillVar(V))),
+                  transNegPatList(Mod, V, Ts, Is, .K, .List))
+   rule transPosFunLhs(Mod:K, 'binLhs(P1:Pat,, V:VarOp,, P2:Pat), Ts:Set, Is:Set)
+          => transFunPatBin(fullName(Mod, funName(pillVar(V))),
+                  transNegPat(Mod, P1, Ts, Is), transNegPat(Mod, P1, Ts, Is))
+   rule transPosFunLhs(Mod:K, 'groupLhs(F:FunLhs,, As:APatList), Ts:Set, Is:Set)
+         => transFunPatGroup(transPosFunLhs(Mod, F, Ts, Is),
+                      transNegPatList(Mod, V, Ts, Is, .K, .List))
+
+   //trans pat if the variables of patterns need to be global vars
+   rule transPosPat(Mod:K, 'binPattern(A:LPat,, B:QConOp,, C:Pat), Ts:Set, Is:Set)
+          => transPatBinAux(transConstrVar(Mod, pillVar(B), Ts, Is),
+                 transPosPat(Mod, A, Ts, Is), transPosPat(Mod, C, Ts, Is))
+   rule transPosPat(Mod:K, 'minusPat(A:K), Ts:Set, Is:Set)
+              =>  appPat(fullName(Prelude, funName('minusCon(.KList))), transLiteral(A))
+   rule transPosPat(Mod:K, V:Var, Ts:Set, Is:Set) => fullName(Mod, funName(pillVar(V)))
+   rule transPosPat(Mod:K, V:Var @ A:APat, Ts:Set, Is:Set)
+            => transAsPat(fullName(Mod, funName(pillVar(V))), transPosPat(Mod, A, Ts, Is))
+   rule transPosPat(Mod:K, G:GCon, Ts:Set, Is:Set) => transExpCon(Mod, G, Ts, Is)
+   rule transPosPat(Mod:K, 'lpatCon(G:GCon,, As:APatList), Ts:Set, Is:Set)
+            => transPatLPatCon(transExpCon(
+                   Mod, G, Ts, Is), transPosPatList(Mod, As, Ts, Is, .K, .List))
+   rule transPosPat(Mod:K, 'underscore(.KList), Ts:Set, Is:Set) => unnamedVar
+   rule transPosPat(Mod:K, A:Literal, Ts:Set, Is:Set) => transLiteral(A)
+   rule transPosPat(Mod:K, 'recordPat(G:QCon,, Fs:FPats), Ts:Set, Is:Set)
+           => transPosRecordPat(Mod, transExpCon(Mod, G, Ts, Is), Fs, Ts, Is)
+   rule transPosPat(Mod:K, 'irrefutablePat(A:K), Ts:Set, Is:Set)
+         => transPatIrreFut(transPosPat(Mod, A, Ts, Is))
+   rule transPosPat(Mod:K, 'patList(A:K), Ts:Set, Is:Set)
+          => transPatPatList(transPosPatList(Mod, A, Ts, Is, .K, .List))
+   rule transPosPat(Mod:K, 'patTuple(A:K), Ts:Set, Is:Set)
+          => transPatPatTuple(transPosPatList(Mod, A, Ts, Is, .K, .List))
+
+   rule transPosRecordPat(Mod:K, error(A:K), Fs:K, Ts:Set, Is:Set) => error(A)
+   rule transPosRecordPat(Mod:K, fullName(Mod':K, G:K), Fs:K, Ts:Set, Is:Set)
+             => transPosRecordPatAux(Mod, fullName(Mod', G:K), Fs, Ts, Is, .K, .K, .List)
+
+   rule transPosRecordPatAux(Mod:K, A:K, .FPats, Ts:Set, Is:Set, .K, .K, L:List)
+           => appPat(A, ListItem(appPat(fullName(Prelude, constrName(recordParen(A))), L)))
+   rule transPosRecordPatAux(Mod:K, fullName(Mod':K, G:K),
+                  'fpatCon('recordConAssign(A:K,, B:K),, C:K), Ts:Set, Is:Set, .K, .K, L:List)
+            => transPosRecordPatAux(Mod, fullName(Mod':K, G:K), C, Ts, Is,
+                   transFunVar(Mod', A, .Set, Ts, Is), transPosPat(Mod, B, Ts, Is), L)
+   rule transPosRecordPatAux(Mod:K, A:K, B:K, Ts:Set, Is:Set,
+             error(X:K), Y:K, L:List) => error(X)
+   rule transPosRecordPatAux(Mod:K, A:K, B:K, Ts:Set, Is:Set,
+             X:K, error(Y:K), L:List) => error(Y)
+   rule transPosRecordPatAux(Mod:K, A:K, B:K, Ts:Set, Is:Set, X:K, Y:K, L:List)
+          => transPosRecordPatAux(Mod, A, B, Ts, Is, .K, .K,
+              L ListItem(appPat(fullName(Prelude,
+                 constrName(recordAssign)), ListItem(X) ListItem(Y)))) [owise]
+
+   rule transPosPatList(Mod:K, A:Pat, Ts:Set, Is:Set, .K, L:List)
+              => transPosPatList(Mod, .K, Ts, Is, transPosPat(Mod, A, Ts, Is), L)
+   rule transPosPatList(Mod:K, .K, Ts:Set, Is:Set, error(A:K), L:List) => error(A)
+   rule transPosPatList(Mod:K, .K, Ts:Set, Is:Set, .K, L:List) => resultList(L)
+   rule transPosPatList(Mod:K, Rest:K, Ts:Set, Is:Set, A:K, L:List)
+            => transPosPatList(Mod, Rest, Ts, Is, .K, L ListItem(A))
+        requires notBool isError(A)
+   rule transPosPatList(Mod:K, 'twoPatTuple(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+             => transPosPatList(Mod, B, Ts, Is, transPosPat(Mod, A, Ts, Is), L)
+   rule transPosPatList(Mod:K, 'patTupleCon(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+             => transPosPatList(Mod, B, Ts, Is, transPosPat(Mod, A, Ts, Is), L)
+   rule transPosPatList(Mod:K, 'patListCon(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+             => transPosPatList(Mod, B, Ts, Is, transPosPat(Mod, A, Ts, Is), L)
+   rule transPosPatList(Mod:K, 'apatCon(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+             => transPosPatList(Mod, B, Ts, Is, transPosPat(Mod, A, Ts, Is), L)
+
+   //functions that share commonly in pos and neg trans
+   rule transPatPatTuple(error(A:K)) => error(A)
+   rule transPatPatTuple(resultList(L:List))
+             => appPat(fullName(Prelude, constrName(tupleType(size(L)))), L)
+
+   rule transPatPatList(error(A:K)) => error(A)
+   rule transPatPatList(resultList(L:List)) => appPat(fullName(Prelude, constrName([])), L)
+
+   rule transPatIrreFut(error(A:K)) => error(A)
+   rule transPatIrreFut(A:K) => irrefuPat(A) [owise]
+
+   rule transPatLPatCon(error(A:K), B:K) => error(A)
+   rule transPatLPatCon(A:K, error(B:K)) => error(B)
+   rule transPatLPatCon(A:K, resultList(B:List)) => appPat(A, B) [owise]
+
+   rule transAsPat(error(A:K), B:K) => error(A)
+   rule transAsPat(A:K, error(B:K)) => error(B)
+   rule transAsPat(A:K, B:K) => asPat(A, B) [owise]
+
+   rule transPatBinAux(error(A:K), B:K, C:K) => error(A)
+   rule transPatBinAux(A:K, error(B:K), C:K) => error(B)
+   rule transPatBinAux(A:K, B:K, error(C:K)) => error(C)
+   rule transPatBinAux(A:K, B:K, C:K) => appPat(A, ListItem(B) ListItem(C)) [owise]
+
+   //trans negative pattern if variables of pattern is only local.
+   rule transNegPat(Mod:K, 'binPattern(A:LPat,, B:QConOp,, C:Pat), Ts:Set, Is:Set)
+          => transPatBinAux(transConstrVar(Mod, pillVar(B), Ts, Is),
+                 transNegPat(Mod, A, Ts, Is), transNegPat(Mod, C, Ts, Is))
+   rule transNegPat(Mod:K, 'minusPat(A:K), Ts:Set, Is:Set)
+              =>  appPat(fullName(Prelude, funName('minusCon(.KList))), transLiteral(A))
+   rule transNegPat(Mod:K, V:Var, Ts:Set, Is:Set) => addFunName(pillVar(V))
+   rule transNegPat(Mod:K, V:Var @ A:APat, Ts:Set, Is:Set)
+            => transAsPat(addFunName(pillVar(V)), transNegPat(Mod, A, Ts, Is))
+   rule transNegPat(Mod:K, G:GCon, Ts:Set, Is:Set) => transExpCon(Mod, G, Ts, Is)
+   rule transNegPat(Mod:K, 'lpatCon(G:GCon,, As:APatList), Ts:Set, Is:Set)
+            => transPatLPatCon(transExpCon(
+                   Mod, G, Ts, Is), transNegPatList(Mod, As, Ts, Is, .K, .List))
+   rule transNegPat(Mod:K, 'underscore(.KList), Ts:Set, Is:Set) => unnamedVar
+   rule transNegPat(Mod:K, A:Literal, Ts:Set, Is:Set) => transLiteral(A)
+   rule transNegPat(Mod:K, 'recordPat(G:QCon,, Fs:FPats), Ts:Set, Is:Set)
+           => transNegRecordPat(Mod, transExpCon(Mod, G, Ts, Is), Fs, Ts, Is)
+   rule transNegPat(Mod:K, 'irrefutablePat(A:K), Ts:Set, Is:Set)
+         => transPatIrreFut(transNegPat(Mod, A, Ts, Is))
+   rule transNegPat(Mod:K, 'patList(A:K), Ts:Set, Is:Set)
+          => transPatPatList(transNegPatList(Mod, A, Ts, Is, .K, .List))
+   rule transNegPat(Mod:K, 'patTuple(A:K), Ts:Set, Is:Set)
+          => transPatPatTuple(transNegPatList(Mod, A, Ts, Is, .K, .List))
+
+   rule transNegRecordPat(Mod:K, error(A:K), Fs:K, Ts:Set, Is:Set) => error(A)
+   rule transNegRecordPat(Mod:K, fullName(Mod':K, G:K), Fs:K, Ts:Set, Is:Set)
+             => transNegRecordPatAux(Mod, fullName(Mod', G:K), Fs, Ts, Is, .K, .K, .List)
+
+   rule transNegRecordPatAux(Mod:K, A:K, .FPats, Ts:Set, Is:Set, .K, .K, L:List)
+           => appPat(A, ListItem(appPat(fullName(Prelude, constrName(recordParen(A))), L)))
+   rule transNegRecordPatAux(Mod:K, fullName(Mod':K, G:K),
+                  'fpatCon('recordConAssign(A:K,, B:K),, C:K), Ts:Set, Is:Set, .K, .K, L:List)
+            => transNegRecordPatAux(Mod, fullName(Mod':K, G:K), C, Ts, Is,
+                   transFunVar(Mod', A, .Set, Ts, Is), transNegPat(Mod, B, Ts, Is), L)
+   rule transNegRecordPatAux(Mod:K, A:K, B:K, Ts:Set, Is:Set,
+             error(X:K), Y:K, L:List) => error(X)
+   rule transNegRecordPatAux(Mod:K, A:K, B:K, Ts:Set, Is:Set,
+             X:K, error(Y:K), L:List) => error(Y)
+   rule transNegRecordPatAux(Mod:K, A:K, B:K, Ts:Set, Is:Set, X:K, Y:K, L:List)
+          => transNegRecordPatAux(Mod, A, B, Ts, Is, .K, .K,
+              L ListItem(appPat(fullName(
+              Prelude, constrName(recordAssign)), ListItem(X) ListItem(Y)))) [owise]
+
+   rule transNegPatList(Mod:K, A:Pat, Ts:Set, Is:Set, .K, L:List)
+              => transNegPatList(Mod, .K, Ts, Is, transNegPat(Mod, A, Ts, Is), L)
+   rule transNegPatList(Mod:K, .K, Ts:Set, Is:Set, error(A:K), L:List) => error(A)
+   rule transNegPatList(Mod:K, .K, Ts:Set, Is:Set, .K, L:List) => resultList(L)
+   rule transNegPatList(Mod:K, Rest:K, Ts:Set, Is:Set, A:K, L:List)
+            => transNegPatList(Mod, Rest, Ts, Is, .K, L ListItem(A))
+        requires notBool isError(A)
+   rule transNegPatList(Mod:K, 'twoPatTuple(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+             => transNegPatList(Mod, B, Ts, Is, transNegPat(Mod, A, Ts, Is), L)
+   rule transNegPatList(Mod:K, 'patTupleCon(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+             => transNegPatList(Mod, B, Ts, Is, transNegPat(Mod, A, Ts, Is), L)
+   rule transNegPatList(Mod:K, 'patListCon(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+             => transNegPatList(Mod, B, Ts, Is, transNegPat(Mod, A, Ts, Is), L)
+   rule transNegPatList(Mod:K, 'apatCon(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+             => transNegPatList(Mod, B, Ts, Is, transNegPat(Mod, A, Ts, Is), L)
+
+   //transform expressions. 
+   syntax KItem ::= transExp(Int, K, K, Set, Set, Set) [function]
+           //counter, curr-mod, exp, local-vars, types, imports
+                  | transDecls(Int, K, K, Set, Set, Set) [function]
+                  | transExpFun(Int, K, List, K, List, Set, Set, Set) [function]
+                  | transExpTuple(Int, K, K, K, K, List, Set, Set, Set)  [function]
+                  | transExpList(Int, K, K, K, List, Set, Set, Set)  [function]
+                  | transExpQVar(K, K) [function]
+                  | transExpSeq1(K) [function]
+                  | transExpSeq2NoEnd(K, K, K, Set, Set, Set) [function]
+                  | transExpSeq2NoEndAux(K, K) [function]
+                  | transExpSeq2HasEnd(K, K, K, Set, Set, Set) [function]
+                  | transExpSeq2HasEndAux(K, K) [function]
+                  | transExpSeq3(K, K, K, K, Set, Set, Set)    [function]
+                  | transExpSeq3Aux(K, K, K, K, Set, Set, Set) [function]
+                  | transExpSeq3AuxAux(K, K, K) [function]
+                  | transExpListCompre(Int, K, List, K, List, K, Set, Set, Set) [function]
+                  | transQual(Int, K, K, Set, Set, Set, Set) [function]
+                      //counter,curr-mod, qual,
+                      // free-var-possible, local-vars, types, imports
+                  | transQualPat(K, K) [function]
+                  | transQualLet(K)    [function]
+                  | transVar(K, K, Set, Set, Set) [function]
+                  | transLeftSection(K, K) [function]
+                  | transRightSection(K, K) [function]
+                  | transExpRecord(Int, K, AExp, FBindList, Set, Set, Set) [function]
+                  | transExpRecordAux(K, K, K, Set, Set, Set)  [function]
+                  | transExpRecordAuxAux(K, K)                 [function]
+                  | transExpRecordAuxAux1(K, K)                [function]
+                  | transFBindList(Int, K, FBindList, K, K, List, Set, Set, Set) [function]
+                 //Counter, curr-mod, flag, FBindList, curr-buf1,buf2, stored
+                 //counter, pat, curr-mod, quals, buf, stored
+                  | transLambda(K, K) [function]
+                  //helper functions for let in
+                  | transLetIn(K, K, K, Set, Set, Set) [function]
+                  | transLetInAux(List, K) [function]
+                  //helper functions for if statements
+                  | transExpIf(K, K, K, K, Set, Set, Set)    [function]
+                  | transExpIfAux(K, K, K, K, Set, Set, Set) [function]
+                  | transExpIfAuxAux(K, K, K)                [function]
+                  //helper functions for case of
+                  | transExpCase(K, K, K, Set, Set, Set) [function]
+                  | transExpAlts(K, Int, K, K, K, List, Set, Set, Set) [function]
+                  | transExpAlt(K, K, K, Set, Set, Set) [function]
+                  | transExpAltAux2(K, K) [function]
+                  | transExpAltAux(K, K, K, K, Set, Set, Set) [function]
+                  | transExpAltAuxAux(K, K, K) [function]
+
+   rule transVar(Mod:K, fullName(A:K, B:K), Ls:Set, Ts:Set, Is:Set)
+            => transFunVar(Mod, fullName(A:K, B:K), Ls, Ts, Is)
+        requires isFunVar(B)
+   rule transVar(Mod:K, A:K, Ls:Set, Ts:Set, Is:Set)
+            => transFunVar(Mod, A, Ls, Ts, Is)
+        requires isFunVar(A)
+   rule transVar(Mod:K, fullName(A:K, B:K), Ls:Set, Ts:Set, Is:Set)
+            => transExpCon(Mod, fullName(A:K, B:K), Ts, Is)
+        requires notBool isFunVar(B)
+   rule transVar(Mod:K, A:K, Ls:Set, Ts:Set, Is:Set)
+            => transExpCon(Mod, A, Ts, Is)
+        requires notBool isFunVar(A)
+
+   rule transExp(C:Int, Mod:K, A:QVar, Ls:Set, Ts:Set, Is:Set)
+            => transExpQVar(C, transFunVar(Mod, pillVar(A), Ls, Ts, Is))
+   rule transExp(C:Int, Mod:K, A:GCon, Ls:Set, Ts:Set, Is:Set)
+            => transExpQVar(C, transConstrVar(Mod, pillVar(A), Ts, Is))
+   rule transExp(C:Int, Mod:K, A:Literal, Ls:Set, Ts:Set, Is:Set)
+             => resultTrans(C, transLiteral(A))
+   rule transExp(C:Int, Mod:K, 'funApp(A:K,, B:K), Ls:Set, Ts:Set, Is:Set)
+             => transExpFun(C, Mod, ListItem(A) ListItem(B), .K, .List, Ls, Ts, Is)
+   rule transExp(N:Int, Mod:K, 'expTuple(As:ExpTuple), Ls:Set, Ts:Set, Is:Set)
+          => transExpTuple(N, Mod, fullName(Prelude, constrName(tupleType(
+                       countOnTypeTuple(As)))), As, .K, .List, Ls, Ts, Is)
+   rule transExp(N:Int, Mod:K, 'expList(As:ExpList), Ls:Set, Ts:Set, Is:Set)
+               => transExpList(N, Mod, As, .K, .List, Ls, Ts, Is)
+   rule transExp(N:Int, Mod:K, 'expSeq(E1:Exp,,
+          'emptyExpComma(.KList),, 'emptyExp(.KList)), Ls:Set, Ts:Set, Is:Set)
+           => transExpSeq1(transExp(N:Int, Mod, E1, Ls, Ts, Is))
+   rule transExp(N:Int, Mod:K, 'expSeq(E1:Exp,,
+               'dotExp(E2:Exp),, 'emptyExp(.KList)), Ls:Set, Ts:Set, Is:Set)
+         => transExpSeq2NoEnd(transExp(N:Int, Mod, E1), Mod, E2, Ls, Ts, Is)
+   rule transExp(N:Int, Mod:K, 'expSeq(E1:Exp,,
+               'emptyExpComma(.KList),, E3:Exp), Ls:Set, Ts:Set, Is:Set)
+         => transExpSeq2HasEnd(transExp(N:Int, Mod, E1, Ls, Ts, Is), Mod, E3, Ls, Ts, Is)
+   rule transExp(N:Int, Mod:K, 'listComprehension(
+                     E1:Exp,, Qs:Quals), Ls:Set, Ts:Set, Is:Set)
+         => transExpListCompre(N, Mod, qualsToList(Qs), .K, .List, E1, Ls, Ts, Is)
+   rule transExp(N:Int, Mod:K, 'recordExp(A:AExp,, Fs:FBindList), Ls:Set, Ts:Set, Is:Set)
+            => transExpRecord(N:Int, Mod, A, Fs, Ls:Set, Ts:Set, Is:Set)
+   rule transExp(N:Int, Mod:K, 'lambdaExp(As:APatList,, B:Exp), Ls:Set, Ts:Set, Is:Set)
+         => transLambda(transNegPatList(Mod, As, Ts, Is, .K, .List),
+                     transExp(N, Mod, B, getFreeVarsInPat(As) Ls, Ts, Is))
+        requires hasConflictVars(As)
+   rule transExp(N:Int, Mod:K, 'lambdaExp(As:APatList,, B:Exp), Ls:Set, Ts:Set, Is:Set)
+         => error(funNameConflicting)
+        requires notBool hasConflictVars(As)
+   rule transExp(N:Int, Mod:K, 'letInExp(As:Decls,, B:Exp), Ls:Set, Ts:Set, Is:Set)
+           => transLetIn(transDecls(N, Mod, As,
+                   getFreeVarsInPat(As) Ls, Ts, Is), Mod, B,
+                         getFreeVarsInPat(As) Ls:Set, Ts:Set, Is:Set)
+   rule transExp(N:Int, Mod:K, 'ifElseExp(A:Exp,, Op1:OptSemicolon,,
+               B:Exp,, Op2:OptSemicolon,, C:Exp), Ls:Set, Ts:Set, Is:Set)
+          => transExpIf(transExp(N, Mod, A, Ls, Ts, Is), Mod, B, C, Ls, Ts, Is)
+   rule transExp(N:Int, Mod:K, 'caseExp(A:Exp,, Bs:Alts), Ls:Set, Ts:Set, Is:Set)
+          =>  transExpCase(transExp(N, Mod, A, Ls, Ts, Is), Mod, Bs, Ls, Ts, Is)
+
+   //trans lambdaexp 
+   rule transLambda(error(L:K), A:K) => error(L)
+   rule transLambda(L:K, error(A:K)) => error(A)
+   rule transLambda(resultList(L:List), resultTrans(N:Int, A:K))
+            => resultTrans(N, formLambdaList(L, A))
+
+   //trans let term
+   rule transLetIn(error(A:K), Mod:K, B:K, Ls:Set, Ts:Set, Is:Set) => error(A)
+   rule transLetIn(resultTransList(N:Int, A:List), Mod:K, B:K, Ls:Set, Ts:Set, Is:Set)
+          => transLetInAux(A, transExp(N, Mod, B, Ls, Ts, Is))
+   rule transLetInAux(As:List, error(B:K)) => error(B)
+   rule transLetInAux(As:List, resultTrans(N:Int, B:K))
+             => resultTrans(N, letIn(As, B))
+
+   //trans if statement
+   rule transExpIf(error(A:K), Mod:K, B:K, C:K,  Ls:Set, Ts:Set, Is:Set) => error(A)
+   rule transExpIf(resultTrans(N:Int, A:K), Mod:K, B:K, C:K, Ls:Set, Ts:Set, Is:Set)
+         => transExpIfAux(A, transExp(
+                  N, Mod, B, Ls, Ts, Is), Mod, C, Ls:Set, Ts:Set, Is:Set)
+   rule transExpIfAux(A:K, error(B:K), Mod:K, C:K, Ls:Set, Ts:Set, Is:Set) => error(B)
+   rule transExpIfAux(A:K, resultTrans(N:Int, B:K), Mod:K, C:K, Ls:Set, Ts:Set, Is:Set)
+           => transExpIfAuxAux(A, B, transExp(N, Mod, C, Ls, Ts, Is))
+   rule transExpIfAuxAux(A:K, B:K, error(C:K)) => error(C)
+   rule transExpIfAuxAux(A:K, B:K, resultTrans(N:Int, C:K))
+         => resultTrans(N, ifElse(ListItem(A), B, C))
+
+   //trans case analysis
+   rule transExpCase(error(A:K), Mod:K, Bs:K, Ls:Set, Ts:Set, Is:Set) => error(A)
+   rule transExpCase(resultTrans(N:Int, A:K), Mod:K, Bs:K, Ls:Set, Ts:Set, Is:Set)
+           => transExpAlts(A, N, Mod, Bs, .K, .List, Ls:Set, Ts:Set, Is:Set)
+   
+   rule transExpAlts(A:K, N:Int, Mod:K, .K, .K, L:List, Ls:Set, Ts:Set, Is:Set)
+          => resultTrans(N, caseOf(A, L))
+   rule transExpAlts(A:K, N:Int, Mod:K, B:Alt, .K, L:List, Ls:Set, Ts:Set, Is:Set)
+          => transExpAlts(A, N, Mod, .K,
+                  transExpAlt(N, Mod, B, Ls, Ts, Is), L, Ls:Set, Ts:Set, Is:Set)
+   rule transExpAlts(A:K, N:Int, Mod:K,
+                    'altCon(B:Alt,, Bs:Alts), .K, L:List, Ls:Set, Ts:Set, Is:Set)
+          => transExpAlts(A, N, Mod, Bs, transExpAlt(N, Mod, B), L, Ls, Ts, Is)
+   rule transExpAlts(A:K, N:Int, Mod:K, Bs:K,
+                   error(B:K), L:List, Ls:Set, Ts:Set, Is:Set) => error(B)
+   rule transExpAlts(A:K, N:Int, Mod:K, Bs:K,
+                resultTransList(N':Int, B:List), L:List, Ls:Set, Ts:Set, Is:Set)
+           => transExpAlts(A, N', Mod, Bs, .K, L B, Ls, Ts, Is)
+
+   rule transExpAlt(N:Int, Mod:K, 'altArrow(A:Pat,, B:Exp), Ls:Set, Ts:Set, Is:Set)
+           => transExpAltAux2(transNegPat(Mod, A, Ts, Is, .K, .List),
+                 transExp(N, Mod, B, getFreeVarsInPat(A) Ls, Ts, Is))
+        requires hasConflictVars(A)
+   rule transExpAlt(N:Int, Mod:K, 'altArrow(A:Pat,, B:Exp), Ls:Set, Ts:Set, Is:Set)
+           => error(funNameConflicting)
+        requires notBool hasConflictVars(A)
+   rule transExpAlt(N:Int, Mod:K, 'emptyAlt(.KList), Ls:Set, Ts:Set, Is:Set)
+             => resultTransList(N, .List)
+   rule transExpAlt(N:Int, Mod:K, 'altArrow(A:Pat,, B:Exp,, C:Decls), Ls:Set, Ts:Set, Is:Set)
+          => transExpAltAux(transNegPat(Mod,A, Ts, Is, .K, .List),
+           transExp(N, Mod, B, getFreeVarsInPat(A)
+                 getFreeVarsInDefs(C) Ls, Ts, Is), Mod, C, getFreeVarsInPat(A) Ls, Ts, Is)
+        requires hasConflictVars(A)
+   rule transExpAlt(N:Int, Mod:K, 'altArrow(A:Pat,, B:Exp,, C:Decls), Ls:Set, Ts:Set, Is:Set)
+          => error(funNameConflicting)
+        requires notBool hasConflictVars(A)
+
+   rule transExpAltAux2(error(A:K), B:K) => error(A)
+   rule transExpAltAux2(A:K, error(B:K)) => error(B)
+   rule transExpAltAux2(A:K, resultTrans(N:Int, B:K))
+                 => resultTransList(N, ListItem(singleCase(A, B, .List))) [owise]
+
+   rule transExpAltAux(error(A:K), B:K, Mod:K, C:K, Ls:Set, Ts:Set, Is:Set) => error(a)
+   rule transExpAltAux(A:K, error(B:K), Mod:K, C:K, Ls:Set, Ts:Set, Is:Set) => error(B)
+   rule transExpAltAux(A:K, resultTrans(N:Int, B:K), Mod:K, C:K, Ls:Set, Ts:Set, Is:Set)
+          => transExpAltAuxAux(A, B, transDecls(N, Mod, C, Ls, Ts, Is)) [owise]
+   rule transExpAltAuxAux(A:K, B:K, error(C:K)) => error(C)
+   rule transExpAltAuxAux(A:K, B:K, resultTransList(N:Int, C:List))
+          => resultTransList(N, ListItem(singleCase(A, B, C)))
+
+   //trans records, two different things. labeled update and label pattern
+   rule transExpRecord(N:Int, Mod:K, Q:QCon, Fs:FBindList, Ls:Set, Ts:Set, Is:Set)
+           => transExpRecordAuxAux(transExpCon(Mod, Q, Ts:Set, Is:Set),
+            transFBindList(N, Mod, Fs, .K, .K, .List, Ls, Ts, Is))
+   rule transExpRecord(N:Int, Mod:K, A:AExp, Fs:FBindList, Ls:Set, Ts:Set, Is:Set)
+           => transExpRecordAux(transExp(N, Mod, A), Mod, Fs, Ls, Ts, Is)
+        requires notBool isTheQCon(A) andBool fbSize(Fs) >Int 0
+   rule transExpRecord(N:Int, Mod:K, A:AExp, Fs:FBindList)
+           => error(syntaxError) [owise]
+
+   rule transExpRecordAux(error(A:K), Mod:K, B:K, Ls:Set, Ts:Set, Is:Set) => error(A)
+   rule transExpRecordAux(resultTrans(N:Int, A:K), Mod:K, B:K, Ls:Set, Ts:Set, Is:Set)
+          => transExpRecordAuxAux1(A, transFBindList(N,
+                        Mod, B, .K, .K, .List, Ls, Ts, Is))
+
+   rule transExpRecordAuxAux1(error(A:K), B:K) => error(A)
+   rule transExpRecordAuxAux1(A:K, error(B:K)) => error(B)
+   rule transExpRecordAuxAux1(A:K, resultTransList(N:Int, L:List))
+           => resultTrans(N, appExp(fullName(Prelude, funName(recordUpdate)), L)) [owise]
+
+   rule transExpRecordAuxAux(error(A:K), B:K) => error(A)
+   rule transExpRecordAuxAux(A:K, error(B:K)) => error(B)
+   rule transExpRecordAuxAux(A:K, resultTransList(N:Int, L:List))
+           => resultTrans(N, appExp(fullName(Prelude, constrName(recordParen(A))), L)) [owise]
+
+   rule transFBindList(N:Int, Mod:K, .FBindList, .K, .K, L:List, Ls:Set, Ts:Set, Is:Set)
+           => resultTransList(N, L)
+   rule transFBindList(N:Int, Mod:K, 'fbCon('fbConAssign(
+                A:QVar,, B:Exp),, C:FBindList), .K, .K, L:List, Ls:Set, Ts:Set, Is:Set)
+          => transFBindList(N, Mod, C, transFunVar(Mod, A, .Set, Ts, Is),
+                     transExp(N, Mod, B, Ls, Ts, Is), L, Ls:Set, Ts:Set, Is:Set)
+   rule transFBindList(N:Int, Mod:K, C:FBindList,
+                  error(X:K), B:K, L:List, Ls:Set, Ts:Set, Is:Set) => error(X)
+   rule transFBindList(N:Int, Mod:K, C:FBindList,
+                    X:K, error(B:K), L:List, Ls:Set, Ts:Set, Is:Set) => error(B)
+   rule transFBindList(N:Int, Mod:K, C:FBindList,
+               X:K, resultTrans(N':Int, A:K), L:List, Ls:Set, Ts:Set, Is:Set)
+          => transFBindList(N', Mod, C, .K, .K, L ListItem(appExp(
+                fullName(Prelude, constrName(recordAssign)),
+                     ListItem(X) ListItem(A))), Ls:Set, Ts:Set, Is:Set)
+
+
+   //trans list comprehension
+   //haskell list comprehension == [S | S1, ... Sn] -> [ [ [... S | Sn...] | S3] | S2] | S1]
+   rule transExpListCompre(N:Int, Mod:K, .List, resultTrans(N':Int, A:K),
+              L:List, .K, Ls:Set, Ts:Set, Is:Set)
+             => resultTrans(N', formListCompre(A, L))
+   rule transExpListCompre(N:Int, Mod:K, L1:List, error(A:K),
+                   L2:List, B:K, Ls:Set, Ts:Set, Is:Set) => error(A)
+   rule transExpListCompre(N:Int, Mod:K, L1:List, resultTrans(N':Int, A:K),
+                   L2:List, B:Exp, Ls:Set, Ts:Set, Is:Set)
+            => transExpListCompre(N', Mod, L1, .K, L2 ListItem(A), B, Ls, Ts, Is)
+   rule transExpListCompre(N:Int, Mod:K, ListItem(A:K) L1:List,
+                  .K, L2:List, E1:K, Ls:Set, Ts:Set, Is:Set)
+             => transExpListCompre(N, Mod, L1,
+                      transQual(N, Mod, A, getFreeVarsInDefs(A), Ls, Ts, Is),
+                      L2, E1, getFreeVarsInDefs(A) Ls, Ts, Is)
+        requires getFreeVarsInDecls(A) <=Set getFreeVarsInDefs(A)
+   rule transExpListCompre(N:Int, Mod:K, ListItem(A:K) L1:List,
+                  .K, L2:List, E1:K, Ls:Set, Ts:Set, Is:Set)
+             => error(funNameDeclNotDef)
+        requires notBool (getFreeVarsInDecls(A) <=Set getFreeVarsInDefs(A))
+   rule transExpListCompre(N:Int, Mod:K, .List,
+                  .K, L2:List, E1:K, Ls:Set, Ts:Set, Is:Set)
+             => transExpListCompre(N, Mod, .List,
+                      transExp(N, Mod, E1, Ls, Ts, Is), L2, .K, Ls, Ts, Is)
+
+   rule transQual(N:Int, Mod:K, 'qualAssign(A:Pat,, B:Exp), As:Set, Ls:Set, Ts:Set, Is:Set)
+         => transQualPat(transNegPat(Mod, A, Ts, Is),
+                       transExp(N, Mod, B, Ls, Ts, Is))
+        requires hasConflictVars(A)
+   rule transQual(N:Int, Mod:K, 'qualAssign(A:Pat,, B:Exp), As:Set, Ls:Set, Ts:Set, Is:Set)
+         => error(funNameConflicting)
+        requires notBool hasConflictVars(A)
+
+   rule transQualPat(error(A:K), B:K) => error(A)
+   rule transQualPat(A:K, error(B:K)) => error(B)
+   rule transQualPat(A:K, resultTrans(N':Int, B:K))
+           => resultTrans(N', appExp(fullName(Prelude, constrName(leftArrow)),
+                           ListItem(A) ListItem(B))) [owise]
+
+   rule transQual(N:Int, Mod:K,'qualLet(A:Decls), As:Set, Ls:Set, Ts:Set, Is:Set)
+         => transQualLet(transDecls(N, Mod, A, As Ls, Ts, Is))
+   rule transQualLet(error(A:K)) => error(A)
+   rule transQualLet(resultTransList(N:Int, B:List))
+         => resultTrans(N, letStmt(B))
+   rule transQual(N:Int, Mod:K, A:Exp, As:Set, Ls:Set, Ts:Set, Is:Set)
+            => transExp(N, Mod, A, Ls, Ts, Is)
+
+   //trans exp sequence1
+   rule transExpSeq1(error(A:K)) => error(A)
+   rule transExpSeq1(resultTrans(N:Int, A:K))
+          => resultTrans(N, appExp(fullName(Prelude, arithSeq1), ListItem(A)))
+
+   //trans exp seq2 without end
+   rule transExpSeq2NoEnd(error(A:K), Mod:K, E2:K, Ls:Set, Ts:Set, Is:Set) => error(A)
+   rule transExpSeq2NoEnd(resultTrans(N:Int, A:K), Mod:K, E2:K, Ls:Set, Ts:Set, Is:Set)
+            => transExpSeq2NoEndAux(A, transExp(N, Mod, E2, Ls, Ts, Is))
+   rule transExpSeq2NoEndAux(A:K, error(B:K)) => error(B)
+   rule transExpSeq2NoEndAux(A:K, resultTrans(N:Int, B:K))
+          => resultTrans(N, appExp(fullName(Prelude, arithSeq2noEnd),
+                   ListItem(A) ListItem(B)))
+
+   //trans exp seq2 has end
+   rule transExpSeq2HasEnd(error(A:K), Mod:K, E2:K, Ls:Set, Ts:Set, Is:Set) => error(A)
+   rule transExpSeq2HasEnd(resultTrans(N:Int, A:K), Mod:K, E2:K, Ls:Set, Ts:Set, Is:Set)
+            => transExpSeq2HasEndAux(A, transExp(N, Mod, E2, Ls, Ts, Is))
+   rule transExpSeq2HasEndAux(A:K, error(B:K)) => error(B)
+   rule transExpSeq2HasEndAux(A:K, resultTrans(N:Int, B:K))
+          => resultTrans(N, appExp(fullName(Prelude, arithSeq2hasEnd),
+                   ListItem(A) ListItem(B)))
+
+   //trans exp seq3
+   rule transExp(N:Int, Mod:K, 'expSeq(E1:Exp,,
+               'dotExp(E2:Exp),, E3:Exp), Ls:Set, Ts:Set, Is:Set)
+         => transExpSeq3(transExp(N, Mod, E1, Ls, Ts, Is), Mod, E2, E3, Ls, Ts, Is)
+   rule transExpSeq3(error(A:K), Mod, B:K, C:K, Ls:Set, Ts:Set, Is:Set) => error(A)
+   rule transExpSeq3(resultTrans(N:Int, A:K), Mod, B:K, C:K, Ls:Set, Ts:Set, Is:Set)
+           => transExpSeq3Aux(A, transExp(N, Mod, B, Ls, Ts, Is), Mod, C, Ls, Ts, Is)
+   rule transExpSeq3Aux(A:K, error(B:K), Mod:K, C:K, Ls:Set, Ts:Set, Is:Set) => error(B)
+   rule transExpSeq3Aux(A:K, resultTrans(N:Int, B:K), Mod:K, C:K, Ls:Set, Ts:Set, Is:Set)
+          => transExpSeq3AuxAux(A, B, transExp(N, Mod, C, Ls, Ts, Is))
+   rule transExpSeq3AuxAux(A:K, B:K, error(C:K)) => error(C)
+   rule transExpSeq3AuxAux(A:K, B:K, resultTrans(N:Int, C:K))
+            => resultTrans(N, appExp(fullName(Prelude, arithSeq3), ListItem(A)
+                      ListItem(B) ListItem(B)))
+
+   //trans exp list
+   rule transExpList(N:Int, Mod:K, .K, .K, L:List, Ls:Set, Ts:Set, Is:Set)
+           => resultTrans(N, formExpList(L))
+   rule transExpList(N:Int, Mod:K, A:Exp, .K, L:List, Ls:Set, Ts:Set, Is:Set)
+            => transExpList(N, Mod, .K,
+                transExp(N, Mod, A, Ls, Ts, Is), L, Ls:Set, Ts:Set, Is:Set)
+   rule transExpList(N:Int, Mod:K, 'expListCon(A:K,, B:K),
+                .K, L:List, Ls:Set, Ts:Set, Is:Set)
+            => transExpList(N, Mod, B,
+                transExp(N, Mod, A, Ls, Ts, Is), L, Ls:Set, Ts:Set, Is:Set)
+   rule transExpList(N:Int, Mod:K, A:K,
+                error(B:K), L:List, Ls:Set, Ts:Set, Is:Set) => error(B)
+   rule transExpList(N:Int, Mod:K, A:K,
+               resultTrans(N':K, B:K), L:List, Ls:Set, Ts:Set, Is:Set)
+          => transExpList(N', Mod, A, .K, L ListItem(B), Ls, Ts, Is)
+
+   //trans tuples 
+   rule transExpTuple(N:Int, Mod:K, C:K, .K, .K, L:List, Ls:Set, Ts:Set, Is:Set)
+           => resultTrans(N, appExp(C, L))
+   rule transExpTuple(N:Int, Mod:K, C:K, 'twoExpTuple(A:K, B:K),
+              .K, L:List, Ls:Set, Ts:Set, Is:Set)
+           =>  transExpTuple(N, Mod, C, B,
+                  transExp(N, Mod, A, Ls, Ts, Is), L, Ls, Ts, Is)
+   rule transExpTuple(N:Int, Mod:K, C:K, 'expTupleCon(A:K, B:K),
+              .K, L:List, Ls:Set, Ts:Set, Is:Set)
+           =>  transExpTuple(N, Mod, C, B,
+                  transExp(N, Mod, A, Ls, Ts, Is), L, Ls, Ts, Is)
+   rule transExpTuple(N:Int, Mod:K, C:K, A:Exp,
+              .K, L:List, Ls:Set, Ts:Set, Is:Set)
+           =>  transExpTuple(N, Mod, C, .K,
+                  transExp(N, Mod, A, Ls, Ts, Is), L, Ls, Ts, Is)
+   rule transExpTuple(N:Int, Mod:K, C:K, A:K,
+              error(B:K), L:List, Ls:Set, Ts:Set, Is:Set) => error(B)
+   rule transExpTuple(N:Int, Mod:K, C:K, A:K,
+              resultTrans(N':Int, B:K), L:List, Ls:Set, Ts:Set, Is:Set)
+             => transExpTuple(N', Mod, C, A, L ListItem(B), Ls, Ts, Is)
+
+   //trans funApp
+   rule transExpFun(C:Int, Mod:K, .List, .K, ListItem(A:K) L:List,
+           Ls:Set, Ts:Set, Is:Set) => resultTrans(C, appExp(A, L))
+   rule transExpFun(C:Int, Mod:K, ListItem(A:K) L:List, .K, L1:List,
+           Ls:Set, Ts:Set, Is:Set) => transExpFun(C, Mod,
+                   L, transExp(C, Mod, A, Ls, Ts, Is), L1, Ls, Ts, Is)
+   rule transExpFun(C:Int, Mod:K, L:List, error(A:K),
+           L1:List, Ls:Set, Ts:Set, Is:Set) => error(A)
+   rule transExpFun(C:Int, Mod:K, L:List, resultTrans(C':K, A:K),
+           L1:List, Ls:Set, Ts:Set, Is:Set)
+            => transExpFun(C', Mod, L, .K, L1 ListItem(A), Ls, Ts, Is)
+
+   //trans qvar/gcon
+   rule transExpQVar(C:K, error(A:K)) => error(A)
+   rule transExpQVar(C:K, A:K) => resultTrans(C, B) [owise]
+
+   //trans left and right sections
+   rule transExp(N:Int, Mod:K, 'leftSection(E1:InfixExp,, G:QOp), Ls:Set, Ts:Set, Is:Set)
+          => transLeftSection(transExp(N, Mod, E1, Ls, Ts, Is), transVar(Mod, G, Ls, Ts, Is))
+
+   rule transLeftSection(error(A:K), B:K) => error(A)
+   rule transLeftSection(A:K, error(B:K)) => error(B)
+   rule transLeftSection(resultTrans(N:Int, A:K), B:K)
+          => resultTrans(N +Int 1, lambda(genVar(N), appExp(B,
+                      ListItem(A) ListItem(genVar(N))))) [owise]
+
+   rule transExp(N:Int, Mod:K, 'rightSection(G:QOp,, E1:InfixExp), Ls:Set, Ts:Set, Is:Set)
+          => transRightSection(transVar(Mod, G, Ls, Ts, Is), transExp(N, Mod, E1, Ls, Ts, Is))
+        requires G =/=K 'minusCon(.KList)
+   rule transExp(N:Int, Mod:K, 'rightSection(
+                    'minusCon(.KList),, E1:InfixExp), Ls:Set, Ts:Set, Is:Set)
+                 => error(syntaxError)
+
+   rule transRightSection(error(B:K), A:K) => error(B)
+   rule transRightSection(B:K, error(A:K)) => error(A)
+   rule transRightSection(B:K, resultTrans(N:Int, A:K))
+          => resultTrans(N +Int 1, lambda(genVar(N), appExp(B,
+                       ListItem(genVar(N)) ListItem(A)))) [owise]
+
+   syntax KItem ::= toAstTypeClass(K, K, K, Map, Set, Set) [function]
+             //curr-mod, type-class-var, OptCDecls, gen-class-map, types, imports
+                  | toAstTypeClassAux(K, K, K, CDeclsList, Map, Set, Set) [function]
+            //curr-mod, type-class-var, CDecl,CDeclsList, gen-class-map , types, imports
+                  | toAstTypeClassList(K, K, K, K, K,
+                                 CDeclsList, Map, Set, Set) [function]
             //curr-mod, type-class-var, vars, contexts, type,CDeclsList, gen-class-map,
-            // exist-ty-con-set, exist-var-set
+            //  exist-var-setm, types, imports
+                  | toAstTypeClassList1(K, K, K, Set, K,
+                                 CDeclsList, Map, Set, Set) [function]
 
-   rule toAstTypeClass(Mod:K, V:K, 'emptyOptCDecls(.KList), M:Map, S:Set)
+   rule toAstTypeClass(Mod:K, V:K, 'emptyOptCDecls(.KList), M:Map, S:Set, Is:Set)
                    => resultMap(M)
-   rule toAstTypeClass(Mod:K, V:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)), M:Map, S:Set)
-           => toAstTypeClass(Mod,V, Cs, M, S)
-   rule toAstTypeClass(Mod:K, V:K, .CDeclsList, M:Map, S:Set) => resultMap(M)
+   rule toAstTypeClass(Mod:K, V:K, 'cdeclWhere(
+                 'cdeclBracket(Cs:CDeclsList)), M:Map, S:Set, Is:Set)
+           => toAstTypeClass(Mod,V, Cs, M, S, Is)
+   rule toAstTypeClass(Mod:K, V:K,
+              .CDeclsList, M:Map, S:Set, Is:Set) => resultMap(M)
    rule toAstTypeClass(Mod:K, V:K, 'cdeclCon(A:CDecl,, B:CDeclsList),
-                     M:Map, S:Set)
-         => toAstTypeClassAux(Mod, V:K, A, B, M, S)
+                     M:Map, S:Set, Is:Set)
+         => toAstTypeClassAux(Mod, V:K, A, B, M, S, Is)
 
-   rule toAstTypeClassAux(Mod:K, V:K, 'emptyGenDecl(.KList), B:CDeclsList, M, S)
-          => toAstTypeClass(Mod, V, B, M, S)
+   rule toAstTypeClassAux(Mod:K, V:K,
+                  'emptyGenDecl(.KList), B:CDeclsList, M, S, Is:Set)
+          => toAstTypeClass(Mod, V, B, M, S, Is)
    rule toAstTypeClassAux(Mod:K, V:K, 'varAssign(X:Vars,, T:Type),
-                B:CDeclsList, M:Map, S:Set)
-           => toAstTypeClassList(Mod, V, X, .Set, toAbsTypeWithAll(
-                 toAbsType(Mod, T), getFreeTypeVars(toAbsType(Mod, T))), B, M,
-                  S, getFreeTypeVars(toAbsType(Mod, T)))
-        requires V in getFreeTypeVars(toAbsType(Mod, T))
+                B:CDeclsList, M:Map, S:Set, Is:Set)
+           => toAstTypeClassList(Mod, V, X, resultSet(.Set), toAbsTypeWithAll(
+               Mod, T, SetItem(V), getFreeTypeVars(T), S, Is), B, M, S, Is)
+        requires V in getFreeTypeVars(T)
    rule toAstTypeClassAux(Mod:K, V:K, 'varAssign(X:Vars,, T:Type),
-                B:CDeclsList, M:Map, S:Set)
+                B:CDeclsList, M:Map, S:Set, Is:Set)
            => error(ambiguousTypeVar)
-        requires notBool V in getFreeTypeVars(toAbsType(Mod, T))
-
+        requires notBool V in getFreeTypeVars(T)
    rule toAstTypeClassAux(Mod:K, V:K, 'genAssignContext(X:Vars,, C:Context,, T:Type),
-                B:CDeclsList, M:Map, S:Set)
-           => toAstTypeClassList(Mod, V, X, contextToSet(Mod, C), toAbsTypeWithAll(
-                 toAbsType(Mod, T), getFreeTypeVars(toAbsType(Mod, T))), B, M,
-                  S, getFreeTypeVars(toAbsType(Mod, T)))
-        requires V in getFreeTypeVars(toAbsType(Mod, T))
-                  andBool getTypeVarsInClass(.K, contextToSet(Mod, C))
-                                     <=Set getFreeTypeVars(toAbsType(Mod, T))
+                B:CDeclsList, M:Map, S:Set, Is:Set)
+           => toAstTypeClassList(Mod, V, X,
+                  contextToSet(Mod, C, .K, .Set, S, Is), toAbsTypeWithAll(
+                 Mod, T, SetItem(V), getFreeTypeVars(T), S, Is), B, M, S, Is)
+        requires V in getFreeTypeVars(T) andBool getTypeVarsInClass(.K,
+                    contextToSet(Mod, C, .K, .Set, S, Is))
+                                     <=Set getFreeTypeVars(T)
    rule toAstTypeClassAux(Mod:K, V:K, 'genAssignContext(X:Vars,, C:Context,, T:Type),
-                B:CDeclsList, M:Map, S:Set)
+                B:CDeclsList, M:Map, S:Set, Is:Set)
            => error(ambiguousTypeVar)
-        requires (notBool V in getFreeTypeVars(toAbsType(Mod, T)))
-                   orBool (notBool getTypeVarsInClass(.K, contextToSet(Mod, C))
-                                     <=Set getFreeTypeVars(toAbsType(Mod, T)))
-   rule toAstTypeClassAux(Mod:K, V:K, X:K, B:CDeclsList, M:Map, S:Set)
-            => toAstTypeClass(Mod, V, B, M, S) [owise]
+        requires (notBool V in getFreeTypeVars(T))
+                   orBool (notBool getTypeVarsInClass(.K,
+                    contextToSet(Mod, C, .K, .Set, S, Is))  <=Set getFreeTypeVars(T))
+   rule toAstTypeClassAux(Mod:K, V:K, X:K, B:CDeclsList, M:Map, S:Set, Is:Set)
+            => toAstTypeClass(Mod, V, B, M, S, Is) [owise]
 
+   rule toAstTypeClassList(Mod:K, V:K, X:K, error(A:K), T:K,
+             C:CDeclsList, M:Map, Ts:Set, Is:Set) => error(A)
+   rule toAstTypeClassList(Mod:K, V:K, X:K, A:K, error(T:K),
+             C:CDeclsList, M:Map, Ts:Set, Is:Set) => error(T)
+   rule toAstTypeClassList(Mod:K, V:K, X:K, resultSet(Cons:Set), T:K,
+             C:CDeclsList, M:Map, Ts:Set, Is:Set)
+         => toAstTypeClassList1(Mod, V, X, Cons, T, C, M, Ts, Is) [owise]
 
-   rule toAstTypeClassList(Mod:K, V:K, X:Var,
-                       Cons:Set, T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
-           => toAstTypeClass(Mod, V, C, (pillVar(X)
-                        |-> methodDef(Cons, T, .List)) M, S)
-        requires notBool pillVar(X) in (S S1)
-   rule toAstTypeClassList(Mod:K, V:K, X:Var, Cons:Set,
-            T:K, C:CDeclsList, M:Map, S:Set, S1:Set) => error(classVarCollipse)
-        requires pillVar(X) in (S S1)
+   rule toAstTypeClassList1(Mod:K, V:K, X:Var,
+                       Cons:Set, T:K, C:CDeclsList, M:Map, Ts:Set, Is:Set)
+           => toAstTypeClass(Mod, V, C, (buildVar(X)
+                        |-> methodDef(Cons, T, .List)) M, Ts, Is)
    rule toAstTypeClassList(Mod:K, V:K, 'varCon(X:Var,, Xs:Vars), Cons:Set,
-                  T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
+                  T:K, C:CDeclsList, M:Map, Ts:Set, Is:Set)
            => toAstTypeClassList(Mod, V, Xs, Cons:Set, T, C,
-                  (pillVar(X)
-                     |-> methodDef(Cons, T, .List)) M, S, S1)
-        requires notBool pillVar(X) in (S S1)
-   rule toAstTypeClassList(Mod:K, V:K, 'varCon(X:Var,, Xs:Vars), Cons:Set,
-             T:K, C:CDeclsList, M:Map, S:Set, S1:Set)
-           => error(classVarCollipse)
-        requires pillVar(X) in (S S1)
+                  (buildVar(X) |-> methodDef(Cons, T, .List)) M, S, S1)
 
    //functions to add possible pattern rules for type classes
    //only for the right hand side.
@@ -114,53 +704,45 @@ module HASKELL-TRANSFORMATION
    rule updatePatMapInExp(M:Map, A:K, C:K)
                   => M (A |-> methodDef(.Set, .K, ListItem(C))) [owise]
 
-   syntax KItem ::= toAstPat(Int, K, K, K, K, Map) [function]
+   syntax KItem ::= toAstPat(Int, K, K, K, K, Map, Set, Set) [function]
       //var-counter, curr-mod, CDecls, var, exp, class-map
                   | transCDecl(K, K) [function]
 
-   rule toAstPat(N:Int, Mod:K, 'emptyOptCDecls(.KList), U:K, V:K, M:Map)
+   rule toAstPat(N:Int, Mod:K, 'emptyOptCDecls(.KList), U:K, V:K, M:Map, Ts:Set, Is:Set)
               => resultIntMap(N, M)
-   rule toAstPat(N:Int, Mod:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)), U:K, V:K, M:Map)
+   rule toAstPat(N:Int, Mod:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)),
+            U:K, V:K, M:Map, Ts:Set, Is:Set)
          => toAstPat(N, Mod, Cs, U, V, M)
-   rule toAstPat(N:Int, Mod:K, .CDeclsList,U:K, V:K, M:Map) => resultIntMap(N, M)
+   rule toAstPat(N:Int, Mod:K, .CDeclsList,
+              U:K, V:K, M:Map, Ts:Set, Is:Set) => resultIntMap(N, M)
    rule toAstPat(N:Int, Mod:K, 'cdeclCon(
-            'cdeclVarRhs(X:Var,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map)
-            => toAstPat(N, Mod, B, pillVar(X),
-                        transCDecl(transFunLhs(Mod, X), transRhs(N, Mod, Y)), M)
+            'cdeclVarRhs(X:Var,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map, Ts:Set, Is:Set)
+            => toAstPat(N, Mod, B, builVar(X), transCDecl(
+              transPosFunLhs(Mod, X, Ts, Is), transRhs(N, Mod, Y)), M, Ts:Set, Is:Set)
         requires X in keys(M)
    rule toAstPat(N:Int, Mod:K, 'cdeclCon(
-            'cdeclVarRhs(X:Var,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map)
+            'cdeclVarRhs(X:Var,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map, Ts:Set, Is:Set)
             => error(classMethodVarNotInScope)
         requires notBool X in keys(M)
    rule toAstPat(N:Int, Mod:K, 'cdeclCon(
-              'cdeclFunLhsRhs(X:FunLhs,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map)
+              'cdeclFunLhsRhs(X:FunLhs,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map, Ts:Set, Is:Set)
             => toAstPat(N, Mod, B, getCoreVar(X),
-                    transCDecl(transFunLhs(Mod, X), transRhs(N, Mod, Y)), M)
+                    transCDecl(transFunLhs(Mod, X, Ts, Is), transRhs(N, Mod, Y)), M, Ts, Is)
         requires getCoreVar(X) in keys(M)
    rule toAstPat(N:Int, Mod:K, 'cdeclCon(
-              'cdeclFunLhsRhs(X:FunLhs,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map)
+              'cdeclFunLhsRhs(X:FunLhs,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map, Ts:Set, Is:Set)
             => error(classMethodVarNotInScope)
         requires notBool getCoreVar(X) in keys(M)
-   rule toAstPat(N:Int, Mod:K, A:K, X:K, error(B:K), M:Map) => error(B)
-   rule toAstPat(N:Int, Mod:K, A:K, X:K, resultTrans(N':Int, B:K), M:Map)
-         => toAstPat(N', Mod, A, .K, .K, updatePatMapInExp(M, X, B))
-   rule toAstPat(N:Int, Mod:K, 'cdeclCon(A:CDecl,, B:CDeclsList),.K,.K, M:Map)
-            => toAstPat(N, Mod, B, .K, .K, M) [owise]
+   rule toAstPat(N:Int, Mod:K, A:K, X:K, error(B:K), M:Map, Ts:Set, Is:Set) => error(B)
+   rule toAstPat(N:Int, Mod:K, A:K, X:K, resultTrans(N':Int, B:K), M:Map, Ts:Set, Is:Set)
+         => toAstPat(N', Mod, A, .K, .K, updatePatMapInExp(M, X, B), Ts:Set, Is:Set)
+   rule toAstPat(N:Int, Mod:K, 'cdeclCon(A:CDecl,, B:CDeclsList),.K,.K, M:Map, Ts:Set, Is:Set)
+            => toAstPat(N, Mod, B, .K, .K, M, Ts:Set, Is:Set) [owise]
 
+   rule transCDecl(error(A:K), B:K) => error(A)
    rule transCDecl(A:K, error(B:K)) => error(B)
    rule transCDecl(funPat(ListItem(X:K) L:List), resultTrans(N:Int, A:K))
             =>  resultTrans(N, funAssign(L, A))
-
-   syntax KItem ::= formExpList(List) [function]
-   rule formExpList(.List) => fullName(Prelude,[])
-   rule formExpList(ListItem(A:K) L:List)
-          => appExp(fullName(Prelude, 'colon(.KList)), ListItem(A)
-                    ListItem(formExpList(L)))
-
-   syntax KItem ::= formLambdaList(List, K) [function]
-   rule formLambdaList(.List, A:K) => A
-   rule formLambdaList(ListItem(A:K) L:List, B:K)
-          => lambda(A, formLambdaList(L, B))
 
    syntax KItem ::= formDoCons(List, K) [function]
    rule formDoCons(.List, A:K) => A
@@ -328,26 +910,11 @@ module HASKELL-TRANSFORMATION
                   | transGuardConAux1(K)     [function]
                   //trans expressions
                   | transExp(Int, K, K) [function]
-                  | transLambda(List, K) [function]
                   | transExpMinus(K) [function]
                   | transExpInfix(K, K, K, K) [function]
                   | transExpInfixAux(K, K, K) [function]
                   | transExpAssign(K, K) [function]
                   | transExpAssignContext(K, Set, K) [function]
-                  //helper functions for let in
-                  | transLetIn(K, K, K) [function]
-                  | transLetInAux(List, K) [function]
-                  //helper functions for if statements
-                  | transExpIf(K, K, K, K) [function]
-                  | transExpIfAux(K, K, K, K) [function]
-                  | transExpIfAuxAux(K, K, K) [function]
-                  //helper functions for case of
-                  | transExpCase(K, K, K) [function]
-                  | transExpAlts(K, Int, K, K, K, List) [function]
-                  | transExpAlt(K, K, K) [function]
-                  | transExpAltAux2(K, K) [function]
-                  | transExpAltAux(K, K, K, K) [function]
-                  | transExpAltAuxAux(K, K, K) [function]
                   //helper funtions for do stmt
                   | transExpDo(K, K, K) [function]
                   | transExpStmts(K, Int, K, StmtList, K, List) [function]
@@ -363,27 +930,7 @@ module HASKELL-TRANSFORMATION
                        //counter, curr-mod, tuple, curr-buf, stored
                   | transExpList(Int, K, ExpList, K, List) [function]
                        //counter, curr-mod, exp-list, curr-buf, stored
-                  | transExpRecord(Int, K, AExp, FBindList) [function]
-                  | transExpRecordAux(K, K, K) [function]
-                  | transExpRecordAuxAux(K, K) [function]
-                  | transFBindList(Int, K,K, FBindList, K, K, List) [function]
-                 //Counter, curr-mod, flag, FBindList, curr-buf1,buf2, stored
-                  | transExpSeq1(K) [function]
-                  | transExpSeq2NoEnd(K, K, K) [function]
-                  | transExpSeq2NoEndAux(K, K) [function]
-                  | transExpSeq2HasEnd(K, K, K) [function]
-                  | transExpSeq2HasEndAux(K, K) [function]
-                  | transExpSeq3(K, K, K, K) [function]
-                  | transExpSeq3Aux(K, K, K, K) [function]
-                  | transExpSeq3AuxAux(K, K, K) [function]
-                  | transExpListCompre(K, K, Quals) [function]
-                  | transQuals(Int, K, K, K, K, List) [function]
-                 //counter, pat, curr-mod, quals, buf, stored
-                  | transQual(K, K, K) [function]
-                  | transQualPat(K, K) [function]
-                  | transQualLet(K) [function]
-                  | transLeftSection(K, K) [function]
-                  | transRightSection(K, K) [function]
+
 
    syntax List ::= genDeclForVars(K, Vars,Set, K) [function]
    rule genDeclForVars(Mod:K, A:Var,S:Set, T:K)
@@ -395,71 +942,6 @@ module HASKELL-TRANSFORMATION
          //curr-mod-name, exp
    //rule transRhs(Mod:K, 'normalRhs(E:Exp,, D:OptDecls))
     //       => rhs(transExp(Mod, E), transDecls(Mod, D))
-   //trans lambdaexp 
-   rule transExp(N:Int, Mod:K, 'lambdaExp(As:APatList,, B:Exp))
-         => transLambda(transAPatList(Mod, As), transExp(N, Mod, B))
-   rule transLambda(L:List, error(A:K)) => error(A)
-   rule transLambda(L:List, resultTrans(N:Int, A:K))
-            => resultTrans(N, formLambdaList(L, A))
-
-   //trans let term
-   rule transExp(N:Int, Mod:K, 'letInExp(As:Decls,, B:Exp))
-           => transLetIn(transDecls(N, Mod, As), Mod, B)
-   rule transLetIn(error(A:K), Mod:K, B:K) => error(A)
-   rule transLetIn(resultTransList(N:Int, A:List), Mod:K, B:K)
-          => transLetInAux(A, transExp(N, Mod, B))
-   rule transLetInAux(As:List, error(B:K)) => error(B)
-   rule transLetInAux(As:List, resultTrans(N:Int, B:K))
-             => resultTrans(N, letIn(As, B))
-
-   //trans if statement
-   rule transExp(N:Int, Mod:K, 'ifElseExp(A:Exp,,
-            Op1:OptSemicolon,, B:Exp,, Op2:OptSemicolon,, C:Exp))
-          => transExpIf(transExp(N, Mod, A), Mod, B, C)
-   rule transExpIf(error(A:K), Mod:K, B:K, C:K) => error(A)
-   rule transExpIf(resultTrans(N:Int, A:K), Mod:K, B:K, C:K)
-         => transExpIfAux(A, transExp(N, Mod, B), Mod, C)
-   rule transExpIfAux(A:K, error(B:K), Mod:K, C:K) => error(B)
-   rule transExpIfAux(A:K, resultTrans(N:Int, B:K), Mod:K, C:K)
-           => transExpIfAuxAux(A, B, transExp(N, Mod, C))
-   rule transExpIfAuxAux(A:K, B:K, error(C:K)) => error(C)
-   rule transExpIfAuxAux(A:K, B:K, resultTrans(N:Int, C:K))
-         => resultTrans(N, ifElse(ListItem(A), B, C))
-
-   //trans case analysis
-   rule transExp(N:Int, Mod:K, 'caseExp(A:Exp,, Bs:Alts))
-          =>  transExpCase(transExp(N, Mod, A), Mod, Bs)
-   rule transExpCase(error(A:K), Mod:K, Bs:K) => error(A)
-   rule transExpCase(resultTrans(N:Int, A:K), Mod:K, Bs:K)
-           => transExpAlts(A, N, Mod, Bs, .K, .List)
-   
-   rule transExpAlts(A:K, N:Int, Mod:K, .K, .K, L:List)
-          => resultTrans(N, caseOf(A, L))
-   rule transExpAlts(A:K, N:Int, Mod:K, B:Alt, .K, L:List)
-          => transExpAlts(A, N, Mod, .K, transExpAlt(N, Mod, B), L)
-   rule transExpAlts(A:K, N:Int, Mod:K,
-                    'altCon(B:Alt,, Bs:Alts), .K, L:List)
-          => transExpAlts(A, N, Mod, Bs, transExpAlt(N, Mod, B), L)
-   rule transExpAlts(A:K, N:Int, Mod:K, Bs:K, error(B:K), L:List) => error(B)
-   rule transExpAlts(A:K, N:Int, Mod:K, Bs:K, resultTransList(N':Int, B:List), L:List)
-           => transExpAlts(A, N', Mod, Bs, .K, L B)
-
-   rule transExpAlt(N:Int, Mod:K, 'altArrow(A:Pat,, B:Exp))
-           => transExpAltAux2(transPat(Mod, A), transExp(N, Mod, B))
-   rule transExpAlt(N:Int, Mod:K, 'emptyAlt(.KList))
-             => resultTransList(N, .List)
-   rule transExpAlt(N:Int, Mod:K, 'altArrow(A:Pat,, B:Exp,, C:Decls))
-          => transExpAltAux(transPat(Mod,A), transExp(N, Mod, B), Mod, C)
-
-   rule transExpAltAux2(A:K, error(B:K)) => error(B)
-   rule transExpAltAux2(A:K, resultTrans(N:Int, B:K))
-                 => resultTransList(N, ListItem(singleCase(A, B, .List)))
-   rule transExpAltAux(A:K, error(B:K), Mod:K, C:K) => error(B)
-   rule transExpAltAux(A:K, resultTrans(N:Int, B:K), Mod:K, C:K)
-          => transExpAltAuxAux(A, B, transDecls(N, Mod, C))
-   rule transExpAltAuxAux(A:K, B:K, error(C:K)) => error(C)
-   rule transExpAltAuxAux(A:K, B:K, resultTransList(N:Int, C:List))
-          => resultTransList(N, ListItem(singleCase(A, B, C)))
 
    //trans do stmt
    rule transExp(N:Int, Mod:K, 'doExp(
@@ -530,15 +1012,7 @@ module HASKELL-TRANSFORMATION
    rule transExpAssignContext(resultTrans(N:Int, A:K), S:Set, T:K)
             => resultTrans(N, typedExp(S, T, A))
 
-   //trans funApp
-   rule transExp(N:Int, Mod:K, 'funApp(A:AExp,, B:AExp))
-          => transExpFunAux(transExp(N:Int, Mod, A), Mod, B)
-   rule transExpFunAux(error(A:K), Mod:K, B:K) => error(A)
-   rule transExpFunAux(resultTrans(N:Int, A:K), Mod:K, B:K)
-          => transExpFunAuxAux(A, transExp(N:Int, Mod, B))
-   rule transExpFunAuxAux(A:K, error(B:K)) => error(B)
-   rule transExpFunAuxAux(A:K, resultTrans(N:Int, B:K))
-              => resultTrans(N, appExp(A, ListItem(B)))
+
 
    //trans tuples 
    rule transExp(N:Int, Mod:K, 'expTuple(As:ExpTuple))
@@ -558,142 +1032,6 @@ module HASKELL-TRANSFORMATION
    rule transExpTuple(N:Int, Mod:K, A:K, error(B:K), L:List) => error(B)
    rule transExpTuple(N:Int, Mod:K, A:K, resultTrans(N':Int, B:K), L:List)
             => transExpTuple(N', Mod, A:K, .K, L ListItem(B))
-
-   //trans exp list
-   rule transExp(N:Int, Mod:K, 'expList(As:ExpList))
-          => transExpList(N, Mod, As, .K, .List)
-   rule transExpList(N:Int, Mod:K, .K, .K, L:List) => resultTrans(N, formExpList(L))
-   rule transExpList(N:Int, Mod:K, A:Exp, .K, L:List)
-            => transExpList(N, Mod, .K, transExp(N, Mod, A), L)
-   rule transExpList(N:Int, Mod:K, 'expListCon(A:Exp,, B:ExpList), .K, L:List)
-            => transExpList(N, Mod, B, transExp(N, Mod, A), L)
-   rule transExpList(N:Int, Mod:K, A:K, error(B:K), L:List) => error(B)
-   rule transExpList(N:Int, Mod:K, A:K, resultTrans(N':Int, B:K), L:List)
-         => transExpList(N', Mod, A, .K, L ListItem(B))
-
-   //trans records, two different things. labeled update and label pattern
-   rule transExp(N:Int, Mod:K, 'recordExp(A:AExp,, Fs:FBindList))
-            =>  transExpRecord(N:Int, Mod, A, Fs)
-   rule transExpRecord(N:Int, Mod:K, Q:QCon, Fs:FBindList)
-           => transExpRecordAuxAux(transExpCon(Mod, Q),
-            transFBindList(N, Mod, recordAssign, Fs, .K, .K, .List))
-   rule transExpRecord(N:Int, Mod:K, A:AExp, Fs:FBindList)
-           => transExpRecordAux(transExp(N, Mod, A), Mod, Fs)
-        requires notBool isTheQCon(A) andBool fbSize(Fs) >Int 0
-   rule transExpRecord(N:Int, Mod:K, A:AExp, Fs:FBindList)
-           => error(syntaxError) [owise]
-
-   rule transExpRecordAux(error(A:K), Mod:K, B:K) => error(A)
-   rule transExpRecordAux(resultTrans(N:Int, A:K), Mod:K, B:K)
-          => transExpRecordAuxAux(A, transFBindList(N,
-                        Mod, recordUpdate, B, .K, .K, .List))
-
-   rule transExpRecordAuxAux(A:K, error(B:K)) => error(B)
-   rule transExpRecordAuxAux(A:K, resultTransList(N:Int, L:List))
-           => resultTrans(N, appExp(A, ListItem(appExp(fullName(
-                          Prelude, recordParen), L))))
-
-   rule transFBindList(N:Int, Mod:K, S:K, .FBindList, .K, .K, L:List)
-           => resultTransList(N, L)
-   rule transFBindList(N:Int, Mod:K,S:K, 'fbCon('fbConAssign(
-                A:QVar,, B:Exp),, C:FBindList), .K, .K, L:List)
-          => transFBindList(N, Mod,S, C, transTypeVar(Mod, A), transExp(N, Mod, B), L)
-   rule transFBindList(N:Int, Mod:K,S:K, C:FBindList, X:K, error(B:K), L:List) => error(B)
-   rule transFBindList(N:Int, Mod:K,S:K, C:FBindList, X:K, resultTrans(N':Int, A:K), L:List)
-          => transFBindList(N', Mod, S, C, .K, .K, L ListItem(appExp(
-                fullName(Prelude, S),ListItem(X) ListItem(A))))
-
-   //trans exp sequence1
-   rule transExp(N:Int, Mod:K, 'expSeq(E1:Exp,, 'emptyExpComma(.KList),, 'emptyExp(.KList)))
-           => transExpSeq1(transExp(N:Int, Mod, E1))
-   rule transExpSeq1(error(A:K)) => error(A)
-   rule transExpSeq1(resultTrans(N:Int, A:K))
-          => resultTrans(N, appExp(fullName(Prelude, arithSeq1), ListItem(A)))
-
-   //trans exp seq2 without end
-   rule transExp(N:Int, Mod:K, 'expSeq(E1:Exp,, 'dotExp(E2:Exp),, 'emptyExp(.KList)))
-         => transExpSeq2NoEnd(transExp(N:Int, Mod, E1), Mod, E2)
-   rule transExpSeq2NoEnd(error(A:K), Mod:K, E2:K) => error(A)
-   rule transExpSeq2NoEnd(resultTrans(N:Int, A:K), Mod:K, E2:K)
-            => transExpSeq2NoEndAux(A, transExp(N, Mod, E2))
-   rule transExpSeq2NoEndAux(A:K, error(B:K)) => error(B)
-   rule transExpSeq2NoEndAux(A:K, resultTrans(N:Int, B:K))
-          => resultTrans(N, appExp(fullName(Prelude, arithSeq2noEnd),
-                   ListItem(A) ListItem(B)))
-
-   //trans exp seq2 has end
-   rule transExp(N:Int, Mod:K, 'expSeq(E1:Exp,, 'emptyExpComma(.KList),, E3:Exp))
-         => transExpSeq2HasEnd(transExp(N:Int, Mod, E1), Mod, E3)
-   rule transExpSeq2HasEnd(error(A:K), Mod:K, E2:K) => error(A)
-   rule transExpSeq2HasEnd(resultTrans(N:Int, A:K), Mod:K, E2:K)
-            => transExpSeq2HasEndAux(A, transExp(N, Mod, E2))
-   rule transExpSeq2HasEndAux(A:K, error(B:K)) => error(B)
-   rule transExpSeq2HasEndAux(A:K, resultTrans(N:Int, B:K))
-          => resultTrans(N, appExp(fullName(Prelude, arithSeq2hasEnd),
-                   ListItem(A) ListItem(B)))
-
-   //trans exp seq3
-   rule transExp(N:Int, Mod:K, 'expSeq(E1:Exp,, 'dotExp(E2:Exp),, E3:Exp))
-         => transExpSeq3(transExp(N, Mod, E1), Mod, E2, E3)
-   rule transExpSeq3(error(A:K), Mod, B:K, C:K) => error(A)
-   rule transExpSeq3(resultTrans(N:Int, A:K), Mod, B:K, C:K)
-           => transExpSeq3Aux(A, transExp(N, Mod, B), Mod, C)
-   rule transExpSeq3Aux(A:K, error(B:K), Mod:K, C:K) => error(B)
-   rule transExpSeq3Aux(A:K, resultTrans(N:Int, B:K), Mod:K, C:K)
-          => transExpSeq3AuxAux(A, B, transExp(N, Mod, C))
-   rule transExpSeq3AuxAux(A:K, B:K, error(C:K)) => error(C)
-   rule transExpSeq3AuxAux(A:K, B:K, resultTrans(N:Int, C:K))
-            => resultTrans(N, appExp(fullName(Prelude, arithSeq3), ListItem(A)
-                      ListItem(B) ListItem(B)))
-
-   //trans list comprehension
-   rule transExp(N:Int, Mod:K, 'listComprehension(E1:Exp,, Qs:Quals))
-         => transExpListCompre(transExp(N, Mod, E1), Mod, Qs)
-   rule transExpListCompre(error(A:K), Mod:K, B:Quals) => error(A)
-   rule transExpListCompre(resultTrans(N:Int, A:K), Mod:K, B:Quals)
-          => transQuals(N, A, Mod:K, B, .K, .List)
-
-   rule transQuals(N:Int, A:K, Mod:K, .K, .K, L:List)
-          => appExp(fullName(Prelude, listCompre), ListItem(A) L)
-   rule transQuals(N:Int, A:K, Mod:K, B:Qual, .K, L:List)
-           => transQuals(N, A, Mod:K, .K, transQual(N, Mod, B), L:List)
-   rule transQuals(N:Int, A:K, Mod:K, 'qualCon(B:Qual,, C:Quals), .K, L:List)
-           => transQuals(N, A, Mod:K, C, transQual(N, Mod, B), L:List)
-   rule transQuals(N:Int, A:K, Mod:K, C:K, error(D:K), L:List) => error(D)
-   rule transQuals(N:Int, A:K, Mod:K, C:K, resultTrans(N':Int, D:K), L:List)
-          => transQuals(N', A, Mod, C, .K, L ListItem(D))
-
-   rule transQual(N:Int, Mod:K, 'qualAssign(A:Pat,, B:Exp))
-         => transQualPat(transPat(Mod, A), transExp(N, Mod, B))
-   rule transQualPat(A:K, error(B:K)) => error(B)
-   rule transQualPat(A:K, resultTrans(N':Int, B:K))
-           => resultTrans(N', appExp(fullName(Prelude, qualAssignAst),
-                           ListItem(A) ListItem(B)))
-   rule transQual(N:Int, Mod:K,'qualLet(A:Decls))
-         => transQualLet(transDecls(N, Mod, A))
-   rule transQualLet(error(A:K)) => error(A)
-   rule transQualLet(resultTransList(N:Int, B:List))
-         => resultTrans(N, appExp(fullName(Prelude, qualLetAst), B))
-   rule transQual(N:Int, Mod:K, A:Exp) => transExp(N, Mod, A)
-
-   //trans left and right sections
-   rule transExp(N:Int, Mod:K, 'leftSection(E1:InfixExp,, G:QOp))
-          => transLeftSection(transExp(N, Mod, E1), transVar(Mod, G))
-   rule transLeftSection(error(A:K), B:K) => error(A)
-   rule transLeftSection(resultTrans(N:Int, A:K), B:K)
-          => resultTrans(N +Int 1, lambda(genVar(N), appExp(B,
-                      ListItem(A) ListItem(genVar(N)))))
-
-   rule transExp(N:Int, Mod:K, 'rightSection(G:QOp,, E1:InfixExp))
-          => transRightSection(transVar(Mod, G), transExp(N, Mod, E1))
-        requires G =/=K 'minusCon(.KList)
-   rule transExp(N:Int, Mod:K, 'rightSection('minusCon(.KList),, E1:InfixExp))
-                 => error(syntaxError)
-
-   rule transRightSection(B:K, error(A:K)) => error(A)
-   rule transRightSection(B:K, resultTrans(N:Int, A:K))
-          => resultTrans(N +Int 1, lambda(genVar(N), appExp(B,
-                       ListItem(genVar(N)) ListItem(A))))
 
    //trans Decls
    rule transDecls(N:Int, Mod:K, 'emptyOptDecls(.KList))
@@ -781,71 +1119,183 @@ module HASKELL-TRANSFORMATION
    rule transGuardConAux1(resultTransList(N:Int, L:List))
             => resultTrans(N, appExp(fullName(Prelude, qualLetAst), L))
 
+   //transfer variables according to if it is in different set
+   syntax KItem ::= transExpCon(K, K, Set, Set) [function]
+            //curr-mod-name, ExpCon, types, imports
+   rule transExpCon(Mod:K, 'unitType(.KList), Ts:Set, Is:Set)
+                  => fullName(Prelude, constrName('unitType(.KList)))
+   rule transExpCon(Mod:K, [], Ts:Set, Is:Set) => fullName(Prelude, constrName([]))
+   rule transExpCon(Mod:K, 'tupleFun(Gs:GConCommas), Ts:Set, Is:Set)
+          => fullName(Prelude, constrName(tupleType(countOnCommas(Gs) +Int 1)))
+   rule transExpCon(Mod:K, T:QTyCon, Ts:Set, Is:Set)
+             => transConstrVar(Mod, pillVar(T), Ts, Is)
+   rule transExpCon(Mod:K, 'gConBracket('colon(.KList)), Ts:Set, Is:Set)
+              => fullName(Prelude, constrName('colon(.KList)))
+   rule transExpCon(Mod:K, 'gConBracket(C:K), Ts:Set, Is:Set)
+              => transConstrVar(Mod, pillVar('gConBracket(C:K)), Ts, Is)
+
+   syntax KItem ::= transConstrVar(K, K, Set, Set) [function]
+   rule transConstrVar(S:K, A:K,Ts:Set, Is:Set)
+           => fullName(S, constrName(A))
+        requires notBool isFullName(A) andBool A in Ts
+                andBool countGoodNameNoQualified(constrName(A), .K, Is) ==K 0
+   rule transConstrVar(S:K, A:K,Ts:Set, Is:Set)
+           => fullName(findGoodNameNoQualified(constrName(A), .K, Is), constrName(A))
+        requires notBool isFullName(A) andBool notBool A in Ts
+                andBool countGoodNameNoQualified(constrName(A), .K, Is) ==K 1
+   rule transConstrVar(S:K, A:K,Ts:Set, Is:Set) => error(ambiguousConstrName)
+        requires notBool isFullName(A) andBool constrName(A) in Ts
+                   andBool countGoodNameNoQualified(constrName(A), .K, Is) =/=K 0
+   rule transConstrVar(S:K, A:K,Ts:Set, Is:Set) => error(ambiguousConstrName)
+        requires notBool isFullName(A) andBool notBool constrName(A) in Ts
+                   andBool countGoodNameNoQualified(constrName(A), .K, Is) >Int 1
+   rule transConstrVar(S:K, A:K,Ts:Set, Is:Set) => error(constrNotInScope)
+        requires notBool isFullName(A) andBool notBool constrName(A) in Ts
+                   andBool countGoodNameNoQualified(constrName(A), .K, Is)==K 0
+
+   rule transConstrVar(S:K, fullName(S, A:K), Ts:Set, Is:Set)
+         => fullName(S, constrName(A))
+        requires constrName(A) in Ts
+                andBool countGoodNameWithMod(constrName(A), S, .K, Is) ==K 0
+   rule transConstrVar(S:K, fullName(S, A:K), Ts:Set, Is:Set)
+         => error(ambiguousConstrName)
+        requires constrName(A) in Ts
+                andBool countGoodNameWithMod(constrName(A), S, .K, Is) =/=K 0
+   rule transConstrVar(S:K, fullName(S, A:K), Ts:Set, Is:Set)
+         => error(constrNotInScope)
+        requires notBool constrName(A) in Ts
+                andBool countGoodNameWithMod(constrName(A),S, .K, Is)==K 0
+   rule transConstrVar(S:K, fullName(N:K, A:K), Ts:Set, Is:Set)
+         => error(constrNotInScope)
+        requires S =/=K N
+                andBool countGoodNameWithMod(constrName(A),N, .K, Is)==K 0
+   rule transConstrVar(S:K, fullName(N:K, A:K), Ts:Set, Is:Set)
+         => error(constrNotInScope)
+        requires S =/=K N
+                andBool countGoodNameWithMod(constrName(A),N, .K, Is)==K 0
+   rule transConstrVar(S:K, fullName(N:K, A:K), Ts:Set, Is:Set)
+         => fullName(findGoodNameWithMod(
+                        constrName(A), N, .K, Is),constrName(A))
+        requires S =/=K N
+                andBool countGoodNameWithMod(constrName(A),N, .K, Is)==K 1
+   rule transConstrVar(S:K, fullName(S:K, A:K), Ts:Set, Is:Set)
+         => fullName(findGoodNameWithMod(
+                        constrName(A), S, .K, Is),constrName(A))
+        requires notBool constrName(A) in Ts
+                andBool countGoodNameWithMod(constrName(A),S, .K, Is)==K 1
+   rule transConstrVar(S:K, fullName(S:K, A:K), Ts:Set, Is:Set)
+             => error(ambiguousConstrName)
+        requires countGoodNameWithMod(constrName(A), N, .K, Is) >Int 1
+
+   syntax KItem ::= transFunVar(K, K, Set, Set, Set) [function]
+          //curr-mod, term, bound-vars, types, imports
+   rule transFunVar(S:K, A:K,As:Set, Ts:Set, Is:Set) => funName(A)
+        requires notBool isFullName(A) andBool A in As
+   rule transFunVar(S:K, A:K,As:Set, Ts:Set, Is:Set)
+           => fullName(S, funName(A))
+        requires notBool isFullName(A) andBool A in Ts
+                andBool countGoodNameNoQualified(funName(A), .K, Is) ==K 0
+   rule transFunVar(S:K, A:K,Ts:Set, Is:Set)
+           => fullName(findGoodNameNoQualified(funName(A), .K, Is), funName(A))
+        requires notBool isFullName(A) andBool notBool A in Ts
+                andBool countGoodNameNoQualified(funName(A), .K, Is) ==K 1
+   rule transFunVar(S:K, A:K,Ts:Set, Is:Set) => error(ambiguousFunName)
+        requires notBool isFullName(A) andBool funName(A) in Ts
+                   andBool countGoodNameNoQualified(funName(A), .K, Is) =/=K 0
+   rule transFunVar(S:K, A:K,Ts:Set, Is:Set) => error(ambiguousFunName)
+        requires notBool isFullName(A) andBool notBool funName(A) in Ts
+                   andBool countGoodNameNoQualified(funName(A), .K, Is) >Int 1
+   rule transFunVar(S:K, A:K,Ts:Set, Is:Set) => error(constrNotInScope)
+        requires notBool isFullName(A) andBool notBool funName(A) in Ts
+                   andBool countGoodNameNoQualified(funName(A), .K, Is)==K 0
+   rule transFunVar(S:K, fullName(S':K, A:K),As:Set, Ts:Set, Is:Set)
+                => error(ambiguousFunName)
+        requires A in As
+   rule transFunVar(S:K, fullName(S, A:K), Ts:Set, Is:Set)
+         => fullName(S, funName(A))
+        requires notBool (A in As) andBool funName(A) in Ts
+                andBool countGoodNameWithMod(funName(A), S, .K, Is) ==K 0
+   rule transFunVar(S:K, fullName(S, A:K), Ts:Set, Is:Set)
+         => error(ambiguousFunName)
+        requires notBool (A in As) andBool funName(A) in Ts
+                andBool countGoodNameWithMod(funName(A), S, .K, Is) =/=K 0
+   rule transFunVar(S:K, fullName(S, A:K), Ts:Set, Is:Set)
+         => error(funNameNotInScope)
+        requires  notBool (A in As) andBool notBool funName(A) in Ts
+                andBool countGoodNameWithMod(funName(A),S, .K, Is)==K 0
+   rule transFunVar(S:K, fullName(N:K, A:K), Ts:Set, Is:Set)
+         => error(funNameNotInScope)
+        requires notBool (A in As) andBool S =/=K N
+                andBool countGoodNameWithMod(funName(A),N, .K, Is)==K 0
+   rule transFunVar(S:K, fullName(N:K, A:K), Ts:Set, Is:Set)
+         => error(funNameNotInScope)
+        requires notBool (A in As) andBool S =/=K N
+                andBool countGoodNameWithMod(funName(A),N, .K, Is)==K 0
+   rule transFunVar(S:K, fullName(N:K, A:K), Ts:Set, Is:Set)
+         => fullName(findGoodNameWithMod(
+                        funName(A), N, .K, Is),funName(A))
+        requires notBool (A in As) andBool S =/=K N
+                andBool countGoodNameWithMod(funName(A),N, .K, Is)==K 1
+   rule transFunVar(S:K, fullName(S:K, A:K), Ts:Set, Is:Set)
+         => fullName(findGoodNameWithMod(
+                        funName(A), S, .K, Is),funName(A))
+        requires notBool (A in As) andBool notBool funName(A) in Ts
+                andBool countGoodNameWithMod(funName(A),S, .K, Is)==K 1
+   rule transFunVar(S:K, fullName(S:K, A:K), Ts:Set, Is:Set)
+             => error(ambiguousFunName)
+        requires notBool (A in As) andBool
+                     countGoodNameWithMod(funName(A), N, .K, Is) >Int 1
+
+   syntax KItem ::= findLabelsInBetaMap(K, K, Map) [function]
+   rule findLabelsInBetaMap(A:K, .K, (A |-> D:Map) M:Map)
+           => findLabelsInBetaMap(A, D, M)
+   rule findLabelsInBetaMap(A:K, curryTypes(ListItem(typeConst(
+              fullName(Prelude, typeName(recordType)), L:List)), T:K), M:Map)
+            => resultList(L)
+   rule findLabelsInBetaMap(A:K, .K, M:Map) => none
+        requires notBool A in keys(M)
+   rule findLabelsInBetaMap(A:K, B:K, M:Map) => error(labelConstrNotCorrect) [owise]
+
+   syntax KItem ::= findLabelsInPreBeta(K, K, K, Map) [function]
+   rule findLabelsInPreBeta(A:K, .K, .K, .Map) => none
+   rule findLabelsInPreBeta(A:K, .K, .K, (C:K |-> B:K) S:Map)
+              => findLabelsInPreBeta(A, .K, B, S)
+   rule findLabelsInPreBeta(A:K, .K, preBetaEntry(X:List, Y:Map, Z:Set), S:Map)
+          => findLabelsInPreBeta(A, findLabelsInBetaMap(A, .K, Y), .K, S)
+   rule findLabelsInPreBeta(A:K, error(B:K), .K, S:Map) => error(B)
+   rule findLabelsInPreBeta(A:K, none, .K, S:Map) => findLabelsInPreBeta(A, .K, .K, S)
+   rule findLabelsInPreBeta(A:K, resultList(L:List), .K, S:Map) => resultList(L)
+
+   syntax KItem ::= findLabelsInImports(K, K, K, Map) [function]
+                  //mod, constr, store, import-betas
+                  | findLabelsInImportsAux(K, K, Map) [function]
+
+   rule findLabelsInImportsAux(A:K, .K, (A |-> B:K) M:Map)
+             => findLabelsInImportsAux(A, B, M)
+   rule findLabelsInImportsAux(A:K, typeConst(fullName(Prelude, typeName((->))),
+                  ListItem(typeConst(fullName(Prelude,
+                         typeName(recordType)), Tar:List)) L:List), M:Map)
+            => resultList(Tar)
+   rule findLabelsInImportsAux(A:K, X:K, M:Map) => error(labelConstrNotCorrect) [owise]
+
+   rule findLabelsInImports(A:K, B:K, .K, (A |-> C:K) M:Map)
+            => findLabelsInImports(A, B, C, M)
+   rule findLabelsInImports(A:K, B:K, resultMap(X:Map), M:Map)
+              => findLabelsInImportsAux(B, .K, X)
+
+
    //pattern transformation is self-contained
-   syntax KItem ::= transPat(K, K) [function]
-                  | transPatList(K, PatList) [function]
-                  | transFunLhs(K, K) [function]
-                  | insertAPatList(K, List) [function]
+   syntax KItem ::= compareLabel(K, K, List) [function]
+                  | compareLabelAux(K, List) [function]
+   rule compareLabel(Mod:K, fullName(X:K, Y:K), L:List) => error(labelNotInScope)
+        requires Mod =/=K X
+   rule compareLabel(Mod:K, fullName(Mod, Y:K), L:List)
+        => compareLabelAux(Mod, funName(Y), L)
+   rule compareLabel(Mod:K, Y:K, L:List) => compareLabelAux(funName(Y), L) [owise]
 
-   syntax List ::= transFPats(K, FPats) [function]
-                 | transPatTuple(K, PatTuple) [function]
-                 | transAPatList(K, APatList) [function]
-
-   rule transFunLhs(Mod:K, P:Pat)
-         => funPat(ListItem(transPat(Mod, P)))
-   rule transFunLhs(Mod:K, 'normalLhs(V:Var,, As:APatList))
-         => funPat(ListItem(transPat(Mod, V)) transAPatList(Mod, As))
-   rule transFunLhs(Mod:K, 'binLhs(P1:Pat,, V:VarOp,, P2:Pat))
-         => funPat(ListItem(transVar(Mod,V))
-                  ListItem(transPat(Mod, P1)) ListItem(transPat(Mod, P2)))
-   rule transFunLhs(Mod:K, 'groupLhs(F:FunLhs,, As:APatList))
-         => insertAPatList(transFunLhs(Mod, F), transAPatList(Mod, As))
-   rule insertAPatList(funPat(L:List), L2:List) => funPat(L L2)
-
-   rule transPat(Mod:K, 'binPattern(A:LPat,, B:QConOp,, C:Pat))
-           => appPat(transVar(Mod, B),
-                 ListItem(transPat(Mod, A)) ListItem(transPat(Mod, C)))
-   rule transPat(Mod:K, V:Var) => pillVar(V)
-   rule transPat(Mod:K, V:Var @ A:APat) => asPat(pillVar(V), transPat(Mod, A))
-   rule transPat(Mod:K, G:GCon) => transExpCon(Mod, G)
-   rule transPat(Mod:K, 'recordPat(G:QCon,, Fs:FPats))
-              => appPat(transExpCon(Mod, G),
-                       ListItem(appPat(fullName(
-                          Prelude, recordParen), transFPats(Mod, Fs))))
-   rule transPat(Mod:K, 'underscore(.KList)) => unnamedVar
-   rule transPat(Mod:K, ~ A:APat) => irrefuPat(transPat(Mod, A))
-   rule transPat(Mod:K, I:Integer) => String2Int(#tokenToString(I))
-   rule transPat(Mod:K, I:CusFloat) => String2Float(#tokenToString(I))
-   rule transPat(Mod:K, I:CusChar) => #tokenToString(I)
-   rule transPat(Mod:K, I:CusString) => #tokenToString(I)
-   rule transPat(Mod:K, 'patTuple(As:PatTuple))
-             => appPat(fullName(Prelude, tupleType(
-                       countOnTypeTuple(As))), transPatTuple(Mod, As))
-   rule transPat(Mod:K, 'patList(As:PatList))
-             => appPat(fullName(Prelude, []), transPatList(Mod, As))
-   rule transPat(Mod:K, 'minusPat(A:IntFloat))
-          => appPat(fullName(Prelude, 'minusCon(.KList)), transPat(Mod, A))
-   rule transPat(Mod:K, 'lpatCon(G:GCon,, As:APatList))
-          => appPat(transExpCon(Mod, G), transAPatList(Mod, As))
-
-   rule transAPatList(Mod:K, A:APat) => ListItem(transPat(Mod, A))
-   rule transAPatList(Mod:K, 'apatCon(A:APat,, As:APatList))
-            => ListItem(transPat(Mod, A)) transAPatList(Mod, As)
-
-   rule transPatTuple(Mod:K, 'twoPatTuple(A:Pat,, B:Pat))
-           => ListItem(transPat(Mod, A)) ListItem(transPat(Mod, B))
-   rule transPatTuple(Mod:K, 'patTupleCon(A:Pat,, B:PatTuple))
-           => ListItem(transPat(Mod, A)) transPatTuple(Mod, B)
-
-   rule transPatList(Mod:K, A:Pat) => appPat(fullName(Prelude, 'colon(.KList)),
-                            ListItem(transPat(Mod, A)) ListItem(fullName(Prelude, [])))
-   rule transPatList(Mod:K, 'patListCon(A:Pat,, B:PatList))
-           => appPat(fullName(Prelude, 'colon(.KList)),
-                      ListItem(transPat(Mod, A)) ListItem(transPatList(Mod, B)))
-
-   rule transFPats(Mod:K, .FPats) => .List
-   rule transFPats(Mod:K, 'fpatCon('recordConAssign(A:QVar,, B:Pat),, C:FPats))
-           => ListItem(appPat(fullName(Prelude, recordAssign),
-             ListItem(transTypeVar(Mod, A)) ListItem(transPat(Mod, B)))) transFPats(Mod, C)
+   rule compareLabelAux(Y:K, .List) => error(labelNotInScope)
+   rule compareLabelAux(Y:K, ListItem(tyVar(S:K, Y:K)) L:List) => fullName(S, Y)
+   rule compareLabelAux(Y:K, ListItem(tyVar(S:K, Y':K)) L:List)
+         => compareLabelAux(Y, L) [owise]
 
 endmodule

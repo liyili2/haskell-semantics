@@ -29,7 +29,6 @@ module HASKELL-CONFIGURATION
                  //all valid type names for each module generated from alpha/beta
                  //needs to generate from beta/alpha
                 <moduleImportMap> .Map </moduleImportMap>
-                <moduleElems> .Set </moduleElems>
                 <exports> .Map </exports>
                 <module multiplicity="*">
                     <moduleName> .K </moduleName>
