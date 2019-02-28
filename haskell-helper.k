@@ -201,8 +201,12 @@ module HASKELL-HELPER
    rule fbSize('fbCon(A:FBind,, As:FBindList))
             => 1 +Int fbSize(As)
 
-   syntax Bool ::= hasConflictVars(K) [function]
-   rule hasConflictVars(A:K) => size(getFreeVarsInPat(A)) ==K size(getFreeVarsInPatList(A))
+   syntax Bool ::= hasNoConflictVars(K) [function]
+   rule hasNoConflictVars(A:K) => size(getFreeVarsInPat(A)) ==K size(getFreeVarsInPatList(A))
+
+   syntax Bool ::= hasNoConflictAllVars(K) [function]
+   rule hasNoConflictAllVars(A:K) => size(getFreeVarsInPat(A) getBoundVarsInPat(A))
+                                       ==K size(getFreeVarsInPatList(A) getBoundVarsInPatList(A))
 
    //check if a module contains the same class name before
    syntax Bool ::= hasClassName(K, K, K, Map) [function]
@@ -406,6 +410,10 @@ module HASKELL-HELPER
    rule getFreeVarsInDefs(V:VarOp) => SetItem(funName(pillVar(A)))
    rule getFreeVarsInDefs('qualAssign(A:K,, B:K)) => getFreeVarsInDefs(A)
    rule getFreeVarsInDefs('qualLet(A:K)) => getFreeVarsInDefs(A)
+   rule getFreeVarsInDefs('patExpStmt(A:K,, B:K)) => getFreeVarsInDefs(A)
+   rule getFreeVarsInDefs('letStmt(A:K)) => getFreeVarsInDefs(A)
+   rule getFreeVarsInDefs('guardAssign(A:K,, B:K)) => getFreeVarsInDefs(A)
+   rule getFreeVarsInDefs('guardLet(A:K)) => getFreeVarsInDefs(A)
    rule getFreeVarsInDefs('decls(Ds:K)) => getFreeVarsInDefs(Ds)
    rule getFreeVarsInDefs(.DeclsList) => .Set
    rule getFreeVarsInDefs('declsCon(A:K,, B:K))
@@ -419,6 +427,84 @@ module HASKELL-HELPER
    rule getFreeVarsInDefs('groupLhs(A:K,, B:K)) => getFreeVarsInDefs(A)
    rule getFreeVarsInDefs('declPatRhs(A:K,, B:K)) => getFreeVarsInPat(A)
    rule getFreeVarsInDefs(A:K) => .Set [owise]
+
+   syntax Set ::= getBoundVarsInPat(K) [function]
+   rule getBoundVarsInPat('normalLhs(V:Var,, As:APatList))
+            => getBoundVarsInPat(As)
+   rule getBoundVarsInPat('binLhs(A:Pat,, B:VarOp,, C:Pat))
+            => getBoundVarsInPat(A) getBoundVarsInPat(C)
+   rule getBoundVarsInPat('groupLhs(A:FunLhs,, B:APatList))
+            => getBoundVarsInPat(A) getBoundVarsInPat(B)
+   rule getBoundVarsInPat('binPattern(P1:LPat,, Op:QConOp,, P2:Pat))
+            => getBoundVarsInPat(P1) getBoundVarsInPat(P2)
+   rule getBoundVarsInPat('minusPat(A:K)) => .Set
+   rule getBoundVarsInPat('lpatCon(G:GCon,, As:APatList))
+           => getBoundVarsInPat(As)
+   rule getBoundVarsInPat('apatCon(A:K,, As:K))
+          => getBoundVarsInPat(A) getBoundVarsInPat(As)
+   rule getBoundVarsInPat(A:Var) => SetItem(funName(pillVar(A)))
+   rule getBoundVarsInPat(A:Var @ P:APat)
+            => SetItem(funName(pillVar(A))) getBoundVarsInPat(P)
+   rule getBoundVarsInPat(A:GCon) => .Set
+   rule getBoundVarsInPat('recordPat(A:GCon,, F:FPats))
+          => getBoundVarsInPat(F)
+   rule getBoundVarsInPat(A:Literal) => .Set
+   rule getBoundVarsInPat('underscore(.KList)) => .Set
+   rule getBoundVarsInPat('patTuple(P:PatTuple)) => getBoundVarsInPat(P)
+   rule getBoundVarsInPat('patList(P:PatList)) => getBoundVarsInPat(P)
+   rule getBoundVarsInPat('irrefutablePat(P:APat)) => getBoundVarsInPat(P)
+   rule getBoundVarsInPat('twoPatTuple(P1:Pat,, P2:Pat))
+             => getBoundVarsInPat(P1) getBoundVarsInPat(P2)
+   rule getBoundVarsInPat('patTupleCon(P1:Pat,, P2:PatTuple))
+             => getBoundVarsInPat(P1) getBoundVarsInPat(P2)
+   rule getBoundVarsInPat('patListCon(P1:Pat,, P2:PatList))
+             => getBoundVarsInPat(P1) getBoundVarsInPat(P2)
+   rule getBoundVarsInPat(.FPats) => .Set
+   rule getBoundVarsInPat('fpatCon(P1:FPat,, P2:FPats))
+             => getBoundVarsInPat(P1) getBoundVarsInPat(P2)
+   rule getBoundVarsInPat('recordConAssign(P1:QVar,, P2:Pat))
+             => getBoundVarsInPat(P2)
+   rule getBoundVarsInPat('varCon(A:Var,, As:Vars))
+           => SetItem(funName(pillVar(A))) getBoundVarsInPat(As)
+
+   syntax List ::= getBoundVarsInPatList(K) [function]
+   rule getBoundVarsInPatList('normalLhs(V:Var,, As:APatList))
+            => getBoundVarsInPatList(As)
+   rule getBoundVarsInPatList('binLhs(A:Pat,, B:VarOp,, C:Pat))
+            => getBoundVarsInPatList(A) getBoundVarsInPatList(C)
+   rule getBoundVarsInPatList('groupLhs(A:FunLhs,, B:APatList))
+            => getBoundVarsInPatList(A) getBoundVarsInPatList(B)
+   rule getBoundVarsInPatList('binPattern(P1:LPat,, Op:QConOp,, P2:Pat))
+            => getBoundVarsInPatList(P1) getBoundVarsInPatList(P2)
+   rule getBoundVarsInPatList('minusPat(A:K)) => .List
+   rule getBoundVarsInPatList('lpatCon(G:GCon,, As:APatList))
+           => getBoundVarsInPatList(As)
+   rule getBoundVarsInPatList('apatCon(A:K,, As:K))
+          => getBoundVarsInPatList(A) getBoundVarsInPatList(As)
+   rule getBoundVarsInPatList(A:Var) => ListItem(funName(pillVar(A)))
+   rule getBoundVarsInPatList(A:Var @ P:APat)
+            => ListItem(funName(pillVar(A))) getBoundVarsInPatList(P)
+   rule getBoundVarsInPatList(A:GCon) => .List
+   rule getBoundVarsInPatList('recordPat(A:GCon,, F:FPats))
+          => getBoundVarsInPatList(F)
+   rule getBoundVarsInPatList(A:Literal) => .List
+   rule getBoundVarsInPatList('underscore(.KList)) => .List
+   rule getBoundVarsInPatList('patTuple(P:PatTuple)) => getBoundVarsInPatList(P)
+   rule getBoundVarsInPatList('patList(P:PatList)) => getBoundVarsInPatList(P)
+   rule getBoundVarsInPatList('irrefutablePat(P:APat)) => getBoundVarsInPatList(P)
+   rule getBoundVarsInPatList('twoPatTuple(P1:Pat,, P2:Pat))
+             => getBoundVarsInPatList(P1) getBoundVarsInPatList(P2)
+   rule getBoundVarsInPatList('patTupleCon(P1:Pat,, P2:PatTuple))
+             => getBoundVarsInPatList(P1) getBoundVarsInPatList(P2)
+   rule getBoundVarsInPatList('patListCon(P1:Pat,, P2:PatList))
+             => getBoundVarsInPatList(P1) getBoundVarsInPatList(P2)
+   rule getBoundVarsInPatList(.FPats) => .List
+   rule getBoundVarsInPatList('fpatCon(P1:FPat,, P2:FPats))
+             => getBoundVarsInPatList(P1) getBoundVarsInPatList(P2)
+   rule getBoundVarsInPatList('recordConAssign(P1:QVar,, P2:Pat))
+             => getBoundVarsInPatList(P2)
+   rule getBoundVarsInPatList('varCon(A:Var,, As:Vars))
+           => ListItem(funName(pillVar(A))) getBoundVarsInPatList(As)
 
    syntax Set ::= getFreeVarsInPat(K) [function]
    rule getFreeVarsInPat('binPattern(P1:LPat,, Op:QConOp,, P2:Pat))

@@ -257,9 +257,9 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= genVar(Int)
     syntax KItem ::= letIn(List, K) //var, exp
     syntax KItem ::= letStmt(List) //list of (pat,exp)
-    syntax KItem ::= ifElse(List, K, K) //generalized ifelse, can deal with guard
+    syntax KItem ::= ifElse(K, K, K) //generalized ifelse, can deal with guard
                                   //list of conditions, exp1, exp2
-    syntax KItem ::= tempGuard(List, K) //temp guard holder in translation
+    syntax KItem ::= guards(List) // guard holder in translation
     syntax KItem ::= caseOf(K, List) //exp, cases
     syntax KItem ::= singleCase(K, K, List)//pat, exp, where
     syntax KItem ::= seq(K, K)//first stmt, next
