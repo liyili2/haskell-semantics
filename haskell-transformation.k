@@ -272,7 +272,7 @@ module HASKELL-TRANSFORMATION
                   | transDeclsAux(Int, K, DeclsList, K, List, Set, Set, Set) [function]
                   | transDecl(Int, K, K, Set, Set, Set) [function]
                   | transDeclDeclAux(Int, K, K, K) [function]
-                  | transDeclDeclAux1(Int, K, K, K, K) [function]
+                  | transDeclDeclAux1(Int, K, K, K, K, Set, Set, Set) [function]
                   | transDeclDeclAux2(Int, K, K, Set, K) [function]
                   | transDeclAux(K, K) [function]
                  //trans rhs
@@ -282,7 +282,7 @@ module HASKELL-TRANSFORMATION
                  // guards transformation
                   | transGuards(Int, K, K, K, List, Set, Set, Set) [function]
                   | transSingleGuard(Int, K, K, Set, Set, Set) [function]
-                  | transGuard(Int, K, K, List, K, Set, Set, Set) [function]
+                  | transGuard(Int, K, K, K, List, K, Set, Set, Set) [function]
                   | transExpFun(Int, K, List, K, List, Set, Set, Set) [function]
                   | transExpTuple(Int, K, K, K, K, List, Set, Set, Set)  [function]
                   | transExpList(Int, K, K, K, List, Set, Set, Set)  [function]
@@ -341,8 +341,8 @@ module HASKELL-TRANSFORMATION
             => resultTransList(N, .List)
    rule transDecls(N:Int, Mod:K, 'whereDecls(Ds:K), Ls:Set, Ts:Set, Is:Set)
            => transDecls(N, Mod, Ds, Ls, Ts, Is)
-   rule transDecls(N:Int, Mod:K, 'decls(Ds:K), Ls:Set, Ts:Set, Is:Set)
-           => transDeclsAux(N, Mod, Ds, .K, .List, getFreeVarsInDef(Ds) Ls, Ts, Is)
+   rule transDecls(N:Int, Mod:K, 'decls(Ds:DeclsList), Ls:Set, Ts:Set, Is:Set)
+           => transDeclsAux(N, Mod, Ds, .K, .List, getFreeVarsInDefs(Ds) Ls, Ts, Is)
         requires (getFreeVarsInDecls(Ds) <=Set getFreeVarsInDefs(Ds))
    rule transDecls(N:Int, Mod:K, 'decls(Ds:K), Ls:Set, Ts:Set, Is:Set)
           => error(funNameDeclNotDef)
@@ -363,8 +363,10 @@ module HASKELL-TRANSFORMATION
                => resultTransList(N, .List)
    rule transDecl(N:Int, Mod:K, 'varAssign(A:Vars,, B:Type), Ls:Set, Ts:Set, Is:Set)
          => transDeclDeclAux(N, Mod, A, toAbsType(Mod, B, .Set, Ts, Is))
-   rule transDecl(N:Int, Mod:K, 'genAssignContext(A:Vars,, C:Context,, B:Type))
-         => transDeclDeclAux1(N, Mod, A, contextToSet(Mod, C, .K, .Set, Ts, Is), B)
+   rule transDecl(N:Int, Mod:K, 'genAssignContext(A:Vars,,
+                  C:Context,, B:Type), Ls:Set, Ts:Set, Is:Set)
+         => transDeclDeclAux1(N, Mod, A, contextToSet(Mod, C,
+                  .K, .Set, Ts, Is), B, Ls:Set, Ts:Set, Is:Set)
    rule transDecl(N:Int, Mod:K, 'declFunLhsRhs(A:FunLhs,, B:Rhs), Ls:Set, Ts:Set, Is:Set)
          => transDeclAux(transNegFunLhs(Mod, A, Ts, Is),
                        transRhs(N, Mod, B, getBoundVarsInPat(A) Ls, Ts, Is))
@@ -383,8 +385,10 @@ module HASKELL-TRANSFORMATION
    rule transDeclDeclAux(N:Int, Mod:K, A:K, B:K)
              => resultTransList(N, genDeclForVars(Mod, A, .Set, B)) [owise]
 
-   rule transDeclDeclAux1(N:Int, Mod:K, A:K, error(C:K), B:K) => error(C)
-   rule transDeclDeclAux1(N:Int, Mod:K, A:K, resultSet(S:Set), B:K)
+   rule transDeclDeclAux1(N:Int, Mod:K, A:K,
+                  error(C:K), B:K, Ls:Set, Ts:Set, Is:Set) => error(C)
+   rule transDeclDeclAux1(N:Int, Mod:K, A:K,
+                      resultSet(S:Set), B:K, Ls:Set, Ts:Set, Is:Set)
            => transDeclDeclAux2(N, Mod, A, S, toAbsType(Mod, B, S, Ts, Is))
 
    rule transDeclDeclAux2(N:Int, Mod:K, A:K, S:Set, error(T:K)) => error(T)
@@ -401,7 +405,7 @@ module HASKELL-TRANSFORMATION
           => transRhsAux(transExp(N, Mod, A, Ls, Ts, Is), Mod, B, Ls, Ts, Is)
    rule transRhs(N:Int, Mod:K, 'guardRhs(A:GdRhs,, B:OptDecls), Ls:Set, Ts:Set, Is:Set)
           => transRhsAux(transGuards(N, Mod,
-                        A, .List, Ls, Ts, Is), Mod, B, Ls:Set, Ts:Set, Is:Set)
+                        A, .K, .List, Ls, Ts, Is), Mod, B, Ls:Set, Ts:Set, Is:Set)
 
    rule transRhsAux(error(A:K), Mod:K, B:K, Ls:Set, Ts:Set, Is:Set) => error(A)
    rule transRhsAux(resultTrans(N:Int, A:K), Mod:K, B:K, Ls:Set, Ts:Set, Is:Set)
@@ -419,19 +423,19 @@ module HASKELL-TRANSFORMATION
    rule transSingleGuard(N:Int, Mod:K, 'guardLet(A:K), Ls:Set, Ts:Set, Is:Set)
             => transQual(N, Mod, 'qualLet(A), Ls, Ts, Is)
 
-   rule transGuards(N:Int, Mod:K, .K, .K, L:List, Ls:Set, Ts:Set, Is:Set)
+   rule transGuards(N:Int, Mod:K, .K, .K, L:List, .K, Ls:Set, Ts:Set, Is:Set)
             => resultTrans(N, guards(L))
    rule transGuards(N:Int, Mod:K, X:K, error(B:K), L:List,
            Ls:Set, Ts:Set, Is:Set) => error(B)
    rule transGuards(N:Int, Mod:K, X:K, resultTrans(N':K, B:K), L:List,
            Ls:Set, Ts:Set, Is:Set)
-          => transGuards(N', Mod, X, .K, L ListItem(B) Ls, Ts, Is)
+          => transGuards(N', Mod, X, .K, L ListItem(B), Ls, Ts, Is)
    rule transGuards(N:Int, Mod:K, 'guardSingle('startGuardCons(G:GuardList),,
                 E:Exp), .K, L:List, Ls:Set, Ts:Set, Is:Set)
           => transGuards(N, Mod, .K, transGuard(N,
                      Mod, G, .K, .List, E, Ls, Ts, Is), L, Ls, Ts, Is)
    rule transGuards(N:Int, Mod:K, 'guardCon('startGuardCons(G:GuardList),,
-              E:Exp,, Gs:GdRhs), L:List, Ls:Set, Ts:Set, Is:Set)
+              E:Exp,, Gs:GdRhs), .K, L:List, Ls:Set, Ts:Set, Is:Set)
           => transGuards(N, Mod, Gs, transGuard(N,
                      Mod, G, .K, .List, E, Ls, Ts, Is), L, Ls, Ts, Is)
 
@@ -487,7 +491,7 @@ module HASKELL-TRANSFORMATION
            => transExpSeq1(transExp(N:Int, Mod, E1, Ls, Ts, Is))
    rule transExp(N:Int, Mod:K, 'expSeq(E1:Exp,,
                'dotExp(E2:Exp),, 'emptyExp(.KList)), Ls:Set, Ts:Set, Is:Set)
-         => transExpSeq2NoEnd(transExp(N:Int, Mod, E1), Mod, E2, Ls, Ts, Is)
+         => transExpSeq2NoEnd(transExp(N:Int, Mod, E1, Ls, Ts, Is), Mod, E2, Ls, Ts, Is)
    rule transExp(N:Int, Mod:K, 'expSeq(E1:Exp,,
                'emptyExpComma(.KList),, E3:Exp), Ls:Set, Ts:Set, Is:Set)
          => transExpSeq2HasEnd(transExp(N:Int, Mod, E1, Ls, Ts, Is), Mod, E3, Ls, Ts, Is)
@@ -664,7 +668,7 @@ module HASKELL-TRANSFORMATION
            => transExpRecordAuxAux(transExpCon(Mod, Q, Ts:Set, Is:Set),
             transFBindList(N, Mod, Fs, .K, .K, .List, Ls, Ts, Is))
    rule transExpRecord(N:Int, Mod:K, A:AExp, Fs:FBindList, Ls:Set, Ts:Set, Is:Set)
-           => transExpRecordAux(transExp(N, Mod, A), Mod, Fs, Ls, Ts, Is)
+           => transExpRecordAux(transExp(N, Mod, A, Ls, Ts, Is), Mod, Fs, Ls, Ts, Is)
         requires notBool isTheQCon(A) andBool fbSize(Fs) >Int 0
    rule transExpRecord(N:Int, Mod:K, A:AExp, Fs:FBindList, Ls:Set, Ts:Set, Is:Set)
            => error(syntaxError) [owise]
@@ -816,7 +820,7 @@ module HASKELL-TRANSFORMATION
               error(B:K), L:List, Ls:Set, Ts:Set, Is:Set) => error(B)
    rule transExpTuple(N:Int, Mod:K, C:K, A:K,
               resultTrans(N':Int, B:K), L:List, Ls:Set, Ts:Set, Is:Set)
-             => transExpTuple(N', Mod, C, A, L ListItem(B), Ls, Ts, Is)
+             => transExpTuple(N', Mod, C, A, .K, L ListItem(B), Ls, Ts, Is)
 
    //trans funApp
    rule transExpFun(C:Int, Mod:K, .List, .K, ListItem(A:K) L:List,
