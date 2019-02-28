@@ -45,7 +45,8 @@ module HASKELL-PREPROCESSING
     //also checked if all defs are unique in a module in collectCheckDefs
     rule checkDefs => collectCheckDefs
                         ~> (checkAllDeclMakeSense
-                        ~> genRecordFunctions)
+                        ~> (checkAllFixityMakeSense
+                        ~> genRecordFunctions))
 
     rule nextChecks => makePreBetaMap
                 ~> (grabAllTypeNames
@@ -72,8 +73,15 @@ module HASKELL-PREPROCESSING
          <moduleName> X </moduleName>
          <moduleDefs> _:Set => S </moduleDefs>
 
+   //check if all fixities in a module is defined in the module also
+   rule <k> checkAllFixityMakeSense => checkAllFixityMakeSense(B, .Set, S) ...</k>
+         <tempModule> B:K </tempModule>
+         <currModule> X:K </currModule>
+         <moduleName> X </moduleName>
+         <moduleDefs> S:Set </moduleDefs>
+
    //check if all decl in a module is defined in the module also
-   rule <k> checkAllDeclMakeSense => checkAllDeclMakeSense(B, S) ...</k>
+   rule <k> checkAllDeclMakeSense => checkAllDeclMakeSense(B, .Set, S) ...</k>
          <tempModule> B:K </tempModule>
          <currModule> X:K </currModule>
          <moduleName> X </moduleName>
@@ -346,7 +354,8 @@ module HASKELL-PREPROCESSING
    rule getClassInfoAux(Name:K, Tv:K, A:K, error(B:K), Ds:K, As:K) => error(B)
    rule <k> getClassInfoAux(Name:K, Tv:K, resultSet(S:Set),
                resultMap(Methods:Map), Ds:K, As:K)
-            => (getClassInfoAuxAux(Name, toAstPat(N, Mod, Ds, .K, .K, Methods, Ts, Is))
+            => checkAllFixityMakeSenseInCDecl(Ds, .Set, dropFullNames(.K, keys(Methods)))
+                 (getClassInfoAuxAux(Name, toAstPat(N, Mod, Ds, .K, .K, Methods, Ts, Is))
                  ~> getClassInfo(As)) ...</k>
          <genVarCounter> N:Int </genVarCounter>
          <currModule> Mod:K </currModule>

@@ -38,6 +38,11 @@ module HASKELL-HELPER
    rule isBATypeCon('baTypeCon(A:AType,, B:BType)) => true
    rule isBATypeCon(A:K) => false [owise]
 
+   syntax Set ::= dropFullNames(K, Set) [function]
+   rule dropFullNames(.K, .Set) => .Set
+   rule dropFullNames(.K, SetItem(A:K) S:Set) => dropFullNames(A, S)
+   rule dropFullNames(fullName(A:K, B:K), S:Set) => SetItem(B) dropFullNames(.K, S)
+
    //a function to pill varid/varop
    syntax KItem ::= pillVar(K) [function]
    rule pillVar('varSymBracket(A:VarSym)) => A
@@ -405,6 +410,20 @@ module HASKELL-HELPER
    rule getFreeVarsInDecls('emptyGenDecl(.KList)) => .Set
    rule getFreeVarsInDecls(A:K) => .Set [owise]
 
+   syntax Set ::= getFreeVarsInCDecls(K) [function]
+   rule getFreeVarsInCDecls(V:Var) => SetItem(funName(pillVar(A)))
+   rule getFreeVarsInCDecls('varCon(V:Var,, Vs:Vars))
+         => SetItem(funName(pillVar(A))) getFreeVarsInCDecls(Vs)
+   rule getFreeVarsInCDecls('cdeclBracket(A:K)) => getFreeVarsInCDecls(A)
+   rule getFreeVarsInCDecls(.CDeclsList) => .Set
+   rule getFreeVarsInCDecls('cdeclCon(A:K,, B:K))
+         => getFreeVarsInCDecls(A) getFreeVarsInCDecls(B)
+   rule getFreeVarsInCDecls('varAssign(Vs:Vars,, T:Type))
+            => getFreeVarsInCDecls(Vs)
+   rule getFreeVarsInCDecls('genAssignContext(Vs:Vars,, C:Context,, T:Type))
+            => getFreeVarsInCDecls(Vs)
+   rule getFreeVarsInCDecls(A:K) => .Set [owise]
+
    syntax Set ::= getFreeVarsInDefs(K) [function]
    rule getFreeVarsInDefs(V:Var) => SetItem(funName(pillVar(A)))
    rule getFreeVarsInDefs(V:VarOp) => SetItem(funName(pillVar(A)))
@@ -416,9 +435,14 @@ module HASKELL-HELPER
    rule getFreeVarsInDefs('guardLet(A:K)) => getFreeVarsInDefs(A)
    rule getFreeVarsInDefs('decls(Ds:K)) => getFreeVarsInDefs(Ds)
    rule getFreeVarsInDefs(.DeclsList) => .Set
+   rule getFreeVarsInDefs(.CDeclsList) => .Set
    rule getFreeVarsInDefs('declsCon(A:K,, B:K))
          => getFreeVarsInDefs(A) getFreeVarsInDefs(B)
+   rule getFreeVarsInDefs('cdeclCon(A:K,, B:K))
+         => getFreeVarsInDefs(A) getFreeVarsInDefs(B)
    rule getFreeVarsInDefs('declFunLhsRhs(A:FunLhs,, B:Rhs))
+            => getFreeVarsInDefs(A)
+   rule getFreeVarsInDefs('cdeclFunLhsRhs(A:FunLhs,, B:Rhs))
             => getFreeVarsInDefs(A)
    rule getFreeVarsInDefs('normalLhs(A:K,, B:K))
                => getFreeVarsInDefs(A)
@@ -426,6 +450,7 @@ module HASKELL-HELPER
             => getFreeVarsInDefs(B)
    rule getFreeVarsInDefs('groupLhs(A:K,, B:K)) => getFreeVarsInDefs(A)
    rule getFreeVarsInDefs('declPatRhs(A:K,, B:K)) => getFreeVarsInPat(A)
+   rule getFreeVarsInDefs('cdeclVarRhs(A:K,, B:K)) => getFreeVarsInPat(A)
    rule getFreeVarsInDefs(A:K) => .Set [owise]
 
    syntax Set ::= getBoundVarsInPat(K) [function]

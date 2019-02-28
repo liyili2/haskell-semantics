@@ -29,8 +29,14 @@ module HASKELL-ERRORS
     rule <k> error(funNameDeclNotDef) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules declare a function but never define it.")) </output>
 
+    rule <k> error(funNameDefNotDeclInClass) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a class that defines a function but never declares it.")) </output>
+
     rule <k> error(funNameConflicting) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The module has a pattern uses conflicting arguments where it has more than two pattern variables having the same name.")) </output>
+
+    rule <k> error(duplicateDecl) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module declares a same function twice.")) </output>
 
     rule <k> error(typeNotInScope) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type delcaration whose type cons might not be properly imported or created.")) </output>

@@ -218,6 +218,29 @@ module HASKELL-KINDINFER
                   | collectCheckDefsFieldAux(K, Set) [function]
                   | collectCheckDefsFieldAux1(K, K) [function]
                   | collectCheckDefsAux(K, K) [function]
+                  | collectCheckDefsClass(K, K, Set) [function]
+
+   rule collectCheckDefsClass('emptyOptCDecls(.KList), A:K, S:Set)
+           => collectCheckDefs(A, S)
+   rule collectCheckDefsClass('cdeclWhere(A:K), B:K, S:Set)
+           => collectCheckDefsClass(A, B, S)
+   rule collectCheckDefsClass('cdeclBracket(A:K), B:K, S:Set)
+           => collectCheckDefsClass(A, B, S)
+   rule collectCheckDefsClass(.CDeclsList, B:K, S:Set) => collectCheckDefs(B, S)
+   rule collectCheckDefsClass('cdeclCon('varAssign(Vs:Vars,, T:Type),, Ds:K), B:K, S:Set)
+           => collectCheckDefsClass(Ds, B, collectFunVars(Vs) S)
+        requires notBool isIntersect(collectFunVars(Vs), .K, S)
+   rule collectCheckDefsClass('cdeclCon('varAssign(Vs:Vars,, T:Type),, Ds:K), B:K, S:Set)
+           => error(repeatedNames)
+        requires isIntersect(collectFunVars(Vs), .K, S)
+   rule collectCheckDefsClass('cdeclCon('genAssignContext(
+                Vs:Vars,,C:K,, T:Type),, Ds:K), B:K, S:Set)
+           => collectCheckDefsClass(Ds, B, collectFunVars(Vs) S)
+        requires notBool isIntersect(collectFunVars(Vs), .K, S)
+   rule collectCheckDefsClass('cdeclCon('genAssignContext(
+                 Vs:Vars,,C:K,, T:Type),, Ds:K), B:K, S:Set)
+           => error(repeatedNames)
+        requires isIntersect(collectFunVars(Vs), .K, S)
 
    rule collectCheckDefsField('emptyConstrs(.KList), S:Set) => resultSet(S)
    rule collectCheckDefsField('nonemptyConstrs(Cs:Constrs), S:Set)
@@ -292,7 +315,7 @@ module HASKELL-KINDINFER
         requires className(C) in S
    rule collectCheckDefs('topdeclslist('class(Op:OptContext,,
                 C:ConId,, Ts:TyVar,, Od:OptCDecls),, As:TopDecls), S:Set)
-             => collectCheckDefs(As, S SetItem(className(C)))
+             => collectCheckDefsClass(Od, As, S SetItem(className(C)))
         requires notBool className(C) in S
    rule collectCheckDefs('topdeclslist('declPatRhs(P:Pat,, R:Rhs),, As:TopDecls), S:Set)
              => collectCheckDefs(As, S getFreeVarsInPat(P))
@@ -309,43 +332,160 @@ module HASKELL-KINDINFER
              => error(repeatedNames)
         requires getCoreVar(P) in S
    rule collectCheckDefs('topdeclslist(D:GenDecl,, As:TopDecls), S:Set)
-             => collectCheckDefs(As, S)
+             => collectCheckDefs(As, S) [owise]
 
    rule collectCheckDefsAux(As:K, error(B:K)) => error(B)
    rule collectCheckDefsAux(As:K, resultSet(S:Set)) => collectCheckDefs(As, S)
 
+   //check if all fixities in a module is defined in the same module
+   syntax KItem ::= checkAllFixityMakeSense(K, Set, Set) [function]
+                  | checkAllFixityMakeSenseInCDecl(K, Set, Set) [function]
+                  | checkAllFixityMakeSenseAux(K, K, Set, Set) [function]
+                  | checkAllFixityMakeSenseInCDeclAux(K, K, Set, Set) [function]
+
+   rule checkAllFixityMakeSenseInCDecl('emptyOptCDecls(.KList), As:Set, S:Set) => .K
+   rule checkAllFixityMakeSenseInCDecl('cdeclWhere(A:K), As:Set, S:Set)
+           => checkAllFixityMakeSenseInCDecl(A, As, S)
+   rule checkAllFixityMakeSenseInCDecl('cdeclBracket(A:K), As:Set, S:Set)
+           => checkAllFixityMakeSenseInCDecl(A, As, S)
+   rule checkAllFixityMakeSenseInCDecl(.CDeclsList, As:Set, S:Set) => .K
+   rule checkAllFixityMakeSenseInCDecl(
+                 'cdeclCon('fixityOp(T:K,, Vs:Ops),, B:K), As:Set, S:Set)
+           => checkAllFixityMakeSenseInCDeclAux(Vs, B, As, S)
+   rule checkAllFixityMakeSenseInCDecl('cdeclCon(
+                        'fixityIntOp(T:K,, C:K,, Vs:Ops),, B:K), As:Set, S:Set)
+           => checkAllFixityMakeSenseInCDeclAux(Vs, B, As, S)
+   rule checkAllFixityMakeSenseInCDecl('cdeclCon(A:K,, B:K), As:Set, S:Set)
+            => checkAllFixityMakeSenseInCDecl(B, As, S) [owise]
+
+   rule checkAllFixityMakeSenseInCDeclAux(V:VarOp, Ts:K, As:Set, S:Set)
+          => checkAllFixityMakeSenseInCDecl(Ts, SetItem(funName(pillVar(V))) As, S)
+        requires funName(pillVar(V)) in S andBool notBool funName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseInCDeclAux(V:VarOp, Ts:K, As:Set, S:Set)
+          => error(declNoInstance)
+        requires notBool funName(pillVar(V)) in S
+   rule checkAllFixityMakeSenseInCDeclAux(V:VarOp, Ts:K, As:Set, S:Set)
+          => error(duplicateDecl)
+        requires funName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseInCDeclAux(V:ConOp, Ts:K, As:Set, S:Set)
+          => checkAllFixityMakeSenseInCDecl(Ts, SetItem(constrName(pillVar(V))) As, S)
+        requires constrName(pillVar(V)) in S andBool notBool constrName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseInCDeclAux(V:ConOp, Ts:K, As:Set, S:Set)
+          => error(declNoInstance)
+        requires notBool constrName(pillVar(V)) in S
+   rule checkAllFixityMakeSenseInCDeclAux(V:ConOp, Ts:K, As:Set, S:Set)
+          => error(duplicateDecl)
+        requires constrName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseInCDeclAux('opCon(V:VarOp,, Vs:Ops), Ts:K, As:Set, S:Set)
+          => checkAllFixityMakeSenseInCDeclAux(Vs, Ts, SetItem(funName(pillVar(V))) As, S)
+        requires funName(pillVar(V)) in S andBool notBool funName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseInCDeclAux('opCon(V:VarOp,, Vs:Ops), Ts:K, As:Set, S:Set)
+          => error(declNoInstance)
+        requires notBool funName(pillVar(V)) in S
+   rule checkAllFixityMakeSenseInCDeclAux('opCon(V:VarOp,, Vs:Ops), Ts:K, As:Set, S:Set)
+          => error(duplicateDecl)
+        requires funName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseInCDeclAux('opCon(V:ConOp,, Vs:Ops), Ts:K, As:Set, S:Set)
+          => checkAllFixityMakeSenseInCDeclAux(Vs, Ts, SetItem(constrName(pillVar(V))) As, S)
+        requires constrName(pillVar(V)) in S andBool notBool constrName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseInCDeclAux('opCon(V:ConOp,, Vs:Ops), Ts:K, As:Set, S:Set)
+          => error(declNoInstance)
+        requires notBool constrName(pillVar(V)) in S
+   rule checkAllFixityMakeSenseInCDeclAux('opCon(V:ConOp,, Vs:Ops), Ts:K, As:Set, S:Set)
+          => error(duplicateDecl)
+        requires constrName(pillVar(V)) in As
+
+   rule checkAllFixityMakeSense('bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), As:Set, S:Set)
+          => checkAllFixityMakeSense(Ts, As, S)
+   rule checkAllFixityMakeSense('bodyimpdecls(Is:ImpDecls), As:Set, S:Set) => .K
+   rule checkAllFixityMakeSense('bodytopdecls(Ts:TopDecls), As:Set, S:Set)
+                 => checkAllFixityMakeSense(Ts, As, S)
+   rule checkAllFixityMakeSense(.TopDecls, As:Set, S:Set) => .K
+   rule checkAllFixityMakeSense('topdeclslist(
+               'fixityOp(T:K,, Vs:Ops),, Ts:K), As:Set, S:Set)
+         => checkAllFixityMakeSenseAux(Vs, Ts, As, S)
+      rule checkAllFixityMakeSense('topdeclslist(
+            'fixityIntOp(T:K,, C:K,, Vs:Ops),, Ts:K), As:Set, S:Set)
+         => checkAllFixityMakeSenseAux(Vs, Ts, As, S)
+   rule checkAllFixityMakeSense('topdeclslist(
+               A:K,, Ts:K), As, S:Set)
+         => checkAllFixityMakeSense(Ts, As, S) [owise]
+
+   rule checkAllFixityMakeSenseAux(V:VarOp, Ts:K, As:Set, S:Set)
+          => checkAllFixityMakeSense(Ts, SetItem(funName(pillVar(V))) As, S)
+        requires funName(pillVar(V)) in S andBool notBool funName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseAux(V:VarOp, Ts:K, As:Set, S:Set)
+          => error(declNoInstance)
+        requires notBool funName(pillVar(V)) in S
+   rule checkAllFixityMakeSenseAux(V:VarOp, Ts:K, As:Set, S:Set)
+          => error(duplicateDecl)
+        requires funName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseAux(V:ConOp, Ts:K, As:Set, S:Set)
+          => checkAllFixityMakeSense(Ts, SetItem(constrName(pillVar(V))) As, S)
+        requires constrName(pillVar(V)) in S andBool notBool constrName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseAux(V:ConOp, Ts:K, As:Set, S:Set)
+          => error(declNoInstance)
+        requires notBool constrName(pillVar(V)) in S
+   rule checkAllFixityMakeSenseAux(V:ConOp, Ts:K, As:Set, S:Set)
+          => error(duplicateDecl)
+        requires constrName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseAux('opCon(V:VarOp,, Vs:Ops), Ts:K, As:Set, S:Set)
+          => checkAllFixityMakeSenseAux(Vs, Ts, SetItem(funName(pillVar(V))) As, S)
+        requires funName(pillVar(V)) in S andBool notBool funName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseAux('opCon(V:VarOp,, Vs:Ops), Ts:K, As:Set, S:Set)
+          => error(declNoInstance)
+        requires notBool funName(pillVar(V)) in S
+   rule checkAllFixityMakeSenseAux('opCon(V:VarOp,, Vs:Ops), Ts:K, As:Set, S:Set)
+          => error(duplicateDecl)
+        requires funName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseAux('opCon(V:ConOp,, Vs:Ops), Ts:K, As:Set, S:Set)
+          => checkAllFixityMakeSenseAux(Vs, Ts, SetItem(constrName(pillVar(V))) As, S)
+        requires constrName(pillVar(V)) in S andBool notBool constrName(pillVar(V)) in As
+   rule checkAllFixityMakeSenseAux('opCon(V:ConOp,, Vs:Ops), Ts:K, As:Set, S:Set)
+          => error(declNoInstance)
+        requires notBool constrName(pillVar(V)) in S
+   rule checkAllFixityMakeSenseAux('opCon(V:ConOp,, Vs:Ops), Ts:K, As:Set, S:Set)
+          => error(duplicateDecl)
+        requires constrName(pillVar(V)) in As
+
    //check if all decl in a module is defined in the same module
-   syntax KItem ::= checkAllDeclMakeSense(K, Set) [function]
-                  | checkAllDeclMakeSenseAux(K, K, Set) [function]
+   syntax KItem ::= checkAllDeclMakeSense(K, Set, Set) [function]
+                  | checkAllDeclMakeSenseAux(K, K, Set, Set) [function]
 
-   rule checkAllDeclMakeSense('bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), S:Set)
-          => checkAllDeclMakeSense(Ts, S)
-   rule checkAllDeclMakeSense('bodyimpdecls(Is:ImpDecls), S:Set) => .K
-   rule checkAllDeclMakeSense('bodytopdecls(Ts:TopDecls), S:Set)
-                 => checkAllDeclMakeSense(Ts, S)
-   rule checkAllDeclMakeSense(.TopDecls, S:Set) => .K
+   rule checkAllDeclMakeSense('bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), As:Set, S:Set)
+          => checkAllDeclMakeSense(Ts, As, S)
+   rule checkAllDeclMakeSense('bodyimpdecls(Is:ImpDecls), As:Set, S:Set) => .K
+   rule checkAllDeclMakeSense('bodytopdecls(Ts:TopDecls), As:Set, S:Set)
+                 => checkAllDeclMakeSense(Ts, As, S)
+   rule checkAllDeclMakeSense(.TopDecls, As:Set, S:Set) => .K
    rule checkAllDeclMakeSense('topdeclslist(
-               'varAssign(Vs:Vars,, T:Type),, Ts:K), S:Set)
-         => checkAllDeclMakeSenseAux(Vs, Ts, S)
+               'varAssign(Vs:Vars,, T:Type),, Ts:K), As:Set, S:Set)
+         => checkAllDeclMakeSenseAux(Vs, Ts, As, S)
       rule checkAllDeclMakeSense('topdeclslist(
-            'genAssignContext(Vs:Vars,, C:Context,, T:Type),, Ts:K), S:Set)
-         => checkAllDeclMakeSenseAux(Vs, Ts, S)
+            'genAssignContext(Vs:Vars,, C:Context,, T:Type),, Ts:K), As:Set, S:Set)
+         => checkAllDeclMakeSenseAux(Vs, Ts, As, S)
    rule checkAllDeclMakeSense('topdeclslist(
-               A:K,, Ts:K), S:Set)
-         => checkAllDeclMakeSense(Ts, S) [owise]
+               A:K,, Ts:K), As, S:Set)
+         => checkAllDeclMakeSense(Ts, As, S) [owise]
 
-   rule checkAllDeclMakeSenseAux(V:Var, Ts:K, S:Set)
-          => checkAllDeclMakeSense(Ts, S)
-        requires funName(pillVar(V)) in S
-   rule checkAllDeclMakeSenseAux(V:Var, Ts:K, S:Set)
+   rule checkAllDeclMakeSenseAux(V:Var, Ts:K, As:Set, S:Set)
+          => checkAllDeclMakeSense(Ts, SetItem(funName(pillVar(V))) As, S)
+        requires funName(pillVar(V)) in S andBool notBool funName(pillVar(V)) in As
+   rule checkAllDeclMakeSenseAux(V:Var, Ts:K, As:Set, S:Set)
           => error(declNoInstance)
         requires notBool funName(pillVar(V)) in S
-   rule checkAllDeclMakeSenseAux('varCon(V:Var,, Vs:Vars), Ts:K, S:Set)
-          => checkAllDeclMakeSenseAux(Vs, Ts, S)
-        requires funName(pillVar(V)) in S
-   rule checkAllDeclMakeSenseAux('varCon(V:Var,, Vs:Vars), Ts:K, S:Set)
+   rule checkAllDeclMakeSenseAux(V:Var, Ts:K, As:Set, S:Set)
+          => error(duplicateDecl)
+        requires funName(pillVar(V)) in As
+   rule checkAllDeclMakeSenseAux('varCon(V:Var,, Vs:Vars), Ts:K, As:Set, S:Set)
+          => checkAllDeclMakeSenseAux(Vs, Ts, SetItem(funName(pillVar(V))) As, S)
+        requires funName(pillVar(V)) in S andBool notBool funName(pillVar(V)) in As
+   rule checkAllDeclMakeSenseAux('varCon(V:Var,, Vs:Vars), Ts:K, As:Set, S:Set)
           => error(declNoInstance)
         requires notBool funName(pillVar(V)) in S
+   rule checkAllDeclMakeSenseAux('varCon(V:Var,, Vs:Vars), Ts:K, As:Set, S:Set)
+          => error(duplicateDecl)
+        requires funName(pillVar(V)) in As
 
    //generate functions for getting record content
    syntax KItem ::= genRecordFunctions(Int, K, Map) [function]

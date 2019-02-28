@@ -41,7 +41,9 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "messuseClassTypeName"
     syntax KItem ::= "declNoInstance"
     syntax KItem ::= "duplicateDeriving"
+    syntax KItem ::= "duplicateDecl"
     syntax KItem ::= "funNameDeclNotDef"
+    syntax KItem ::= "funNameDefNotDeclInClass"
     syntax KItem ::= "funNameConflicting"
 
     //checking steps
@@ -69,6 +71,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "checkDefs"
     syntax KItem ::= "collectCheckDefs"
     syntax KItem ::= "checkAllDeclMakeSense"
+    syntax KItem ::= "checkAllFixityMakeSense"
     syntax KItem ::= "genRecordFunctions"
 
    //transformation of classes
@@ -251,8 +254,8 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "arithSeq1" | "arithSeq2noEnd" | "arithSeq2hasEnd" | "arithSeq3"
                    | "listCompre" | "leftArrow"
     syntax KItem ::= lambda(K, K) //var, exp
-    syntax KItem ::= lambdaAssign(K, K) //pat-fun-rhs, body
-    syntax KItem ::= funAssign(List, K) //args-with-pat, body
+    //syntax KItem ::= lambdaAssign(K, K) //pat-fun-rhs, body
+    syntax KItem ::= funAssign(K, List, K) //fixed-point, args-with-pat, body
     syntax KItem ::= body(K, List) //expressions/guards, list-of-conditions
     syntax KItem ::= genVar(Int)
     syntax KItem ::= letIn(List, K) //var, exp
