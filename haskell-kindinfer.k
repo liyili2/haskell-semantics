@@ -488,74 +488,79 @@ module HASKELL-KINDINFER
         requires funName(pillVar(V)) in As
 
    //generate functions for getting record content
-   syntax KItem ::= genRecordFunctions(Int, K, Map) [function]
-                  | genRecordFunctionsAux(K, K) [function]
-                  | genRecordFunctionsField(K, K, Map) [function]
-                  | genRecordFunctionsFieldAux(K, K) [function]
-                  | genRecordFunctionsSingle(K, K, Map) [function]
-                  | genRecordFunctionsSingleAux(K, K, K, Map) [function]
-                  | genRecordFunctionsSingleAux1(K, K, K,K, Map) [function]
+   syntax KItem ::= genRecordFunctions(Int, K, K, Map) [function]
+                  | genRecordFunctionsAux(K, K, K) [function]
+                  | genRecordFunctionsField(Int, K, K, Map) [function]
+                  | genRecordFunctionsFieldAux(K, K, K) [function]
+                  | genRecordFunctionsSingle(Int, K, K, Map) [function]
+                  | genRecordFunctionsSingleAux(Int, K, K, K, Map) [function]
+                  | genRecordFunctionsSingleAux1(Int, K, K, K,K, Map) [function]
 
-   rule genRecordFunctions(N:Int, 'bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map)
-          => genRecordFunctions(N:Int, Ts, M)
-   rule genRecordFunctions(N:Int, 'bodyimpdecls(Is:ImpDecls), M:Map)
+   rule genRecordFunctions(N:Int, Mod:K, 'bodyimpandtop(Is:ImpDecls,, Ts:TopDecls), M:Map)
+          => genRecordFunctions(N:Int, Mod, Ts, M)
+   rule genRecordFunctions(N:Int, Mod:K, 'bodyimpdecls(Is:ImpDecls), M:Map)
               => putGenFieldMap(N, M)
-   rule genRecordFunctions(N:Int, 'bodytopdecls(Ts:TopDecls), M:Map)
-                 => genRecordFunctions(N, Ts, M)
-   rule genRecordFunctions(N:Int, .TopDecls, M:Map) => putGenFieldMap(N, M)
-   rule genRecordFunctions(N:Int, 'topdeclslist(
+   rule genRecordFunctions(N:Int, Mod:K, 'bodytopdecls(Ts:TopDecls), M:Map)
+                 => genRecordFunctions(N, Mod:K, Ts, M)
+   rule genRecordFunctions(N:Int, Mod:K, .TopDecls, M:Map) => putGenFieldMap(N, M)
+   rule genRecordFunctions(N:Int, Mod:K, 'topdeclslist(
              'data(S:SimpleType,, Cs:OptConstrs,, Od:OptDeriving),, Ts:K), M:Map)
-         => genRecordFunctionsAux(genRecordFunctionsField(N, Cs, M), Ts)
-   rule genRecordFunctions(N:Int, 'topdeclslist(
+         => genRecordFunctionsAux(genRecordFunctionsField(N, Mod, Cs, M), Mod, Ts)
+   rule genRecordFunctions(N:Int, Mod:K, 'topdeclslist(
              'newType(S:SimpleType,, Cs:NewConstr,, Od:OptDeriving),, Ts:K), M:Map)
-         => genRecordFunctionsAux(genRecordFunctionsField(N, Cs, M), Ts)
-   rule genRecordFunctions(N:Int, 'topdeclslist(
-            C:K,, Ts:K), M:Map) => genRecordFunctions(N, Ts, M) [owise]
+         => genRecordFunctionsAux(genRecordFunctionsField(N,Mod, Cs, M), Mod, Ts)
+   rule genRecordFunctions(N:Int, Mod:K, 'topdeclslist(
+            C:K,, Ts:K), M:Map) => genRecordFunctions(N, Mod:K, Ts, M) [owise]
 
-   rule genRecordFunctionsAux(error(A:K), C:K) => error(A)
-   rule genRecordFunctionsAux(putGenFieldMap(N:Int, M:Map), C:K)
-            => genRecordFunctions(N, C, M)
+   rule genRecordFunctionsAux(error(A:K), Mod:K, C:K) => error(A)
+   rule genRecordFunctionsAux(putGenFieldMap(N:Int, M:Map), Mod:K, C:K)
+            => genRecordFunctions(N, Mod:K, C, M)
 
-   rule genRecordFunctionsField(N:Int, 'emptyConstrs(.KList), M:Map)
+   rule genRecordFunctionsField(N:Int, Mod:K, 'emptyConstrs(.KList), M:Map)
            => putGenFieldMap(N, M)
-   rule genRecordFunctionsField(N:Int, 'nonemptyConstrs(Cs:Constrs), M:Map)
-           => genRecordFunctionsField(N, Cs, M)
-   rule genRecordFunctionsField(N:Int, 'multConstr(C:Constr,, Cs:Constrs), M:Map)
-         => genRecordFunctionsFieldAux(genRecordFunctionsSingle(N, C, M), Cs)
-   rule genRecordFunctionsField(N:Int, C:Constr, M:Map)
-         => genRecordFunctionsSingle(N, C, M)
-   rule genRecordFunctionsField(N:Int, 'newConField(C:Con,, V:Var,, T:Type), M:Map)
+   rule genRecordFunctionsField(N:Int,Mod:K, 'nonemptyConstrs(Cs:Constrs), M:Map)
+           => genRecordFunctionsField(N,Mod, Cs, M)
+   rule genRecordFunctionsField(N:Int, Mod:K, 'multConstr(C:Constr,, Cs:Constrs), M:Map)
+         => genRecordFunctionsFieldAux(genRecordFunctionsSingle(N, Mod, C, M), Mod, Cs)
+   rule genRecordFunctionsField(N:Int, Mod:K, C:Constr, M:Map)
+         => genRecordFunctionsSingle(N, Mod, C, M)
+   rule genRecordFunctionsField(N:Int, Mod:K, 'newConField(C:Con,, V:Var,, T:Type), M:Map)
           =>  putGenFieldMap(N +Int 1, M
-           (funName(pillVar(V)) |-> resultList(ListItem(funAssign(ListItem(genVar(N)), 
-             findLabelResult(constrName(pillVar(C)), funName(pillVar(V)), genVar(N)))))))
-   rule genRecordFunctionsField(N:Int, C:K, M:Map) => putGenFieldMap(N, M) [owise]
+           (fullName(Mod, funName(pillVar(V))) |-> resultList(
+                  ListItem(fullName(Mod, funName(pillVar(V))),
+                    funAssign(fullName(Mod, funName(pillVar(V))), ListItem(genVar(N)), 
+             findLabelResult(fullName(Mod, constrName(pillVar(C))),
+                        fullName(Mod, funName(pillVar(V))), genVar(N)))))))
+   rule genRecordFunctionsField(N:Int, Mod:K, C:K, M:Map) => putGenFieldMap(N, M) [owise]
 
-   rule genRecordFunctionsFieldAux(error(A:K), Cs:K) => error(A)
-   rule genRecordFunctionsFieldAux(putGenFieldMap(N:Int, M:Map), Cs:K)
-            => genRecordFunctionsField(N, Cs, M)
+   rule genRecordFunctionsFieldAux(error(A:K), Mod:K, Cs:K) => error(A)
+   rule genRecordFunctionsFieldAux(putGenFieldMap(N:Int, M:Map), Mod:K, Cs:K)
+            => genRecordFunctionsField(N, Mod, Cs, M)
 
-   rule genRecordFunctionsSingle(N:Int, C:Con { Fs:FieldDeclList }, M:Map)
-          => genRecordFunctionsSingleAux(N, constrName(pillVar(C)), Fs, M)
-   rule genRecordFunctionsSingle(N:Int, C:K, M:Map)
+   rule genRecordFunctionsSingle(N:Int, Mod:K, C:Con { Fs:FieldDeclList }, M:Map)
+          => genRecordFunctionsSingleAux(N, Mod:K, fullName(Mod, constrName(pillVar(C))), Fs, M)
+   rule genRecordFunctionsSingle(N:Int, Mod:K, C:K, M:Map)
               => putGenFieldMap(N, M) [owise]
 
-   rule genRecordFunctionsSingleAux(N:Int, C:K, .FieldDeclList, M:Map)
+   rule genRecordFunctionsSingleAux(N:Int, Mod:K, C:K, .FieldDeclList, M:Map)
             => putGenFieldMap(N, M)
-   rule genRecordFunctionsSingleAux(N:Int, C:K,
+   rule genRecordFunctionsSingleAux(N:Int, Mod:K, C:K,
                'fieldCon('varAssign(Vs:Vars,, T:K),, Fs:K), M:Map)
-          => genRecordFunctionsSingleAux1(N, C, Vs, Fs, M)
-   rule genRecordFunctionsSingleAux(N:Int, C:K,
+          => genRecordFunctionsSingleAux1(N, Mod, C, Vs, Fs, M)
+   rule genRecordFunctionsSingleAux(N:Int, Mod:K, C:K,
                'fieldCon(Vs:Vars :: ! T:AType,, Fs:K), M:Map)
-          => genRecordFunctionsSingleAux1(N, C, Vs, Fs, M)
+          => genRecordFunctionsSingleAux1(N, Mod, C, Vs, Fs, M)
 
-   rule genRecordFunctionsSingleAux1(N:Int, C:K, V:Var, Fs:K, M:Map)
-          =>  genRecordFunctionsSingleAux(N +Int 1, C, Fs, M
-           (funName(pillVar(V)) |-> resultList(ListItem(funAssign(ListItem(genVar(N)), 
-             findLabelResult(C, funName(pillVar(V)), genVar(N)))))))
-   rule genRecordFunctionsSingleAux1(N:Int, C:K, 'varCon(V:Var, Vs:Vars), Fs:K, M:Map)
-          =>  genRecordFunctionsSingleAux1(N +Int 1, C, Vs, Fs, M
-           (funName(pillVar(V)) |-> resultList(ListItem(funAssign(ListItem(genVar(N)), 
-             findLabelResult(C, funName(pillVar(V)), genVar(N)))))))
+   rule genRecordFunctionsSingleAux1(N:Int, Mod:K, C:K, V:Var, Fs:K, M:Map)
+          =>  genRecordFunctionsSingleAux(N +Int 1, Mod:K, C, Fs, M
+           (fullName(Mod, funName(pillVar(V))) |-> resultList(ListItem(
+                funAssign(fullName(Mod, funName(pillVar(V))),ListItem(genVar(N)), 
+             findLabelResult(C, fullName(Mod, funName(pillVar(V))), genVar(N)))))))
+   rule genRecordFunctionsSingleAux1(N:Int, Mod:K, C:K, 'varCon(V:Var, Vs:Vars), Fs:K, M:Map)
+          =>  genRecordFunctionsSingleAux1(N +Int 1, Mod, C, Vs, Fs, M
+           (fullName(Mod, funName(pillVar(V))) |-> resultList(ListItem(
+                 funAssign(fullName(Mod, funName(pillVar(V))),ListItem(genVar(N)), 
+             findLabelResult(C, fullName(Mod, funName(pillVar(V))), genVar(N)))))))
 
    syntax KItem ::= collectTypes(Int, Set, K, K, Map) [function]
              //couonter, kind-var=set, curr-mod, decls, store-kind-map
@@ -1386,69 +1391,69 @@ module HASKELL-KINDINFER
    rule kindInferFinal(N:Int, S:Set, resultMap(M:Map), KM:Map)
         => resultTyVarKindMap(N, S, replaceAllKindInMap(M, KM))
 
-   rule kindInfer(N:Int, S:Set,Mod:K, .K, .K, .Map, KM:Map, Tu:Set, Is:Set, PM:Map)
+   rule kindInfer(N:Int, S:Set,Mod:K, .K, .K, .Map, KM:Map, Tu:Set, Is:Set)
              => kindInferFinal(N, S, unifInKind(.K, .Set, Tu, .Map), KM)
    rule kindInfer(N:Int, S:Set,Mod:K, .K, .K,
-              (A:K |-> B:K) BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
-          => kindInfer(N, S,Mod, A, B, BM, KM, Tu, Is, PM)
+              (A:K |-> B:K) BM:Map, KM:Map, Tu:Set, Is:Set)
+          => kindInfer(N, S,Mod, A, B, BM, KM, Tu, Is)
    rule kindInfer(N:Int, S:Set,Mod:K, A:K, preBetaEntry(
                 Vl:List, Body:Map, Od:Set), BM:Map,
-                   (A |-> T:K) KM:Map, Tu:Set, Is:Set, PM:Map)
+                   (A |-> T:K) KM:Map, Tu:Set, Is:Set)
           => kindInferAux(N, S,Mod:K, genTyVarKind(T,
-                          .Map, Vl), A, Body, BM, (A |-> T:K) KM, Tu, Is, PM)
+                          .Map, Vl), A, Body, BM, (A |-> T:K) KM, Tu, Is)
    rule kindInfer(N:Int, S:Set,Mod:K, A:K, alphaTuple(Vl:List, Body:K),
-                 BM:Map, (A |-> T:K) KM:Map, Tu:Set, Is:Set, PM:Map)
+                 BM:Map, (A |-> T:K) KM:Map, Tu:Set, Is:Set)
           => kindInferAuxAlpha(N, S, Mod:K, genTyVarKind(T,
-                          .Map, Vl), A, Body, BM, (A |-> T:K) KM, Tu, Is, PM)
+                          .Map, Vl), A, Body, BM, (A |-> T:K) KM, Tu, Is)
 
    rule kindInferAuxAlpha(N:Int, S:Set,Mod:K, resultMap(M:Map), A:K,
-                 Body:K, BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
+                 Body:K, BM:Map, KM:Map, Tu:Set, Is:Set)
           => kindInferSec(Mod,A, kindNext(N, S,Mod:K, Body, .Map,
-                           KM M, .Set, Is, PM), BM, KM, Tu, Is, PM)
+                           KM M, .Set, Is), BM, KM, Tu, Is)
 
    rule kindInferAux(N:Int, S:Set, Mod:K,resultMap(M:Map),
-                      A:K, Body:Map, BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
+                      A:K, Body:Map, BM:Map, KM:Map, Tu:Set, Is:Set)
              => kindInferSec(Mod, A, kindNext(N, S,Mod:K, .K, Body,
-                             KM M, .Set, Is, PM), BM, KM, Tu, Is, PM)
+                             KM M, .Set, Is), BM, KM, Tu, Is)
 
    rule kindInferSec(Mod:K, A:K, returnKind(N:Int, S:Set, Tus:Set),
-                       BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
+                       BM:Map, KM:Map, Tu:Set, Is:Set)
              => kindInferThird(N, S,Mod:K, A, checkAndRemoveNoVarTerms(
-                                     .K, Tus, .Set), BM:Map, KM:Map, Tu, Is, PM)
+                                     .K, Tus, .Set), BM:Map, KM:Map, Tu, Is)
    rule kindInferSec(Mod:K,A:K, error(X:K), BM:Map, KM:Map,
-                          Tu:Set, Is:Set, PM:Map) => error(X)
+                          Tu:Set, Is:Set) => error(X)
    rule kindInferThird(N:K, S:Set,Mod:K, A:K, error(X:K),
-                    BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map) => error(X)
+                    BM:Map, KM:Map, Tu:Set, Is:Set) => error(X)
    rule kindInferThird(N:K, S1:Set,Mod:K, A:K,
-                    resultSet(S:Set), BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
+                    resultSet(S:Set), BM:Map, KM:Map, Tu:Set, Is:Set)
             => kindInferLast(N, S1, Mod:K, A,
-                    unifInKind(.K, .Set, S, .Map), BM, KM, Tu, Is:Set, PM:Map)
+                    unifInKind(.K, .Set, S, .Map), BM, KM, Tu, Is:Set)
 
    rule kindInferLast(N:Int, S:Set,Mod:K, A:K,
-            error(X:K), BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map) => error(X)
+            error(X:K), BM:Map, KM:Map, Tu:Set, Is:Set) => error(X)
    rule kindInferLast(N:Int, S:Set,Mod:K, A:K,
-            resultMap(TuM:Map), BM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
-           => kindInfer(N, S,Mod:K, .K, .K, BM, KM, toKindTupleSet(TuM) Tu, Is, PM)
+            resultMap(TuM:Map), BM:Map, KM:Map, Tu:Set, Is:Set)
+           => kindInfer(N, S,Mod:K, .K, .K, BM, KM, toKindTupleSet(TuM) Tu, Is)
 
    rule kindNext(N:Int, S:Set,Mod:K, .K, .Map,
-                M:Map, Tus:Set, Is:Set, PM:Map) => returnKind(N, S, Tus)
+                M:Map, Tus:Set, Is:Set) => returnKind(N, S, Tus)
    rule kindNext(N:Int, S:Set,Mod:K, .K,
-               (A:K |-> B:K) Body:Map, M:Map, Tus:Set, Is:Set, PM:Map)
-          => kindNext(N:Int, S:Set,Mod:K, B, Body, M, Tus, Is, PM)
+               (A:K |-> B:K) Body:Map, M:Map, Tus:Set, Is:Set)
+          => kindNext(N:Int, S:Set,Mod:K, B, Body, M, Tus, Is)
    rule kindNext(N:Int, S:Set,Mod:K,
-             curryTypes(L:List, T:K), Body:Map, M:Map, Tus:Set, Is:Set, PM:Map)
-          => kindNextList(N, S,Mod:K, .K, L, Body, M, Tus, Is, PM)
-   rule kindNext(N:Int, S:Set,Mod:K, T:KItem, Body:Map, M:Map, Tus:Set, Is:Set, PM:Map)
-          => kindNextList(N, S,Mod:K, .K, ListItem(T), Body, M, Tus, Is, PM)
+             curryTypes(L:List, T:K), Body:Map, M:Map, Tus:Set, Is:Set)
+          => kindNextList(N, S,Mod:K, .K, L, Body, M, Tus, Is)
+   rule kindNext(N:Int, S:Set,Mod:K, T:KItem, Body:Map, M:Map, Tus:Set, Is:Se)
+          => kindNextList(N, S,Mod:K, .K, ListItem(T), Body, M, Tus, Is)
         requires notBool isCurryType(T)
 
    rule kindNextList(N:Int, S:Set,Mod:K, .K,
-                 .List, Body:Map, M:Map, Tus:Set, Is:Set, PM:Map)
-            => kindNext(N, S,Mod:K, .K, Body, M, Tus,Is, PM)
+                 .List, Body:Map, M:Map, Tus:Set, Is:Set)
+            => kindNext(N, S,Mod:K, .K, Body, M, Tus,Is)
    rule kindNextList(N:Int, S:Set,Mod:K, .K,
-               ListItem(A:K) L:List, Body:Map, M:Map, Tus:Set, Is:Set, PM:Map)
+               ListItem(A:K) L:List, Body:Map, M:Map, Tus:Set, Is:Set)
            => kindNextList(N, S,Mod:K, kindInference(N, S,Mod, A,
-                    star, M, Is, PM), L, Body, M, Tus, Is, PM)
+                    star, M, Is), L, Body, M, Tus, Is, PM)
    rule kindNextList(N:Int, S:Set,Mod:K, error(X:K),
             L:List, Body:Map, M:Map, Tus:Set, Is:Set, PM:Map) => error(X)
    rule kindNextList(N:Int, S:Set, Mod:K, returnKind(N1:Int, S1:Set, Tu1:Set),

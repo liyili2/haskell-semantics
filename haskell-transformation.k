@@ -989,33 +989,6 @@ module HASKELL-TRANSFORMATION
    rule transCDecl(funPat(ListItem(X:K) L:List), resultTrans(N:Int, A:K))
             =>  resultTrans(N, funAssign(X, L, A))
 
-   //check if the pattern list in a function in a class has all same number of args
-   syntax KItem ::= checkMethodPatNumbers(Map, K) [function]
-                  | checkMethodPatNumbersList(Map, List) [function]
-                  | checkMethodPatNumbersListAux(Map, List, Int) [function]
-   rule checkMethodPatNumbers(.Map, .K) => .K
-   rule checkMethodPatNumbers(M:Map (A:K |-> B:K), .K)
-          => checkMethodPatNumbers(M, B)
-   rule checkMethodPatNumbers(M:Map, resultList(L:List))
-         => checkMethodPatNumbersList(M, L)
-   rule checkMethodPatNumbers(M:Map, methodDef(S:Set, T:K, L:List))
-         => checkMethodPatNumbersList(M, L)
-
-   rule checkMethodPatNumbersList(M:Map, .List)
-                         => checkMethodPatNumbers(M, .K)
-   rule checkMethodPatNumbersList(M:Map, ListItem(funAssign(A:List, B:K)) L:List)
-              => checkMethodPatNumbersListAux(M, L, size(A))
-   rule checkMethodPatNumbersListAux(M:Map, .List, N:Int)
-              => checkMethodPatNumbers(M, .K)
-   rule checkMethodPatNumbersListAux(M:Map,
-              ListItem(funAssign(A:List, B:K)) L:List, N:Int)
-            => checkMethodPatNumbersListAux(M, L, N)
-        requires size(A) ==K N
-   rule checkMethodPatNumbersListAux(M:Map,
-              ListItem(funAssign(A:List, B:K)) L:List, N:Int)
-            => error(instanceMethodArgsNoMatch)
-        requires size(A) =/=K N
-
    //transformation of expressions in a module, bascially an exp is a decl
 /*
    syntax KItem ::= transDeclFun(Int, K, K, Set, Map)  [function]
@@ -1179,10 +1152,6 @@ module HASKELL-TRANSFORMATION
         requires S =/=K N
                 andBool countGoodNameWithMod(constrName(A),N, .K, Is)==K 0
    rule transConstrVar(S:K, fullName(N:K, A:K), Ts:Set, Is:Set)
-         => error(constrNotInScope)
-        requires S =/=K N
-                andBool countGoodNameWithMod(constrName(A),N, .K, Is)==K 0
-   rule transConstrVar(S:K, fullName(N:K, A:K), Ts:Set, Is:Set)
          => fullName(findGoodNameWithMod(
                         constrName(A), N, .K, Is),constrName(A))
         requires S =/=K N
@@ -1204,53 +1173,49 @@ module HASKELL-TRANSFORMATION
            => fullName(S, funName(A))
         requires notBool isFullName(A) andBool A in Ts
                 andBool countGoodNameNoQualified(funName(A), .K, Is) ==K 0
-   rule transFunVar(S:K, A:K,Ts:Set, Is:Set)
+   rule transFunVar(S:K, A:K, As:Set, Ts:Set, Is:Set)
            => fullName(findGoodNameNoQualified(funName(A), .K, Is), funName(A))
         requires notBool isFullName(A) andBool notBool A in Ts
                 andBool countGoodNameNoQualified(funName(A), .K, Is) ==K 1
-   rule transFunVar(S:K, A:K,Ts:Set, Is:Set) => error(ambiguousFunName)
+   rule transFunVar(S:K, A:K, As:Set, Ts:Set, Is:Set) => error(ambiguousFunName)
         requires notBool isFullName(A) andBool funName(A) in Ts
                    andBool countGoodNameNoQualified(funName(A), .K, Is) =/=K 0
-   rule transFunVar(S:K, A:K,Ts:Set, Is:Set) => error(ambiguousFunName)
+   rule transFunVar(S:K, A:K,As:Set, Ts:Set, Is:Set) => error(ambiguousFunName)
         requires notBool isFullName(A) andBool notBool funName(A) in Ts
                    andBool countGoodNameNoQualified(funName(A), .K, Is) >Int 1
-   rule transFunVar(S:K, A:K,Ts:Set, Is:Set) => error(constrNotInScope)
+   rule transFunVar(S:K, A:K, As:Set, Ts:Set, Is:Set) => error(constrNotInScope)
         requires notBool isFullName(A) andBool notBool funName(A) in Ts
                    andBool countGoodNameNoQualified(funName(A), .K, Is)==K 0
-   rule transFunVar(S:K, fullName(S':K, A:K),As:Set, Ts:Set, Is:Set)
+   rule transFunVar(S:K, fullName(S':K, A:K), As:Set, Ts:Set, Is:Set)
                 => error(ambiguousFunName)
         requires A in As
-   rule transFunVar(S:K, fullName(S, A:K), Ts:Set, Is:Set)
+   rule transFunVar(S:K, fullName(S, A:K), As:Set, Ts:Set, Is:Set)
          => fullName(S, funName(A))
         requires notBool (A in As) andBool funName(A) in Ts
                 andBool countGoodNameWithMod(funName(A), S, .K, Is) ==K 0
-   rule transFunVar(S:K, fullName(S, A:K), Ts:Set, Is:Set)
+   rule transFunVar(S:K, fullName(S, A:K), As:Set, Ts:Set, Is:Set)
          => error(ambiguousFunName)
         requires notBool (A in As) andBool funName(A) in Ts
                 andBool countGoodNameWithMod(funName(A), S, .K, Is) =/=K 0
-   rule transFunVar(S:K, fullName(S, A:K), Ts:Set, Is:Set)
+   rule transFunVar(S:K, fullName(S, A:K), As:Set, Ts:Set, Is:Set)
          => error(funNameNotInScope)
         requires  notBool (A in As) andBool notBool funName(A) in Ts
                 andBool countGoodNameWithMod(funName(A),S, .K, Is)==K 0
-   rule transFunVar(S:K, fullName(N:K, A:K), Ts:Set, Is:Set)
+   rule transFunVar(S:K, fullName(N:K, A:K), As:Set, Ts:Set, Is:Set)
          => error(funNameNotInScope)
         requires notBool (A in As) andBool S =/=K N
                 andBool countGoodNameWithMod(funName(A),N, .K, Is)==K 0
-   rule transFunVar(S:K, fullName(N:K, A:K), Ts:Set, Is:Set)
-         => error(funNameNotInScope)
-        requires notBool (A in As) andBool S =/=K N
-                andBool countGoodNameWithMod(funName(A),N, .K, Is)==K 0
-   rule transFunVar(S:K, fullName(N:K, A:K), Ts:Set, Is:Set)
+   rule transFunVar(S:K, fullName(N:K, A:K), As:Set, Ts:Set, Is:Set)
          => fullName(findGoodNameWithMod(
                         funName(A), N, .K, Is),funName(A))
         requires notBool (A in As) andBool S =/=K N
                 andBool countGoodNameWithMod(funName(A),N, .K, Is)==K 1
-   rule transFunVar(S:K, fullName(S:K, A:K), Ts:Set, Is:Set)
+   rule transFunVar(S:K, fullName(S:K, A:K), As:Set, Ts:Set, Is:Set)
          => fullName(findGoodNameWithMod(
                         funName(A), S, .K, Is),funName(A))
         requires notBool (A in As) andBool notBool funName(A) in Ts
                 andBool countGoodNameWithMod(funName(A),S, .K, Is)==K 1
-   rule transFunVar(S:K, fullName(S:K, A:K), Ts:Set, Is:Set)
+   rule transFunVar(S:K, fullName(S:K, A:K), As:Set, Ts:Set, Is:Set)
              => error(ambiguousFunName)
         requires notBool (A in As) andBool
                      countGoodNameWithMod(funName(A), N, .K, Is) >Int 1

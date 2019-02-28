@@ -105,7 +105,7 @@ module HASKELL-MODULES
     rule toExportsAux(A:K, ListItem(B:K) L:List)
                   => appExp(A, ListItem(B:K) L:List)
 */
-
+/*
     syntax List ::= transCName(K, K) [function]
     rule transCName(Mod:K, 'allInclude(.KList)) => ListItem(haveAll)
     rule transCName(Mod:K, 'emptyOptCNameList(.KList)) => .List
@@ -113,7 +113,7 @@ module HASKELL-MODULES
     rule transCName(Mod:K, 'cnameCon(A:K,, B:K))
           => transCName(Mod:K, A) transCName(Mod:K, B)
     rule transCName(Mod:K, V:CQName) => transVar(Mod, V)
-
+*/
     //helper functions for generating import set
     //translate each type/fresh vars
     syntax KItem ::= transCNameCon(K, Set, Set) [function]
@@ -296,7 +296,7 @@ module HASKELL-MODULES
     rule collectPreBetaNames(.Map, .K) => .Set
     rule collectPreBetaNames(M:Map (A:K |-> B:K), .K)
            => collectPreBetaNames(M, B)
-    rule collectPreBetaNames(M:Map, preBetaEntry(A:Set, B:List, C:Map, D:Set))
+    rule collectPreBetaNames(M:Map, preBetaEntry(B:List, C:Map, D:Set))
            => collectPreBetaNamesAux(keys(C))
                 collectFieldNames(values(C))
                    collectPreBetaNames(M, .K)

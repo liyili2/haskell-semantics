@@ -19,7 +19,6 @@ module HASKELL-CONFIGURATION
             <tempExports> .K </tempExports>
             <currModule> .K </currModule>
             <importTree> .List </importTree>
-            <tempImports> .Map </tempImports>
             <kindVarCounter> 0 </kindVarCounter>
             <kindVarSet> .Set </kindVarSet>
             <genVarCounter> 0 </genVarCounter>

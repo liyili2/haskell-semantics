@@ -88,8 +88,9 @@ module HASKELL-PREPROCESSING
          <moduleDefs> S:Set </moduleDefs>
 
    //generate a map for all functions of getting field content for a module
-    rule <k> genRecordFunctions => genRecordFunctions(N, B, .Map) ...</k>
+    rule <k> genRecordFunctions => genRecordFunctions(N, Mod, B, .Map) ...</k>
          <tempModule> B:K </tempModule>
+         <currModule> X:K </currModule>
          <genVarCounter> N:Int </genVarCounter>
 
     rule <k> putGenFieldMap(N:Int, M:Map) => .K ...</k>
@@ -258,7 +259,7 @@ module HASKELL-PREPROCESSING
          <imports> S:Set </imports>
 
     rule <k> grabImportKindMaps(.K, .Set, Ks:Map)
-           => grabImportKindMapsAux(genInitKindMap(N, S, .K, .K, AM BM)) ...</k>
+           => grabImportKindMapsAux(genInitKindMap(N, S, .K, .K, AM, BM)) ...</k>
          <tempImportKindMap> _:Map => Ks </tempImportKindMap>
          <currModule> Mod:K </currModule>
          <moduleName> Mod </moduleName>
@@ -287,12 +288,13 @@ module HASKELL-PREPROCESSING
          <kindMap> SM:Map </kindMap>
          requires notBool Mod in As
 
-    rule <k> genKindMap => kindInfer(N, S, .K, .K, AM BM, M, .Set) ...</k>
+    rule <k> genKindMap => kindInfer(N, S, .K, .K, AM BM, M, .Set, Is) ...</k>
          <currModule> Mod:K </currModule>
          <moduleName> Mod </moduleName>
          <tempBetaMap> BM:Map </tempBetaMap>
          <moduleAlpha> AM:Map </moduleAlpha>
          <kindMap> M:Map </kindMap>
+         <imports> Is:Set </imports>
          <kindVarCounter> N:Int </kindVarCounter>
          <kindVarSet> S:Set </kindVarSet>
 
@@ -338,17 +340,6 @@ module HASKELL-PREPROCESSING
          <imports> Is:Set </imports>
          <classNames> NM:Map => updateMapItem(NM,
                           .K, Mod, className(Name)) </classNames>
-         requires notBool buildVar(Name) in Ms
-                      andBool notBool className(Name) in Ms
-
-    rule <k> getClassInfo('topdeclslist('class(Cs:OptContext,,
-                  Name:ConId,, Tv:TyVar,, Ds:OptCDecls),, As:TopDecls))
-               => error(classVarCollipse) ...</k>
-         <currModule> Mod:K </currModule>
-         <moduleName> Mod </moduleName>
-         <classNames> NM:Map </classNames>
-         requires buildVar(Name) in Ms
-                      orBool className(Name) in Ms
 
    rule getClassInfoAux(Name:K, Tv:K, error(A:K), T:K, Ds:K, As:K) => error(A)
    rule getClassInfoAux(Name:K, Tv:K, A:K, error(B:K), Ds:K, As:K) => error(B)
@@ -371,8 +362,7 @@ module HASKELL-PREPROCESSING
                   ...</class>)
 
     rule getClassInfoAuxAux(Name:K, error(A:K)) => error(A)
-    rule <k> getClassInfoAuxAux(Name:K, resultIntMap(N':Int, M:Map))
-              => checkMethodPatNumbers(M, .K) ...</k>
+    rule <k> getClassInfoAuxAux(Name:K, resultIntMap(N':Int, M:Map)) => .K ...</k>
          <genVarCounter> N:Int => N' </genVarCounter>
          <class>...
              <classModule> Mod </classModule>
