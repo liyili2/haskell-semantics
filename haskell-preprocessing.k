@@ -88,7 +88,7 @@ module HASKELL-PREPROCESSING
          <moduleDefs> S:Set </moduleDefs>
 
    //generate a map for all functions of getting field content for a module
-    rule <k> genRecordFunctions => genRecordFunctions(N, Mod, B, .Map) ...</k>
+    rule <k> genRecordFunctions => genRecordFunctions(N, X, B, .Map) ...</k>
          <tempModule> B:K </tempModule>
          <currModule> X:K </currModule>
          <genVarCounter> N:Int </genVarCounter>
@@ -249,7 +249,7 @@ module HASKELL-PREPROCESSING
          <tempModule> S:K </tempModule>
          <currModule> Mod:K </currModule>
          <moduleName> Mod </moduleName>
-         <moduleNames> Ts:Set </moduleNames>
+         <moduleDefs> Ts:Set </moduleDefs>
          <imports> Is:Set </imports>
 
     //finish
@@ -260,7 +260,6 @@ module HASKELL-PREPROCESSING
 
     rule <k> grabImportKindMaps(.K, .Set, Ks:Map)
            => grabImportKindMapsAux(genInitKindMap(N, S, .K, .K, AM, BM)) ...</k>
-         <tempImportKindMap> _:Map => Ks </tempImportKindMap>
          <currModule> Mod:K </currModule>
          <moduleName> Mod </moduleName>
          <tempBetaMap> BM:Map </tempBetaMap>
@@ -270,33 +269,22 @@ module HASKELL-PREPROCESSING
 
     rule <k> grabImportKindMapsAux(resultTyVarKindMap(N:Int, S:Set, TM:Map)) =>
                kindInfer(N, S, Mod, .K, .K, AM BM, TM, .Set, Is, Ks) ...</k>
-         <tempImportKindMap> Ks:Map </tempImportKindMap>
          <currModule> Mod:K </currModule>
          <moduleName> Mod </moduleName>
+         <importKindMap> Ks:Map </importKindMap>
          <tempBetaMap> BM:Map </tempBetaMap>
          <moduleAlpha> AM:Map </moduleAlpha>
          <imports> Is:Set </imports>
 
     rule grabImportKindMaps(.K, SetItem(A:K) S:Set, KM:Map)
-                => grabImportKindMaps(A, S, As, KM)
+                => grabImportKindMaps(A, S, KM)
 
     rule <k> grabImportKindMaps(importElem(Mod:K, _:K, _:Bool,
                    Ts:Set, _:Map), S:Set, KM:Map)
-                => grabImportKindMaps(.K, S, As,
+                => grabImportKindMaps(.K, S,
                              addKindToMap(Mod, .K, Ts, SM, KM)) ...</k>
          <moduleName> Mod </moduleName>
          <kindMap> SM:Map </kindMap>
-         requires notBool Mod in As
-
-    rule <k> genKindMap => kindInfer(N, S, .K, .K, AM BM, M, .Set, Is) ...</k>
-         <currModule> Mod:K </currModule>
-         <moduleName> Mod </moduleName>
-         <tempBetaMap> BM:Map </tempBetaMap>
-         <moduleAlpha> AM:Map </moduleAlpha>
-         <kindMap> M:Map </kindMap>
-         <imports> Is:Set </imports>
-         <kindVarCounter> N:Int </kindVarCounter>
-         <kindVarSet> S:Set </kindVarSet>
 
     rule <k> resultTyVarKindMap(N:Int, S:Set, M:Map) => .K ...</k>
          <currModule> Mod:K </currModule>
@@ -346,7 +334,7 @@ module HASKELL-PREPROCESSING
    rule <k> getClassInfoAux(Name:K, Tv:K, resultSet(S:Set),
                resultMap(Methods:Map), Ds:K, As:K)
             => checkAllFixityMakeSenseInCDecl(Ds, .Set, dropFullNames(.K, keys(Methods)))
-                 (getClassInfoAuxAux(Name, toAstPat(N, Mod, Ds, .K, .K, Methods, Ts, Is))
+                 ~> (getClassInfoAuxAux(Name, toAstPat(N, Mod, Ds, .K, .K, Methods, Ts, Is))
                  ~> getClassInfo(As)) ...</k>
          <genVarCounter> N:Int </genVarCounter>
          <currModule> Mod:K </currModule>
@@ -369,7 +357,7 @@ module HASKELL-PREPROCESSING
              <className> Name </className>
              <classMethods> _:Map => M </classMethods>
          ...</class>
-
+/*
    //functions to compile type class instances to ast form
     rule <k> collectInstances => getInstances(TM) ...</k>
          <tempModule> TM:K </tempModule>
@@ -563,6 +551,6 @@ module HASKELL-PREPROCESSING
                  orBool (isIntersect(getFreeVarsInPat(A),.K, getRidWrapper(Y))
                        andBool hasNoDefinedTypes(getValues(M, .K,
                            getIntersect(getFreeVarsInPat(A),.K, getRidWrapper(Y))), .K))
-
+*/
 
 endmodule

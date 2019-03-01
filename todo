@@ -1,3 +1,5 @@
+TODO: Liyi Li: Feb 28, deal with all kind inference including type classes.
+
 Make a set vs make a list and check to see if the sizes are the same to check for collisions
 
 seperated by whitespace

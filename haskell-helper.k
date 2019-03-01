@@ -392,9 +392,9 @@ module HASKELL-HELPER
    rule insertMod(A:K, SetItem(B:K) S:Set) => SetItem(fullName(A, B)) insertMod(A, S)
 
    syntax Set ::= getFreeVarsInDecls(K) [function]
-   rule getFreeVarsInDecls(V:Var) => SetItem(funName(pillVar(A)))
+   rule getFreeVarsInDecls(V:Var) => SetItem(funName(pillVar(V)))
    rule getFreeVarsInDecls('varCon(V:Var,, Vs:Vars))
-         => SetItem(funName(pillVar(A))) getFreeVarsInDecls(Vs)
+         => SetItem(funName(pillVar(V))) getFreeVarsInDecls(Vs)
    rule getFreeVarsInDecls('qualAssign(A:K,, B:K)) => getFreeVarsInDecls(A)
    rule getFreeVarsInDecls('qualLet(A:K)) => getFreeVarsInDecls(A)
    rule getFreeVarsInDecls('decls(Ds:K)) => getFreeVarsInDecls(Ds)
@@ -411,9 +411,9 @@ module HASKELL-HELPER
    rule getFreeVarsInDecls(A:K) => .Set [owise]
 
    syntax Set ::= getFreeVarsInCDecls(K) [function]
-   rule getFreeVarsInCDecls(V:Var) => SetItem(funName(pillVar(A)))
+   rule getFreeVarsInCDecls(V:Var) => SetItem(funName(pillVar(V)))
    rule getFreeVarsInCDecls('varCon(V:Var,, Vs:Vars))
-         => SetItem(funName(pillVar(A))) getFreeVarsInCDecls(Vs)
+         => SetItem(funName(pillVar(V))) getFreeVarsInCDecls(Vs)
    rule getFreeVarsInCDecls('cdeclBracket(A:K)) => getFreeVarsInCDecls(A)
    rule getFreeVarsInCDecls(.CDeclsList) => .Set
    rule getFreeVarsInCDecls('cdeclCon(A:K,, B:K))
@@ -425,8 +425,8 @@ module HASKELL-HELPER
    rule getFreeVarsInCDecls(A:K) => .Set [owise]
 
    syntax Set ::= getFreeVarsInDefs(K) [function]
-   rule getFreeVarsInDefs(V:Var) => SetItem(funName(pillVar(A)))
-   rule getFreeVarsInDefs(V:VarOp) => SetItem(funName(pillVar(A)))
+   rule getFreeVarsInDefs(V:Var) => SetItem(funName(pillVar(V)))
+   rule getFreeVarsInDefs(V:VarOp) => SetItem(funName(pillVar(V)))
    rule getFreeVarsInDefs('qualAssign(A:K,, B:K)) => getFreeVarsInDefs(A)
    rule getFreeVarsInDefs('qualLet(A:K)) => getFreeVarsInDefs(A)
    rule getFreeVarsInDefs('patExpStmt(A:K,, B:K)) => getFreeVarsInDefs(A)
@@ -585,7 +585,7 @@ module HASKELL-HELPER
    rule getFreeVarsInPatList('irrefutablePat(P:APat)) => getFreeVarsInPatList(P)
    rule getFreeVarsInPatList('twoPatTuple(P1:Pat,, P2:Pat))
              => getFreeVarsInPatList(P1) getFreeVarsInPatList(P2)
-   rule getFreeVarsInPat('patTupleCon(P1:Pat,, P2:PatTuple))
+   rule getFreeVarsInPatList('patTupleCon(P1:Pat,, P2:PatTuple))
              => getFreeVarsInPatList(P1) getFreeVarsInPatList(P2)
    rule getFreeVarsInPatList('patListCon(P1:Pat,, P2:PatList))
              => getFreeVarsInPatList(P1) getFreeVarsInPatList(P2)

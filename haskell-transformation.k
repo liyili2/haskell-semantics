@@ -85,7 +85,7 @@ module HASKELL-TRANSFORMATION
 
    rule transFunPatNormal(error(A:K), B:K) => error(A)
    rule transFunPatNormal(A:K, error(B:K)) => error(B)
-   rule transFunPat(A:K, resultList(L:List)) => funPat(ListItem(A) L) [owise]
+   rule transFunPatNormal(A:K, resultList(L:List)) => funPat(ListItem(A) L) [owise]
 
    rule transFunPatBin(error(A:K), B:K, C:K) => error(A)
    rule transFunPatBin(A:K, error(B:K), C:K) => error(B)
@@ -108,7 +108,7 @@ module HASKELL-TRANSFORMATION
                   transNegPat(Mod, P1, Ts, Is), transNegPat(Mod, P1, Ts, Is))
    rule transPosFunLhs(Mod:K, 'groupLhs(F:FunLhs,, As:APatList), Ts:Set, Is:Set)
          => transFunPatGroup(transPosFunLhs(Mod, F, Ts, Is),
-                      transNegPatList(Mod, V, Ts, Is, .K, .List))
+                      transNegPatList(Mod, As, Ts, Is, .K, .List))
 
    rule transNegFunLhs(Mod:K, P:Pat, Ts:Set, Is:Set)
                 => transFunPat(transNegPat(Mod, P, Ts, Is))
@@ -120,7 +120,7 @@ module HASKELL-TRANSFORMATION
                   transNegPat(Mod, P1, Ts, Is), transNegPat(Mod, P1, Ts, Is))
    rule transNegFunLhs(Mod:K, 'groupLhs(F:FunLhs,, As:APatList), Ts:Set, Is:Set)
          => transFunPatGroup(transNegFunLhs(Mod, F, Ts, Is),
-                      transNegPatList(Mod, V, Ts, Is, .K, .List))
+                      transNegPatList(Mod, As, Ts, Is, .K, .List))
 
    //trans pat if the variables of patterns need to be global vars
    rule transPosPat(Mod:K, 'binPattern(A:LPat,, B:QConOp,, C:Pat), Ts:Set, Is:Set)
@@ -160,7 +160,7 @@ module HASKELL-TRANSFORMATION
              error(X:K), Y:K, L:List) => error(X)
    rule transPosRecordPatAux(Mod:K, A:K, B:K, Ts:Set, Is:Set,
              X:K, error(Y:K), L:List) => error(Y)
-   rule transPosRecordPatAux(Mod:K, A:K, B:K, Ts:Set, Is:Set, X:K, Y:K, L:List)
+   rule transPosRecordPatAux(Mod:K, A:K, B:K, Ts:Set, Is:Set, X:KItem, Y:KItem, L:List)
           => transPosRecordPatAux(Mod, A, B, Ts, Is, .K, .K,
               L ListItem(appPat(fullName(Prelude,
                  constrName(recordAssign)), ListItem(X) ListItem(Y)))) [owise]
@@ -169,16 +169,16 @@ module HASKELL-TRANSFORMATION
               => transPosPatList(Mod, .K, Ts, Is, transPosPat(Mod, A, Ts, Is), L)
    rule transPosPatList(Mod:K, .K, Ts:Set, Is:Set, error(A:K), L:List) => error(A)
    rule transPosPatList(Mod:K, .K, Ts:Set, Is:Set, .K, L:List) => resultList(L)
-   rule transPosPatList(Mod:K, Rest:K, Ts:Set, Is:Set, A:K, L:List)
+   rule transPosPatList(Mod:K, Rest:K, Ts:Set, Is:Set, A:KItem, L:List)
             => transPosPatList(Mod, Rest, Ts, Is, .K, L ListItem(A))
         requires notBool isError(A)
-   rule transPosPatList(Mod:K, 'twoPatTuple(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+   rule transPosPatList(Mod:K, 'twoPatTuple(A:K,, B:K), Ts:Set, Is:Set, .K, L:List)
              => transPosPatList(Mod, B, Ts, Is, transPosPat(Mod, A, Ts, Is), L)
-   rule transPosPatList(Mod:K, 'patTupleCon(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+   rule transPosPatList(Mod:K, 'patTupleCon(A:K,, B:K), Ts:Set, Is:Set, .K, L:List)
              => transPosPatList(Mod, B, Ts, Is, transPosPat(Mod, A, Ts, Is), L)
-   rule transPosPatList(Mod:K, 'patListCon(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+   rule transPosPatList(Mod:K, 'patListCon(A:K,, B:K), Ts:Set, Is:Set, .K, L:List)
              => transPosPatList(Mod, B, Ts, Is, transPosPat(Mod, A, Ts, Is), L)
-   rule transPosPatList(Mod:K, 'apatCon(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+   rule transPosPatList(Mod:K, 'apatCon(A:K,, B:K), Ts:Set, Is:Set, .K, L:List)
              => transPosPatList(Mod, B, Ts, Is, transPosPat(Mod, A, Ts, Is), L)
 
    //functions that share commonly in pos and neg trans
@@ -243,7 +243,7 @@ module HASKELL-TRANSFORMATION
              error(X:K), Y:K, L:List) => error(X)
    rule transNegRecordPatAux(Mod:K, A:K, B:K, Ts:Set, Is:Set,
              X:K, error(Y:K), L:List) => error(Y)
-   rule transNegRecordPatAux(Mod:K, A:K, B:K, Ts:Set, Is:Set, X:K, Y:K, L:List)
+   rule transNegRecordPatAux(Mod:K, A:K, B:K, Ts:Set, Is:Set, X:KItem, Y:KItem, L:List)
           => transNegRecordPatAux(Mod, A, B, Ts, Is, .K, .K,
               L ListItem(appPat(fullName(
               Prelude, constrName(recordAssign)), ListItem(X) ListItem(Y)))) [owise]
@@ -252,16 +252,16 @@ module HASKELL-TRANSFORMATION
               => transNegPatList(Mod, .K, Ts, Is, transNegPat(Mod, A, Ts, Is), L)
    rule transNegPatList(Mod:K, .K, Ts:Set, Is:Set, error(A:K), L:List) => error(A)
    rule transNegPatList(Mod:K, .K, Ts:Set, Is:Set, .K, L:List) => resultList(L)
-   rule transNegPatList(Mod:K, Rest:K, Ts:Set, Is:Set, A:K, L:List)
+   rule transNegPatList(Mod:K, Rest:K, Ts:Set, Is:Set, A:KItem, L:List)
             => transNegPatList(Mod, Rest, Ts, Is, .K, L ListItem(A))
         requires notBool isError(A)
-   rule transNegPatList(Mod:K, 'twoPatTuple(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+   rule transNegPatList(Mod:K, 'twoPatTuple(A:K,, B:K), Ts:Set, Is:Set, .K, L:List)
              => transNegPatList(Mod, B, Ts, Is, transNegPat(Mod, A, Ts, Is), L)
-   rule transNegPatList(Mod:K, 'patTupleCon(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+   rule transNegPatList(Mod:K, 'patTupleCon(A:K,, B:K), Ts:Set, Is:Set, .K, L:List)
              => transNegPatList(Mod, B, Ts, Is, transNegPat(Mod, A, Ts, Is), L)
-   rule transNegPatList(Mod:K, 'patListCon(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+   rule transNegPatList(Mod:K, 'patListCon(A:K,, B:K), Ts:Set, Is:Set, .K, L:List)
              => transNegPatList(Mod, B, Ts, Is, transNegPat(Mod, A, Ts, Is), L)
-   rule transNegPatList(Mod:K, 'apatCon(A:K, B:K), Ts:Set, Is:Set, .K, L:List)
+   rule transNegPatList(Mod:K, 'apatCon(A:K,, B:K), Ts:Set, Is:Set, .K, L:List)
              => transNegPatList(Mod, B, Ts, Is, transNegPat(Mod, A, Ts, Is), L)
 
    //transform expressions. 
@@ -333,7 +333,7 @@ module HASKELL-TRANSFORMATION
                   | transExpInfix(K, K, K, K, Set, Set, Set) [function]
                   | transExpInfixAux(K, K, K) [function]
                   | transExpAssign(K, K) [function]
-                  | transExpAssignContext(K, K, K) [function]
+                  | transExpAssignContext(K, K, K, K, Set, Set) [function]
                   | transExpAssignContextAux(K, K, Set, K) [function]
 
    //trans Decls
@@ -346,7 +346,7 @@ module HASKELL-TRANSFORMATION
         requires (getFreeVarsInDecls(Ds) <=Set getFreeVarsInDefs(Ds))
    rule transDecls(N:Int, Mod:K, 'decls(Ds:K), Ls:Set, Ts:Set, Is:Set)
           => error(funNameDeclNotDef)
-        requires notBool (getFreeVarsInDecls(A) <=Set getFreeVarsInDefs(A))
+        requires notBool (getFreeVarsInDecls(Ds) <=Set getFreeVarsInDefs(Ds))
 
    rule transDeclsAux(N:Int, Mod:K, .DeclsList, .K, L:List, Ls:Set, Ts:Set, Is:Set)
            => resultTransList(N, L)
@@ -423,7 +423,7 @@ module HASKELL-TRANSFORMATION
    rule transSingleGuard(N:Int, Mod:K, 'guardLet(A:K), Ls:Set, Ts:Set, Is:Set)
             => transQual(N, Mod, 'qualLet(A), Ls, Ts, Is)
 
-   rule transGuards(N:Int, Mod:K, .K, .K, L:List, .K, Ls:Set, Ts:Set, Is:Set)
+   rule transGuards(N:Int, Mod:K, .K, .K, L:List, Ls:Set, Ts:Set, Is:Set)
             => resultTrans(N, guards(L))
    rule transGuards(N:Int, Mod:K, X:K, error(B:K), L:List,
            Ls:Set, Ts:Set, Is:Set) => error(B)
@@ -530,7 +530,7 @@ module HASKELL-TRANSFORMATION
    rule transExp(N:Int, Mod:K, 'expAssignContext(
                      E:Exp,, C:Context,, T:Type), Ls:Set, Ts:Set, Is:Set)
              => transExpAssignContext(transExp(N, Mod, E, Ls, Ts, Is),
-                  contextToSet(Mod, C, .K, .Set, Ts, Is), Mod, T)
+                  contextToSet(Mod, C, .K, .Set, Ts, Is), Mod, T, Ts, Is)
 
    //trans exp with types
    rule transExpAssign(A:K, error(T:K)) => error(T)
@@ -538,9 +538,10 @@ module HASKELL-TRANSFORMATION
    rule transExpAssign(resultTrans(N:Int, A:K), T:K)
             => resultTrans(N, typedExp(.Set, T, A)) [owise]
 
-   rule transExpAssignContext(error(A:K), S:K, Mod:K, T:K) => error(A)
-   rule transExpAssignContext(A:K, error(S:K), Mod:K, T:K) => error(S)
-   rule transExpAssignContext(resultTrans(N:Int, A:K), resultSet(S:Set), T:K)
+   rule transExpAssignContext(error(A:K), S:K, Mod:K, T:K, Ts:Set, Is:Set) => error(A)
+   rule transExpAssignContext(A:K, error(S:K), Mod:K, T:K, Ts:Set, Is:Set) => error(S)
+   rule transExpAssignContext(resultTrans(N:Int, A:K),
+                      resultSet(S:Set), Mod:K, T:K, Ts:Set, Is:Set)
             => transExpAssignContextAux(N, A, S, toAbsType(Mod, T, S, Ts, Is))
    rule transExpAssignContextAux(N:Int, A:K, S:Set, error(B:K)) => error(B)
    rule transExpAssignContextAux(N:Int, A:K, S:Set, T:K) 
@@ -804,11 +805,11 @@ module HASKELL-TRANSFORMATION
    //trans tuples 
    rule transExpTuple(N:Int, Mod:K, C:K, .K, .K, L:List, Ls:Set, Ts:Set, Is:Set)
            => resultTrans(N, appExp(C, L))
-   rule transExpTuple(N:Int, Mod:K, C:K, 'twoExpTuple(A:K, B:K),
+   rule transExpTuple(N:Int, Mod:K, C:K, 'twoExpTuple(A:K,, B:K),
               .K, L:List, Ls:Set, Ts:Set, Is:Set)
            =>  transExpTuple(N, Mod, C, B,
                   transExp(N, Mod, A, Ls, Ts, Is), L, Ls, Ts, Is)
-   rule transExpTuple(N:Int, Mod:K, C:K, 'expTupleCon(A:K, B:K),
+   rule transExpTuple(N:Int, Mod:K, C:K, 'expTupleCon(A:K,, B:K),
               .K, L:List, Ls:Set, Ts:Set, Is:Set)
            =>  transExpTuple(N, Mod, C, B,
                   transExp(N, Mod, A, Ls, Ts, Is), L, Ls, Ts, Is)
@@ -836,7 +837,7 @@ module HASKELL-TRANSFORMATION
 
    //trans qvar/gcon
    rule transExpQVar(C:K, error(A:K)) => error(A)
-   rule transExpQVar(C:K, A:K) => resultTrans(C, B) [owise]
+   rule transExpQVar(C:K, A:K) => resultTrans(C, A) [owise]
 
    //trans left and right sections
    rule transExp(N:Int, Mod:K, 'leftSection(E1:InfixExp,, G:QOp), Ls:Set, Ts:Set, Is:Set)
@@ -928,7 +929,7 @@ module HASKELL-TRANSFORMATION
                   T:K, C:CDeclsList, M:Map, Ts:Set, Is:Set)
            => toAstTypeClassList1(Mod, V, Xs, Cons:Set, T, C,
                   (fullName(Mod, funName(pillVar(X)))
-                             |-> methodDef(Cons, T, .List)) M, S, S1)
+                             |-> methodDef(Cons, T, .List)) M, Ts, Is)
 
    //functions to add possible pattern rules for type classes
    //only for the right hand side.
@@ -952,10 +953,10 @@ module HASKELL-TRANSFORMATION
    rule toAstPat(N:Int, Mod:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)),
             U:K, V:K, M:Map, Ts:Set, Is:Set)
          => toAstPat(N, Mod, Cs, U, V, M, Ts, Is)
-        requires (getFreeVarsInDefs(A) <=Set getFreeVarsInCDecls(A))
+        requires (getFreeVarsInDefs(Cs) <=Set getFreeVarsInCDecls(Cs))
    rule toAstPat(N:Int, Mod:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)),
             U:K, V:K, M:Map, Ts:Set, Is:Set) => error(funNameDefNotDeclInClass)
-        requires notBool (getFreeVarsInDefs(A) <=Set getFreeVarsInCDecls(A))
+        requires notBool (getFreeVarsInDefs(Cs) <=Set getFreeVarsInCDecls(Cs))
    rule toAstPat(N:Int, Mod:K, .CDeclsList,
               U:K, V:K, M:Map, Ts:Set, Is:Set) => resultIntMap(N, M)
    rule toAstPat(N:Int, Mod:K, 'cdeclCon(
@@ -1163,19 +1164,19 @@ module HASKELL-TRANSFORMATION
                 andBool countGoodNameWithMod(constrName(A),S, .K, Is)==K 1
    rule transConstrVar(S:K, fullName(S:K, A:K), Ts:Set, Is:Set)
              => error(ambiguousConstrName)
-        requires countGoodNameWithMod(constrName(A), N, .K, Is) >Int 1
+        requires countGoodNameWithMod(constrName(A), S, .K, Is) >Int 1
 
    syntax KItem ::= transFunVar(K, K, Set, Set, Set) [function]
           //curr-mod, term, bound-vars, types, imports
    rule transFunVar(S:K, A:K,As:Set, Ts:Set, Is:Set) => funName(A)
-        requires notBool isFullName(A) andBool A in As
+        requires notBool isFullName(A) andBool funName(A) in As
    rule transFunVar(S:K, A:K,As:Set, Ts:Set, Is:Set)
            => fullName(S, funName(A))
-        requires notBool isFullName(A) andBool A in Ts
+        requires notBool isFullName(A) andBool funName(A) in Ts
                 andBool countGoodNameNoQualified(funName(A), .K, Is) ==K 0
    rule transFunVar(S:K, A:K, As:Set, Ts:Set, Is:Set)
            => fullName(findGoodNameNoQualified(funName(A), .K, Is), funName(A))
-        requires notBool isFullName(A) andBool notBool A in Ts
+        requires notBool isFullName(A) andBool notBool funName(A) in Ts
                 andBool countGoodNameNoQualified(funName(A), .K, Is) ==K 1
    rule transFunVar(S:K, A:K, As:Set, Ts:Set, Is:Set) => error(ambiguousFunName)
         requires notBool isFullName(A) andBool funName(A) in Ts
@@ -1188,37 +1189,37 @@ module HASKELL-TRANSFORMATION
                    andBool countGoodNameNoQualified(funName(A), .K, Is)==K 0
    rule transFunVar(S:K, fullName(S':K, A:K), As:Set, Ts:Set, Is:Set)
                 => error(ambiguousFunName)
-        requires A in As
+        requires funName(A) in As
    rule transFunVar(S:K, fullName(S, A:K), As:Set, Ts:Set, Is:Set)
          => fullName(S, funName(A))
-        requires notBool (A in As) andBool funName(A) in Ts
+        requires notBool (funName(A) in As) andBool funName(A) in Ts
                 andBool countGoodNameWithMod(funName(A), S, .K, Is) ==K 0
    rule transFunVar(S:K, fullName(S, A:K), As:Set, Ts:Set, Is:Set)
          => error(ambiguousFunName)
-        requires notBool (A in As) andBool funName(A) in Ts
+        requires notBool (funName(A) in As) andBool funName(A) in Ts
                 andBool countGoodNameWithMod(funName(A), S, .K, Is) =/=K 0
    rule transFunVar(S:K, fullName(S, A:K), As:Set, Ts:Set, Is:Set)
          => error(funNameNotInScope)
-        requires  notBool (A in As) andBool notBool funName(A) in Ts
+        requires  notBool (funName(A) in As) andBool notBool funName(A) in Ts
                 andBool countGoodNameWithMod(funName(A),S, .K, Is)==K 0
    rule transFunVar(S:K, fullName(N:K, A:K), As:Set, Ts:Set, Is:Set)
          => error(funNameNotInScope)
-        requires notBool (A in As) andBool S =/=K N
+        requires notBool (funName(A) in As) andBool S =/=K N
                 andBool countGoodNameWithMod(funName(A),N, .K, Is)==K 0
    rule transFunVar(S:K, fullName(N:K, A:K), As:Set, Ts:Set, Is:Set)
          => fullName(findGoodNameWithMod(
                         funName(A), N, .K, Is),funName(A))
-        requires notBool (A in As) andBool S =/=K N
+        requires notBool (funName(A) in As) andBool S =/=K N
                 andBool countGoodNameWithMod(funName(A),N, .K, Is)==K 1
    rule transFunVar(S:K, fullName(S:K, A:K), As:Set, Ts:Set, Is:Set)
          => fullName(findGoodNameWithMod(
                         funName(A), S, .K, Is),funName(A))
-        requires notBool (A in As) andBool notBool funName(A) in Ts
+        requires notBool (funName(A) in As) andBool notBool funName(A) in Ts
                 andBool countGoodNameWithMod(funName(A),S, .K, Is)==K 1
    rule transFunVar(S:K, fullName(S:K, A:K), As:Set, Ts:Set, Is:Set)
              => error(ambiguousFunName)
-        requires notBool (A in As) andBool
-                     countGoodNameWithMod(funName(A), N, .K, Is) >Int 1
+        requires notBool (funName(A) in As) andBool
+                     countGoodNameWithMod(funName(A), S, .K, Is) >Int 1
 
    syntax KItem ::= findLabelsInBetaMap(K, K, Map) [function]
    rule findLabelsInBetaMap(A:K, .K, (A |-> D:Map) M:Map)
@@ -1264,7 +1265,7 @@ module HASKELL-TRANSFORMATION
    rule compareLabel(Mod:K, fullName(X:K, Y:K), L:List) => error(labelNotInScope)
         requires Mod =/=K X
    rule compareLabel(Mod:K, fullName(Mod, Y:K), L:List)
-        => compareLabelAux(Mod, funName(Y), L)
+        => compareLabelAux(funName(Y), L)
    rule compareLabel(Mod:K, Y:K, L:List) => compareLabelAux(funName(Y), L) [owise]
 
    rule compareLabelAux(Y:K, .List) => error(labelNotInScope)
