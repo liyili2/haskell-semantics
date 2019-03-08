@@ -227,7 +227,15 @@ module HASKELL-HELPER
    rule getMethodSet(A:K, resultSet(S:Set), M:Map) => S
    rule getMethodSet(A:K, B:K, M:Map) => .Set [owise]
 
-   //identify functions 
+   //identify functions
+   syntax Bool ::= isKindArrow(K) [function]
+   rule isKindArrow(kindArrow(A:K, B:K)) => true
+   rule isKindArrow(A:K) => false [owise]
+   
+   syntax Bool ::= isKindVar(K) [function]
+   rule isKindVar(kindVar(A:Int)) => true
+   rule isKindVar(A:K) => false [owise]
+
    syntax Bool ::= isTheQCon(K) [function]
    rule isTheQCon(A:QCon) => true
    rule isTheQCon(A:K) => false [owise]

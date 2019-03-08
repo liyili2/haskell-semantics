@@ -57,6 +57,7 @@ module HASKELL-CONFIGURATION
                 <classModule> .K </classModule>
                 <className> .K </className>
                 <classTypeVar> .K </classTypeVar>
+                <classKind> .K </classKind>
                 <classContext> .Set </classContext>
                 <classMethods> .Map </classMethods>
               </class>

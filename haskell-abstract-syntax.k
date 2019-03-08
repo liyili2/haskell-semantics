@@ -12,6 +12,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "typeVarNotUnique"
     syntax KItem ::= "repeatedNames"
     syntax KItem ::= "cycleAlpha"
+    syntax KItem ::= "cycleClasses"
     syntax KItem ::= "typeNotInScope"
     syntax KItem ::= "classNotInScope"
     syntax KItem ::= "constrNotInScope"
@@ -24,6 +25,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "typeVarKindBad"
     syntax KItem ::= "typeVarKindNumError"
     syntax KItem ::= "kindUnifierFail"
+    syntax KItem ::= "classKindNotEqual"
     syntax KItem ::= "ambiguousTypeVar"
     syntax KItem ::= "classVarCollipse"
     syntax KItem ::= "classVarNotInScope"
@@ -83,6 +85,17 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= putTypeClass(K, Set, K, K, K)
                //module, class contexts (super classes),
               // class name, class type-var, putClassMapSet
+
+    //dealing with kind inference for classes in a module
+    syntax KItem ::= "kindInferClass"
+    syntax KItem ::= kindInferClassNext(K)
+    syntax KItem ::= buildContextMap(Map, K, Set)
+    syntax KItem ::= kindClass(Int, Set, Set, K, Map, Map, Set, Map)
+                //counter, var-set, done-class-set, curr-class/error, 
+               //class-father-map, kind-map, imports, import-map
+    syntax KItem ::= kindClassAux(Int, Set, Set, K, K, Map, Map, Set, Map)
+                //counter, var-set, done-class-set, classname, execute,
+                // class-father-map, kind-map, imports, import-map
 
     syntax KItem ::= "collectInstances"
     syntax KItem ::= getInstances(K)
@@ -187,6 +200,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax ElemList ::= List{Element, ","} [strict]
     rule val(K:KResult) => valValue(K) [structural]
 
+    syntax KResult ::= resultTuple(K, K) 
     syntax KResult ::= resultSet(Set)
     syntax KResult ::= resultSetMap(Set, Map)
     syntax KResult ::= resultMap(Map)
@@ -238,9 +252,10 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= classTitle(K, List) //name, list of type-vars
     syntax KItem ::= typeClass(Set, K, Map)
         // father, type var, contents,
-    syntax KItem ::= methodDef(Set, K, List) //constraints, Type, list of patterns
-        // father, type var, contents,
-    syntax KItem ::= methodDecl(K, Set, K) //method-name, constaints, type
+    syntax KItem ::= methodDef(Set, Map, K, List)
+            //contexts, ty-var-map (to contexts), type, patterns
+    syntax KItem ::= methodDecl(K, Set, Map, K)
+              //method-name, constaints,ty-var-map (to contexts), type
 
     //pattern
     syntax KItem ::= funPat(List) //name, args

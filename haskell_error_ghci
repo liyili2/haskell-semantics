@@ -53,6 +53,17 @@ fun1 [] (~1) = 1 ; fun1 (x:xs) (~1) = 1 + fun1 xs 1
 
 but if we input fun1 [1,2,3,4] 4, the function works which is bad for irrefutable pattern.
 
+12, empty type classes
+ if class A 
+; class A f => C f where
+    f2 :: f a -> a
+
+this is not allowed in haskell. 
+
+so am empty type class in Haskell will be recognized having typevar as *
+
+the document does not specify this.
+
 
 
 

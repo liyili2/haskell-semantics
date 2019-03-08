@@ -44,10 +44,32 @@ module HASKELL-TRANSFORMATION
 
    syntax List ::= genDeclForVars(K, Vars,Set, K) [function]
    rule genDeclForVars(Mod:K, A:Var,S:Set, T:K)
-               => ListItem(methodDecl(funName(pillVar(A)), S, T))
+               => ListItem(makeMethodDecl(funName(pillVar(A)), S, T))
    rule genDeclForVars(Mod:K, 'varCon(A:Var, B:Vars),S:Set, T:K)
-               => ListItem(methodDecl(funName(pillVar(A)), S, T))
+               => ListItem(makeMethodDecl(funName(pillVar(A)), S, T))
                    genDeclForVars(Mod, B,S, T)
+
+   //make a method decl by method-name, contexts, and type
+   syntax KItem ::= makeMethodDecl(K, Set, K) [function]
+   rule makeMethodDecl(F:K, C:Set, forall(A:Set, T:K))
+              => methodDecl(F, C, makeVarContextMap(A), T)
+   rule makeMethodDecl(F:K, C:Set, T:K) => methodDecl(F, C, .Map, T) [owise]
+
+   //make a method def by context and forall types
+   syntax Map ::= makeVarContextMap(Set) [function]
+   rule makeVarContextMap(.Set) => .Map
+   rule makeVarContextMap(SetItem(A:K) S:Set)
+            => (A |-> resultSet(.Set)) makeVarContextMap(S)
+
+   syntax KItem ::= makeMethodDef(Set, K) [function]
+   rule makeMethodDef(C:Set, forall(A:Set, T:K))
+              => methodDef(C, makeVarContextMap(A), T, .List)
+   rule makeMethodDef(C:Set, T:K) => methodDef(C, .Map, T, .List) [owise]
+
+   syntax KItem ::= makeMethodDefWithList(Set, K, List) [function]
+   rule makeMethodDefWithList(C:Set, forall(A:Set, T:K), L:List)
+              => methodDef(C, makeVarContextMap(A), T, L)
+   rule makeMethodDefWithList(C:Set, T:K, L:List) => methodDef(C, .Map, T, L) [owise]
 
    //transformation of funlhs and patterns in all cases
    syntax KItem ::= transPosPat(K, K, Set, Set) [function]
@@ -362,7 +384,8 @@ module HASKELL-TRANSFORMATION
    rule transDecl(N:Int, Mod:K, 'emptyGenDecl(.KList), Ls:Set, Ts:Set, Is:Set)
                => resultTransList(N, .List)
    rule transDecl(N:Int, Mod:K, 'varAssign(A:Vars,, B:Type), Ls:Set, Ts:Set, Is:Set)
-         => transDeclDeclAux(N, Mod, A, toAbsType(Mod, B, .Set, Ts, Is))
+         => transDeclDeclAux(N, Mod, A,
+                    toAbsTypeWithAll(Mod, B, .Set, getFreeTypeVars(B), Ts, Is))
    rule transDecl(N:Int, Mod:K, 'genAssignContext(A:Vars,,
                   C:Context,, B:Type), Ls:Set, Ts:Set, Is:Set)
          => transDeclDeclAux1(N, Mod, A, contextToSet(Mod, C,
@@ -389,7 +412,8 @@ module HASKELL-TRANSFORMATION
                   error(C:K), B:K, Ls:Set, Ts:Set, Is:Set) => error(C)
    rule transDeclDeclAux1(N:Int, Mod:K, A:K,
                       resultSet(S:Set), B:K, Ls:Set, Ts:Set, Is:Set)
-           => transDeclDeclAux2(N, Mod, A, S, toAbsType(Mod, B, S, Ts, Is))
+           => transDeclDeclAux2(N, Mod, A, S,
+                    toAbsTypeWithAll(Mod, B, .Set, getFreeTypeVars(B), Ts, Is))
 
    rule transDeclDeclAux2(N:Int, Mod:K, A:K, S:Set, error(T:K)) => error(T)
    rule transDeclDeclAux2(N:Int, Mod:K, A:K, S:Set, T:K)
@@ -924,25 +948,25 @@ module HASKELL-TRANSFORMATION
    rule toAstTypeClassList1(Mod:K, V:K, X:Var,
                        Cons:Set, T:K, C:CDeclsList, M:Map, Ts:Set, Is:Set)
            => toAstTypeClass(Mod, V, C, (fullName(Mod, funName(pillVar(X)))
-                        |-> methodDef(Cons, T, .List)) M, Ts, Is)
+                        |-> makeMethodDef(Cons, T)) M, Ts, Is)
    rule toAstTypeClassList1(Mod:K, V:K, 'varCon(X:Var,, Xs:Vars), Cons:Set,
                   T:K, C:CDeclsList, M:Map, Ts:Set, Is:Set)
            => toAstTypeClassList1(Mod, V, Xs, Cons:Set, T, C,
                   (fullName(Mod, funName(pillVar(X)))
-                             |-> methodDef(Cons, T, .List)) M, Ts, Is)
+                             |-> makeMethodDef(Cons, T)) M, Ts, Is)
 
    //functions to add possible pattern rules for type classes
    //only for the right hand side.
    syntax KItem ::= updatePatListInDef(K, K) [function]
-   rule updatePatListInDef(methodDef(Cons:Set, A:K, L:List), D:K)
-          =>  methodDef(Cons, A, L ListItem(D))
+   rule updatePatListInDef(methodDef(Cons:Set, S:Map, A:K, L:List), D:K)
+          =>  methodDef(Cons, S, A, L ListItem(D))
 
    syntax Map ::= updatePatMapInExp(Map, K, K) [function]
               //map, name, patterns
    rule updatePatMapInExp(M:Map (A |-> D:K), A:K, C:K)
            => M (A |-> updatePatListInDef(D, C))
    rule updatePatMapInExp(M:Map, A:K, C:K)
-                  => M (A |-> methodDef(.Set, .K, ListItem(C))) [owise]
+                  => M (A |-> methodDef(.Set, .Map, .K, ListItem(C))) [owise]
 
    syntax KItem ::= toAstPat(Int, K, K, K, K, Map, Set, Set) [function]
       //var-counter, curr-mod, CDecls, var, exp, class-map
@@ -1015,8 +1039,8 @@ module HASKELL-TRANSFORMATION
 */
    //add type/context to method def in a map
    syntax KItem ::= addDeclToK(K, Set, K) [function]
-   rule addDeclToK(methodDef(S:Set, T:K, L:List), S1:Set, T1:K)
-           => methodDef(S1, T1, L)
+   rule addDeclToK(methodDef(Cs:Set, S:Map, T:K, L:List), S1:Set, T1:K)
+           => makeMethodDefWithList(S1, T1, L)
 
    syntax Map ::= addDeclToMap(Map, K, Set, Set, K) [function]
           //def map, execute, Set-of-keys, contexts, type
@@ -1035,13 +1059,13 @@ module HASKELL-TRANSFORMATION
    rule createEmptyEntry(M:Map, .K, SetItem(A:K) S:Set)
             => createEmptyEntry(M, A, S)
    rule createEmptyEntry(M:Map, A:KItem, S:Set)
-          => createEmptyEntry(M (A |-> methodDef(.Set, .K, ListItem(none))), .K, S)
+          => createEmptyEntry(M (A |-> methodDef(.Set, .Map, .K, ListItem(none))), .K, S)
 
    //check if the method definition has defined pattern /types
    syntax Bool ::= hasDefinedPat(K) [function]
                  | hasNoDefinedPats(Set, K) [function]
-   rule hasDefinedPat(methodDef(A:Set, B:K, .List)) => false
-   rule hasDefinedPat(methodDef(A:Set, B:K, ListItem(C:K) L:List)) => true
+   rule hasDefinedPat(methodDef(A:Set, S:Map, B:K, .List)) => false
+   rule hasDefinedPat(methodDef(A:Set, S:Map, B:K, ListItem(C:K) L:List)) => true
    rule hasNoDefinedPats(.Set, .K) => true
    rule hasNoDefinedPats(SetItem(A:K) S:Set, .K)
           => hasNoDefinedPats(S, A)
@@ -1052,7 +1076,7 @@ module HASKELL-TRANSFORMATION
 
    syntax Bool ::= hasDefinedType(K) [function]
                  | hasNoDefinedTypes(Set, K) [function]
-   rule hasDefinedType(methodDef(A:Set, T:K, L:List)) => T =/=K .K
+   rule hasDefinedType(methodDef(A:Set, S:Map, T:K, L:List)) => T =/=K .K
    rule hasNoDefinedTypes(.Set, .K) => true
    rule hasNoDefinedTypes(SetItem(A:K) S:Set, .K)
           => hasNoDefinedTypes(S, A)

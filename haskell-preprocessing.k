@@ -57,8 +57,9 @@ module HASKELL-PREPROCESSING
             //checkArgSortsAreTargets //checkParUsed
                  ~> (collectClassInfo
                 //TODO: check kind for class and derivings for data types are all star -> star kind
+                ~> (kindInferClass
                 ~> (collectExpressions
-                ~> genModuleChecks)))
+                ~> genModuleChecks))))
 
     rule genModuleChecks => genAllModuleNames
                          ~> (genExportSet
@@ -262,6 +263,7 @@ module HASKELL-PREPROCESSING
            => grabImportKindMapsAux(genInitKindMap(N, S, .K, .K, AM, BM)) ...</k>
          <currModule> Mod:K </currModule>
          <moduleName> Mod </moduleName>
+         <importKindMap> _:Map => Ks </importKindMap>
          <tempBetaMap> BM:Map </tempBetaMap>
          <moduleAlpha> AM:Map </moduleAlpha>
          <kindVarCounter> N:Int </kindVarCounter>
@@ -289,7 +291,7 @@ module HASKELL-PREPROCESSING
     rule <k> resultTyVarKindMap(N:Int, S:Set, M:Map) => .K ...</k>
          <currModule> Mod:K </currModule>
          <moduleName> Mod </moduleName>
-         <kindMap> _:Map => M </kindMap>
+         <kindMap> M':Map => M M' </kindMap>
          <kindVarCounter> _:Int => N </kindVarCounter>
          <kindVarSet> _:Set => S </kindVarSet>
 
@@ -327,7 +329,7 @@ module HASKELL-PREPROCESSING
          <moduleDefs> Ts:Set </moduleDefs>
          <imports> Is:Set </imports>
          <classNames> NM:Map => updateMapItem(NM,
-                          .K, Mod, className(Name)) </classNames>
+                          .K, Mod, SetItem(className(Name))) </classNames>
 
    rule getClassInfoAux(Name:K, Tv:K, error(A:K), T:K, Ds:K, As:K) => error(A)
    rule getClassInfoAux(Name:K, Tv:K, A:K, error(B:K), Ds:K, As:K) => error(B)
@@ -357,6 +359,84 @@ module HASKELL-PREPROCESSING
              <className> Name </className>
              <classMethods> _:Map => M </classMethods>
          ...</class>
+
+    rule <k> kindInferClass
+                => kindInferClassNext(genInitKindMapClass(N, S, .Set, .Map)) ...</k>
+         <currModule> Mod:K </currModule>
+         <classNames>... Mod |-> A:K ...</classNames>
+         <kindVarCounter> N:Int </kindVarCounter>
+         <kindVarSet> S:Set </kindVarSet>
+
+    rule <k> kindInferClassNext(resultTyVarKindMap(N:Int, S:Set, M:Map))
+               => buildContextMap(.Map, .K, keys(M)) ...</k>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <kindVarCounter> _:Int => N </kindVarCounter>
+         <kindVarSet> _:Set => S </kindVarSet>
+         <kindMap> M':Map => M M' </kindMap>
+ 
+    //second step, building a map from class-name to contexts
+    rule <k> buildContextMap(TM:Map, .K, .Set)
+                => kindClass(N, S, .Set, .K, TM, KM, Is, PM) ...</k>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <kindVarCounter> N:Int </kindVarCounter>
+         <kindVarSet> S:Set </kindVarSet>
+         <kindMap> KM:Map </kindMap>
+         <importKindMap> PM:Map </importKindMap>
+         <imports> Is:Set </imports>
+
+    rule buildContextMap(M:Map, .K, SetItem(A:K) S:Set)
+             => buildContextMap(M, A, S)
+    rule <k> buildContextMap(M:Map, className(A:K), S:Set)
+                  => buildContextMap(M (className(A:K) |-> resultSet(Cs)), .K, S) ...</k>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <class>...
+                <classModule> Mod </classModule>
+                <className> className(A:K) </className>
+                <classContext> Cs:Set </classContext>
+         ...</class>
+
+   //third, start kind infer on each class
+   //then goes to check contexts. 
+   rule kindClass(N:Int, S:Set, Rs:Set, .K, .Map, KM:Map, Is:Set, PM:Map) => .K
+
+   rule kindClass(N:Int, S:Set, Rs:Set, .K, CM:Map, KM:Map, Is:Set, PM:Map)
+               => kindClass(N, S, Rs, searchNoFatherClass(
+                               .K, .K, CM, Rs, PM), CM, KM, Is, PM)
+   rule kindClass(N:Int, S:Set, Rs:Set, error(A:K),
+           CM:Map, KM:Map, Is:Set, PM:Map) => error(A)
+   rule <k> kindClass(N:Int, S:Set, Rs:Set,
+             className(A:K), (className(A:K) |-> B:K) CM:Map, KM:Map, Is:Set, PM:Map)
+          => kindClassAux(N, S, SetItem(fullName(Mod, className(A:K))) Rs, 
+               className(A), kindInferClass(N +Int 1, S SetItem(kindVar(N)), Mod,
+                       F, .K, MM, (F |-> kindVar(N)) KM, Is, PM),
+                    CM, KM, Is, PM)
+                      ...</k>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <class>...
+                <classModule> Mod </classModule>
+                <className> className(A:K) </className>
+                <classTypeVar> F:K </classTypeVar>
+                <classMethods> MM:Map </classMethods>
+         ...</class>
+
+    rule kindClassAux(N:Int, S:Set, Rs:Set, CName:K, error(A:K),
+             CM:Map, KM:Map, Is:Set, PM:Map) => error(A)
+    rule <k> kindClassAux(N:Int, S:Set, Rs:Set, CName:K, resultTuple(A:K, B:K),
+             CM:Map, KM:Map, Is:Set, PM:Map)
+                => kindClass(N, S, Rs, .K, CM,
+                           KM[CName <- kindArrow(B, star) ], Is, PM) ...</k>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <class>...
+                <classModule> Mod </classModule>
+                <className> CName </className>
+                <classKind> kindArrow(B, star) </classKind>
+         ...</class>
+
 /*
    //functions to compile type class instances to ast form
     rule <k> collectInstances => getInstances(TM) ...</k>
