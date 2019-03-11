@@ -1387,7 +1387,7 @@ module HASKELL-KINDINFER
    rule searchNoFatherClass(.K, .K, (A:K |-> B:K) M:Map, S:Set, PM:Map)
             => searchNoFatherClass(A, B, M, S, PM)
    rule searchNoFatherClass(className(A:K), resultSet(S:Set), M:Map, Cs:Set, PM:Map)
-            => className(A)
+            => resultTupleSet(className(A), S)
         requires S <=Set Cs keys(PM)
    rule searchNoFatherClass(className(A:K), resultSet(S:Set), M:Map, Cs:Set, PM:Map)
             => searchNoFatherClass(.K, .K, M, Cs, PM)

@@ -209,7 +209,8 @@ module HASKELL-ABSTRACT-SYNTAX
     rule val(K:KResult) => valValue(K) [structural]
 
     syntax KResult ::= "sameAsContextClass"
-    syntax KResult ::= resultTuple(K, K) 
+    syntax KResult ::= resultTuple(K, K)
+    syntax KResult ::= resultTupleSet(K, Set) 
     syntax KResult ::= resultSet(Set)
     syntax KResult ::= resultSetMap(Set, Map)
     syntax KResult ::= resultMap(Map)

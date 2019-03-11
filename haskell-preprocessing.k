@@ -412,7 +412,8 @@ module HASKELL-PREPROCESSING
    rule kindClass(N:Int, S:Set, Rs:Set, error(A:K),
            CM:Map, KM:Map, Is:Set, PM:Map) => error(A)
    rule <k> kindClass(N:Int, S:Set, Rs:Set,
-             className(A:K), (className(A:K) |-> B:K) CM:Map, KM:Map, Is:Set, PM:Map)
+             resultTupleSet(className(A:K), Cs:Set),
+                    (className(A:K) |-> B:K) CM:Map, KM:Map, Is:Set, PM:Map)
           => kindClassAux(N, S, SetItem(fullName(Mod, className(A:K))) Rs, 
                className(A), kindInferClass(N +Int 1, S SetItem(kindVar(N)), Mod,
                        F, .K, MM, getRidWrapper(B), (F |-> kindVar(N)) KM, Is, PM),
