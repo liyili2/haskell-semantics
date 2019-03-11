@@ -41,6 +41,7 @@ module HASKELL-CONFIGURATION
                     <defaultInt> Integer </defaultInt>
                     <defaultDouble> Double </defaultDouble>
                     <moduleMethods> .Map </moduleMethods>
+                    <moduleRefs> .Map </moduleRefs>
                 </module>
               <typeNameInMod> .Map </typeNameInMod>
                    //store all type names in modules. from module name to type name+arity
@@ -57,7 +58,7 @@ module HASKELL-CONFIGURATION
                 <classModule> .K </classModule>
                 <className> .K </className>
                 <classTypeVar> .K </classTypeVar>
-                <classKind> .K </classKind>
+                <classKind> .K </classKind> //kind for the typevar in the class
                 <classContext> .Set </classContext>
                 <classMethods> .Map </classMethods>
               </class>

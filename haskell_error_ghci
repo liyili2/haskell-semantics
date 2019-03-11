@@ -64,6 +64,25 @@ so am empty type class in Haskell will be recognized having typevar as *
 
 the document does not specify this.
 
+13, haskell function type is not assotiative.
 
 
+14, haskell type system does not guarantee that if a program type checked, then running the program will not fail unexpectedly, because in a let binding, you can have let [x,1,y] = [1,1], and the program will type check but getting x and y will result in failure. Non-exhaustive patterns.
 
+15, inherited classes mistakes. 
+
+In some cases, circular checks fail in Haskell for contexts.
+
+for example:
+
+; class S a where {f1 :: S a => a -> Int }
+;
+; class S a => F a where {f3 :: a -> a -> Int }
+
+this program is valid and compiled in haskell, but
+
+; class F a => S a where {f1 :: a -> Int }
+;
+; class S a => F a where {f3 :: a -> a -> Int }
+
+This program will be claimed to have a circular contexts

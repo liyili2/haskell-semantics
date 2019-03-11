@@ -308,7 +308,7 @@ module HASKELL-SYNTAX
     //define type and simple type
     syntax SimpleType ::= TyCon TyVars  [klabel('simpleTypeCon), onlyLabel]
     syntax Type ::= BType
-                  | BType "->" Type  [klabel('typeArrow)]
+                  | BType "->" Type  [klabel('typeArrow), right]
     syntax BType ::= AType
                    | AType BType [klabel('baTypeCon), onlyLabel]
 

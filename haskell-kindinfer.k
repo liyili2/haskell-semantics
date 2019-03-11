@@ -1489,24 +1489,30 @@ module HASKELL-KINDINFER
    rule isSameInMap(A:K, B:K, (A |-> B:K) M:Map) => true
    rule isSameInMap(A:K, B:K, M:Map) => false [owise]
 
-   syntax KItem ::= kindInferClass(Int, Set, K, K, K, Map, Map, Set, Map) [function]
+   syntax KItem ::= kindInferClass(Int, Set, K, K, K, Map, Set, Map, Set, Map) [function]
                //counter, kind-var-set, mod, type-var, execute, method-map,
-               // kind env, imports, import-map
+               // contexts, kind env, imports, import-map
                   | kindInferClassAux(K, K, K, K, Map, Map, Set, Map) [function]
                   | kindInferClassCheck(Int, Set, K, K, K, Map, Map, Set, Map) [function]
                   | kindInferClassCheckAux(Int, Set, K, K, K, Map, Map, Set, Map) [function]
                   | kindInferClassCheckAux1(K, K, K, K, Map,Map, Set, Map) [function]
 
    rule kindInferClass(N:Int, S:Set, Mod:K, A:K,
-               .K, .Map, (A |-> B:K) KM:Map, Is:Set, PM:Map)
-              => resultTuple(A, B)
+               .K, .Map, Cs:Set, (A |-> B:K) KM:Map, Is:Set, PM:Map)
+              => resultTuple(A, star)
+        requires Cs <=Set .Set
+   rule kindInferClass(N:Int, S:Set, Mod:K, A:K,
+               .K, .Map, Cs:Set, (A |-> B:K) KM:Map, Is:Set, PM:Map)
+              => sameAsContextClass
+        requires notBool (Cs <=Set .Set)
    rule kindInferClass(N:Int, S:Set, Mod:K, A:K, .K, (X:K |-> Y:K) MM:Map,
-                  KM:Map, Is:Set, PM:Map)
-           => kindInferClass(N, S, Mod, A:K, Y, MM, KM, Is, PM)
+                  Cs:Set, KM:Map, Is:Set, PM:Map)
+           => kindInferClass(N, S, Mod, A:K, Y, MM, Cs, KM, Is, PM)
    rule kindInferClass(N:Int, S:Set, Mod:K, A:K, methodDef(
-             Cs:Set, Fs:Map, T:K, Bin:List), MM:Map, KM:Map, Is:Set, PM:Map)
+             Cs:Set, Fs:Map, T:K, Bin:List), MM:Map, Ccs:Set, KM:Map, Is:Set, PM:Map)
            => kindInferClassAux(Mod:K, A:K, T,
                  genKindMap(N, S, keys(Fs), KM), MM, KM, Is, PM)
+
    rule kindInferClassAux(Mod:K, A:K, T:K, resultTransSetMap(
               N:Int, S:Set, KM:Map), MM:Map, Old:Map, Is:Set, PM:Map)
            => kindInferClassAux(Mod, A, T, kindInference(

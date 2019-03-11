@@ -96,6 +96,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= kindClassAux(Int, Set, Set, K, K, Map, Map, Set, Map)
                 //counter, var-set, done-class-set, classname, execute,
                 // class-father-map, kind-map, imports, import-map
+    syntax KItem ::= kindClassNext(K, Int, Set, Set, K, Map, Map, Set, Map)
 
     syntax KItem ::= "collectInstances"
     syntax KItem ::= getInstances(K)
@@ -103,7 +104,6 @@ module HASKELL-ABSTRACT-SYNTAX
 
     syntax KItem ::= "collectExpressions"
     syntax KItem ::= getExpressions(K)
-    syntax KItem ::= getExpressionsAux(K)
 
     //preprocessing of beta map
     syntax KItem ::= "makePreBetaMap"
@@ -200,6 +200,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax ElemList ::= List{Element, ","} [strict]
     rule val(K:KResult) => valValue(K) [structural]
 
+    syntax KResult ::= "sameAsContextClass"
     syntax KResult ::= resultTuple(K, K) 
     syntax KResult ::= resultSet(Set)
     syntax KResult ::= resultSetMap(Set, Map)
@@ -215,6 +216,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KResult ::= resultTransList(Int, List) //int, exp-list
     syntax KResult ::= resultTransMap(Int, Map) //int, exp-map
     syntax KResult ::= resultTransSetMap(Int, Set, Map) //int, fun-sets, map
+    syntax KResult ::= resultTransMapMap(Int, Map, Map) //int, fun-map, map
     syntax KResult ::= resultTransSetTerm(Int, Set, K) //int, fun-sets, map
 
     //abstract syntax for type constrs

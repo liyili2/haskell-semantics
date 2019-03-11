@@ -228,6 +228,10 @@ module HASKELL-HELPER
    rule getMethodSet(A:K, B:K, M:Map) => .Set [owise]
 
    //identify functions
+   syntax Bool ::= isForAll(K) [function]
+   rule isForAll(forall(As:Set, B:K)) => true
+   rule isForAll(A:K) => false [owise]
+
    syntax Bool ::= isKindArrow(K) [function]
    rule isKindArrow(kindArrow(A:K, B:K)) => true
    rule isKindArrow(A:K) => false [owise]

@@ -957,6 +957,54 @@ module HASKELL-TRANSFORMATION
 
    //functions to add possible pattern rules for type classes
    //only for the right hand side.
+
+   //check if a list of def variables have been defined before (false) or new (true)
+   syntax Bool ::= isNewPats(Map, K, Set, K) [function]
+   rule isNewPats(M:Map, .K, .Set, .K) => true
+   rule isNewPats(M:Map, .K, SetItem(A:K) S:Set, .K)
+         => isNewPats(M, .K, S, A)
+   rule isNewPats(M:Map, .K, S:Set, A:KItem)
+         => isNewPats(M, .K, S, .K)
+        requires notBool (A in keys(M))
+   rule isNewPats((A |-> B:K) M:Map, .K, S:Set, A:KItem)
+           => isNewPats(M, B, S, A)
+   rule isNewPats(M:Map, methodDef(Cs:Set, Ts:Map, T:K, ListItem(B:K) L:List), S:Set, A:KItem)
+           => false
+   rule isNewPats(M:Map, methodDef(Cs:Set, Ts:Map, T:K, .List), S:Set, A:KItem)
+           => isNewPats(M, .K, S, .K)
+
+   //check if a list of decl variables have been defined before (false) or new (true)
+   syntax Bool ::= isNewDecl(Map, K, K, K) [function]
+   rule isNewDecl(M:Map, .K, A:Var, .K) => true
+        requires notBool (funName(pillVar(A)) in keys(M))
+   rule isNewDecl(M:Map, .K, 'varCon(A:Var,, As:Vars), .K)
+             => isNewDecl(M, .K, As, .K)
+        requires notBool (funName(pillVar(A)) in keys(M))
+   rule isNewDecl(M:Map, .K, A:Var, .K)
+            => isNewDecl(M, .K, .K, funName(pillVar(A)))
+   rule isNewDecl((A |-> B:K) M:Map, .K, .K, A:KItem)
+           => isNewDecl(M, B, .K, A)
+   rule isNewDecl(M:Map, methodDef(Cs:Set, Ts:Map, .K, L:List),
+         .K, A:KItem) => true
+   rule isNewDecl(M:Map, .K, 'varCon(A:Var,, As:Vars), .K)
+            => isNewDecl(M, .K, As, funName(pillVar(A)))
+   rule isNewDecl((A |-> B:K) M:Map, .K, As:Vars, A:KItem)
+            => isNewDecl(M, B, As, A)
+   rule isNewDecl(M:Map, methodDef(Cs:Set, Ts:Map, .K, L:List),
+         As:Vars, A:KItem) => isNewDecl(M, .K, As, .K)
+   rule isNewDecl(M:Map, methodDef(Cs:Set, Ts:Map, T:KItem, L:List),
+         As:Vars, A:KItem) => false
+
+   syntax Map ::= updatePatMapInSet(Map, K, Set, K) [function]
+   rule updatePatMapInSet(M:Map, .K, .Set, A:K) => M
+   rule updatePatMapInSet(M:Map, .K, SetItem(A:K) S:Set, B:K)
+          => updatePatMapInSet(M, A, S, B)
+   rule updatePatMapInSet(M:Map, A:KItem, S:Set, B:K)
+          => updatePatMapInSet(M[A <- methodDef(.Set, .Map, .K, ListItem(B))],.K, S, B)
+        requires notBool (A in keys(M))
+   rule updatePatMapInSet((A |-> C:K) M:Map, A:KItem, S:Set, B:K)
+          => updatePatMapInSet((A |-> updatePatListInDef(C, B)) M, .K, S, B)
+
    syntax KItem ::= updatePatListInDef(K, K) [function]
    rule updatePatListInDef(methodDef(Cons:Set, S:Map, A:K, L:List), D:K)
           =>  methodDef(Cons, S, A, L ListItem(D))
@@ -968,6 +1016,31 @@ module HASKELL-TRANSFORMATION
    rule updatePatMapInExp(M:Map, A:K, C:K)
                   => M (A |-> methodDef(.Set, .Map, .K, ListItem(C))) [owise]
 
+   syntax KItem ::= updateDeclInDef(K, Set, K) [function]
+   rule updateDeclInDef(methodDef(.Set, .Map, .K, L:List), Cs:Set, forall(As:Set, T:K))
+          => methodDef(Cs, makeVarContextMap(As), T, L)
+   rule updateDeclInDef(methodDef(.Set, .Map, .K, L:List), Cs:Set, T:K)
+          => methodDef(Cs, .Map, T, L)
+        requires notBool isForAll(T)
+
+   syntax Map ::= updateDeclMapInExp(Map, K, Set, K) [function]
+   rule updateDeclMapInExp(M:Map, A:K, Cs:Set, forall(As:Set, T:K))
+         => M (A |-> methodDef(Cs, makeVarContextMap(As), T, .List))
+        requires notBool (A in keys(M))
+   rule updateDeclMapInExp(M:Map, A:K, Cs:Set, T:K)
+         => M (A |-> methodDef(Cs, .Map, T, .List))
+        requires notBool (A in keys(M)) andBool notBool isForAll(T)
+   rule updateDeclMapInExp((A |-> B:K) M:Map, A:K, Cs:Set, T:K)
+         => (A |-> updateDeclInDef(B, Cs, T)) M
+
+   syntax Map ::= updateDeclMapList(Map, Vars, Set, K) [function]
+   rule updateDeclMapList(M:Map, V:Var, Cs:Set, T:K)
+          => updateDeclMapInExp(M, funName(pillVar(V)), Cs, T)
+   rule updateDeclMapList(M:Map, 'varCon(A:Var,, As:Vars), Cs:Set, T:K)
+          => updateDeclMapList(updateDeclMapInExp(M,
+                 funName(pillVar(A)), Cs, T), As, Cs, T)
+
+   //transform patterns
    syntax KItem ::= toAstPat(Int, K, K, K, K, Map, Set, Set) [function]
       //var-counter, curr-mod, CDecls, var, exp, class-map
                   | transCDecl(K, K) [function]
@@ -1015,28 +1088,113 @@ module HASKELL-TRANSFORMATION
             =>  resultTrans(N, funAssign(X, L, A))
 
    //transformation of expressions in a module, bascially an exp is a decl
-/*
-   syntax KItem ::= transDeclFun(Int, K, K, Set, Map)  [function]
-                  | transDeclFunAux(K, K, Set, Map)    [function]
-                  | transDeclFunAux1(K, K, Set)        [function]
-                 //gen-var, cur-mod, decl, function-name-set, fun-map
-   rule transDeclFun(N:Int, Mod:K, 'declFunLhsRhs(F:FunLhs,, R:Rhs), S:Set, M:Map)
-          => transDeclFunAux(transFunLhs(Mod, F), transRhs(N, Mod, R), S, M)
-        requires notBool getCoreVar(F) in S orBool getCoreVar(F) in keys(M)
-   rule transDeclFun(N:Int, Mod:K, 'declFunLhsRhs(F:FunLhs,, R:Rhs), S:Set, M:Map)
-          => error(classVarCollipse)
-        requires getCoreVar(F) in S andBool notBool getCoreVar(F) in keys(M)
-   rule transDeclFun(N:Int, Mod:K, 'declPatRhs(F:Pat,, R:Rhs), S:Set, M:Map)
-          => transDeclFunAux1(transPat(Mod, F), transRhs(N, Mod, R), S)
+   //and also check the kind for decl of each function
+   syntax KItem ::= transDeclFun(Int, K, K, Set, Set, Map, Map)  [function]
+           //gen-var, cur-mod, topdecls, type-set, import-set, store fun-map, store exp-map
+                  | transDeclFunAux(Int, K, K, K, Set, Set, Map, Map)    [function]
+                  | transDeclFunAux1(K, K, K, K, Set, Set, Map, Map)    [function]
+                  | transDeclFunAux2(K, Set, K, K, K, Set, Set, Map, Map)    [function]
+                  | transDeclFunAux3(Int, K, Vars, Set, K, K, Set, Set, Map, Map) [function]
+                  | transDeclFunAux4(Int, K, Vars, K, K, K, Set, Set, Map, Map) [function]
 
-   rule transDeclFunAux(funPat(ListItem(X:K) L:List), resultTrans(N:Int, B:K), S:Set, M:Map)
-             => resultTransSetMap(N, SetItem(X), updatePatMapInExp(M, X, funAssign(L, B)))
-   rule transDeclFunAux(A:K, error(B:K), S:Set, M:Map) => error(B)
+    rule transDeclFun(N:Int, Mod:K, 'bodyimpandtop(I:ImpDecls,,
+                  T:TopDecls), Ts:Set, Is:Set, M:Map, RM:Map)
+           => transDeclFun(N, Mod, T, Ts, Is, M, RM)
+    rule transDeclFun(N:Int, Mod:K,'bodyimpdecls(_:ImpDecls),
+                Ts:Set, Is:Set, M:Map, RM:Map) => .K
+    rule transDeclFun(N:Int, Mod:K, 'bodytopdecls(T:TopDecls),
+                Ts:Set, Is:Set, M:Map, RM:Map)
+             => transDeclFun(N, Mod, T, Ts, Is, M, RM)
+    rule transDeclFun(N:Int, Mod:K, .TopDecls,
+                Ts:Set, Is:Set, M:Map, RM:Map) => resultTransMapMap(N, M, RM)
 
-   rule transDeclFunAux1(A:K, error(B:K), S:Set) => error(B)
-   rule transDeclFunAux1(A:K, resultTrans(N:Int, B:K), S:Set)
-             => resultTransSetTerm(N, S, lambdaAssign(A, B))
-*/
+    rule transDeclFun(N:Int, Mod:K, 'topdeclslist(A:TopDecl,, As:TopDecls),
+             Ts:Set, Is:Set, M:Map, RM:Map)
+           => transDeclFunAux(N, Mod, A, As, Ts, Is, M, RM)
+   rule transDeclFunAux(N:Int, Mod:K, 'declFunLhsRhs(F:FunLhs,, R:Rhs),
+          As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+           => transDeclFunAux1(Mod, transPosFunLhs(Mod, F, Ts, Is), 
+                transRhs(N, Mod, R, getBoundVarsInPat(F), Ts, Is),
+                    As, Ts, Is, M, RM)
+        requires hasNoConflictAllVars(F)
+   rule transDeclFunAux(N:Int, Mod:K, 'declFunLhsRhs(F:FunLhs,, R:Rhs),
+          As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+         => error(funNameConflicting)
+        requires notBool hasNoConflictAllVars(F)
+   rule transDeclFunAux(N:Int, Mod:K, 'declPatRhs(F:Pat,, R:Rhs),
+               As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+         => transDeclFunAux2(Mod, getFreeVarsInPat(F),
+                  transPosFunLhs(Mod, F, Ts, Is), 
+                transRhs(N, Mod, R, .Set, Ts, Is),
+                    As, Ts, Is, M, RM)
+        requires hasNoConflictAllVars(F)
+   rule transDeclFunAux(N:Int, Mod:K, 'declPatRhs(F:Pat,, R:Rhs),
+               As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+         => error(funNameConflicting)
+        requires notBool hasNoConflictVars(F)
+   rule transDeclFunAux(N:Int, Mod:K, 'varAssign(A:Vars,, B:Type),
+               As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+         => transDeclFunAux3(N, Mod, A, .Set, toAbsTypeWithAll(Mod,
+                 B, .Set, getFreeTypeVars(B), Ts, Is), As, Ts, Is, M, RM)
+        requires isNewDecl(M, .K, A, .K)
+   rule transDeclFunAux(N:Int, Mod:K, 'varAssign(A:Vars,, B:Type),
+               As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+         => error(duplicateDecl)
+        requires notBool isNewDecl(M, .K, A, .K)
+
+   rule transDeclFunAux(N:Int, Mod:K, 'genAssignContext(A:Vars,,
+                  C:Context,, B:Type),
+               As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+         => transDeclFunAux4(N, Mod, A, contextToSet(Mod, C,
+                  .K, .Set, Ts, Is), B, As, Ts, Is, M, RM)
+        requires isNewDecl(M, .K, A, .K)
+   rule transDeclFunAux(N:Int, Mod:K, 'genAssignContext(A:Vars,,
+                  C:Context,, B:Type),
+               As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+         => error(duplicateDecl)
+        requires notBool isNewDecl(M, .K, A, .K)
+   rule transDeclFunAux(N:Int, Mod:K, A:K,
+          As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+               => transDeclFun(N, Mod, As, Ts, Is, M, RM) [owise]
+
+   rule transDeclFunAux1(Mod:K, error(A:K), B:K, As:K, Ts:Set,
+          Is:Set, M:Map, RM:Map) => error(A)
+   rule transDeclFunAux1(Mod:K, A:K, error(B:K), As:K, Ts:Set,
+          Is:Set, M:Map, RM:Map) => error(B)
+   rule transDeclFunAux1(Mod:K, funPat(ListItem(X:K) L:List), resultTrans(N:Int, B:K),
+            As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+         => transDeclFun(N, Mod, As, Ts, Is,
+                  updatePatMapInExp(M, X, funAssign(X, L, B)), RM)
+
+   rule transDeclFunAux2(Mod:K, S:Set, error(A:K), B:K, As:K, Ts:Set,
+          Is:Set, M:Map, RM:Map) => error(A)
+   rule transDeclFunAux2(Mod:K, S:Set, A:K, error(B:K), As:K, Ts:Set,
+          Is:Set, M:Map, RM:Map) => error(B)
+   rule transDeclFunAux2(Mod:K, S:Set, funPat(ListItem(X:K)), resultTrans(N:Int, B:K),
+            As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+         => transDeclFun(N +Int 1, Mod, As, Ts, Is,
+                  updatePatMapInSet(M, .K, S, genVar(N)),
+                  (genVar(N) |-> funAssign(X, .List, B)) RM)
+        requires isNewPats(M, .K, S, .K)
+   rule transDeclFunAux2(Mod:K, S:Set, funPat(ListItem(X:K)), resultTrans(N:Int, B:K),
+            As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+         => error(repeatedNames)
+        requires notBool isNewPats(M, .K, S, .K)
+
+   rule transDeclFunAux3(N:Int, Mod:K, A:Vars, C:Set, error(B:K),
+             As:K, Ts:Set, Is:Set, M:Map, RM:Map) => error(B)
+   rule transDeclFunAux3(N:Int, Mod:K, A:Vars, C:Set,
+           B:K, As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+          => transDeclFun(N, Mod, As, Ts, Is,
+                   updateDeclMapList(M, A, C, B), RM) [owise]
+
+   rule transDeclFunAux4(N:Int, Mod:K, A:Vars, error(C:K), B:K,
+          As:K, Ts:Set, Is:Set, M:Map, RM:Map) => error(C)
+   rule transDeclFunAux4(N:Int, Mod:K, A:Vars, resultSet(C:Set), B:K,
+          As:K, Ts:Set, Is:Set, M:Map, RM:Map)
+          => transDeclFunAux3(N, Mod, A, C, toAbsTypeWithAll(Mod,
+                 B, .Set, getFreeTypeVars(B), Ts, Is), As, Ts, Is, M, RM)
+
    //add type/context to method def in a map
    syntax KItem ::= addDeclToK(K, Set, K) [function]
    rule addDeclToK(methodDef(Cs:Set, S:Map, T:K, L:List), S1:Set, T1:K)
