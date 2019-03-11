@@ -87,6 +87,14 @@ module HASKELL-ABSTRACT-SYNTAX
               // class name, class type-var, putClassMapSet
 
     //dealing with kind inference for classes in a module
+    syntax KItem ::= "derivingClassChecks"
+              //two checks
+              //first the number of tyvars for each data/newtype is
+              //greater-equal than the number of deriving classes of that data
+              //second, if a class is deriving, all its class methods
+              //should have a default def, otherwise, the deriving class is either
+              //not having an implementation for the method
+              //, or it will be duplicated because of an instance for that data.        
     syntax KItem ::= "kindInferClass"
     syntax KItem ::= kindInferClassNext(K)
     syntax KItem ::= buildContextMap(Map, K, Set)

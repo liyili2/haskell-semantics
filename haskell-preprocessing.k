@@ -51,15 +51,16 @@ module HASKELL-PREPROCESSING
     rule nextChecks => makePreBetaMap
                 ~> (grabAllTypeNames
                 ~> (genKindMap
-                ~> nextNextChecks))
-
-    rule nextNextChecks => (checkOnlyDefault
+                ~> (checkOnlyDefault
             //checkArgSortsAreTargets //checkParUsed
-                 ~> (collectClassInfo
+                ~> nextNextChecks)))
+
+    rule nextNextChecks => collectClassInfo
                 //TODO: check kind for class and derivings for data types are all star -> star kind
                 ~> (kindInferClass
+                ~> (derivingClassChecks
                 ~> (collectExpressions
-                ~> genModuleChecks))))
+                ~> genModuleChecks)))
 
     rule genModuleChecks => genAllModuleNames
                          ~> (genExportSet
@@ -464,6 +465,13 @@ module HASKELL-PREPROCESSING
                 <classKind> _:K => B </classKind>
          ...</class>
 
+    //check all contexts having correct kinds
+    rule <k> derivingClassChecks => .K ...</k>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod:K </moduleName>
+         <kindMap> .Map </kindMap>
+         <imports> .Set </imports>
+         <importKindMap> .Map </importKindMap>
 /*
    //functions to compile type class instances to ast form
     rule <k> collectInstances => getInstances(TM) ...</k>

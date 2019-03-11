@@ -1,3 +1,5 @@
+allow: DeriveAnyClass, ConstrainedClassMethods
+
 1. Haskell export system problem. Does not check the name of the export module for a type/class-method. in ghci 8.0 version.
 
 ex: module AStack( Stack(G.Empty), Test(AStack.xx), G.pop, top, size ) the AStack and G cannot be checked
@@ -64,7 +66,13 @@ so am empty type class in Haskell will be recognized having typevar as *
 
 the document does not specify this.
 
-13, haskell function type is not assotiative.
+The same in defining data type and newtype. 
+
+If we have data R a b = A Int 
+
+then a and b will have default kind *
+
+13, haskell function type is not assotiative. ??
 
 
 14, haskell type system does not guarantee that if a program type checked, then running the program will not fail unexpectedly, because in a let binding, you can have let [x,1,y] = [1,1], and the program will type check but getting x and y will result in failure. Non-exhaustive patterns.
