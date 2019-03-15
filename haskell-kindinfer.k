@@ -1381,6 +1381,30 @@ module HASKELL-KINDINFER
             => genInitKindMapClass(N +Int 1, S SetItem(kindVar(N)),
              As, (A |-> kindArrow(kindVar(N), star)) T)
 
+   syntax Set ::= getContextsMethods(Map, K, K)    [function]
+                | getContextsMethodsAux(Set, K, K) [function]
+   rule getContextsMethods(.Map, .K, A:K) => .Set
+   rule getContextsMethods((A:K |-> B:K) M:Map, .K, C:K)
+            => getContextsMethods(M, B, C)
+   rule getContextsMethods(M:Map, methodDef(
+           S:Set, Bo:Map, F:K, L:List), C:K)
+            => getContextsMethodsAux(S, .K, C) getContextsMethods(M, .K, C)
+   rule getContextsMethodsAux(.Set, .K, C:K) => .Set
+   rule getContextsMethodsAux(SetItem(A:K) S:Set, .K, C:K)
+           => getContextsMethodsAux(S, A, C)
+   rule getContextsMethodsAux(S:Set, classTitle(A:K, ListItem(C:K) L:List), C:K)
+          => SetItem(A:K) getContextsMethodsAux(S, .K, C)
+   rule getContextsMethodsAux(S:Set, classTitle(A:K, ListItem(B:K) L:List), C:K)
+          => getContextsMethodsAux(S, .K, C)
+        requires C =/=K B
+
+   syntax Set ::= getCoreClass(Set) [function]
+          KItem ::= getCoreClassAux(K) [function]
+   rule getCoreClass(.Set) => .Set
+   rule getCoreClass(SetItem(A:K) S:Set))
+         => SetItem(getCoreClassAux(A)) getCoreClass(S)
+   rule getCoreClassAux(classTitle(A:K, L:List)) => A
+
    syntax KItem ::= searchNoFatherClass(K, K, Map, Set, Map) [function]
                 //class, contexts, finished classes (with curr-mod), import-maps
    rule searchNoFatherClass(.K, .K, .Map, S:Set, PM:Map) => error(cycleClasses)

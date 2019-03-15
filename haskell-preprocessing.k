@@ -331,6 +331,12 @@ module HASKELL-PREPROCESSING
          <imports> Is:Set </imports>
          <classNames> NM:Map => updateMapItem(NM,
                           .K, Mod, SetItem(className(Name))) </classNames>
+         requires isSContext(Cs)
+
+    rule getClassInfo('topdeclslist('class(Cs:OptContext,,
+                  Name:ConId,, Tv:TyVar,, Ds:OptCDecls),, As:TopDecls))
+               => error(syntaxError)
+         requires notBool isSContext(Cs)
 
    rule getClassInfoAux(Name:K, Tv:K, error(A:K), T:K, Ds:K, As:K) => error(A)
    rule getClassInfoAux(Name:K, Tv:K, A:K, error(B:K), Ds:K, As:K) => error(B)
@@ -390,16 +396,24 @@ module HASKELL-PREPROCESSING
     rule buildContextMap(M:Map, .K, SetItem(A:K) S:Set)
              => buildContextMap(M, A, S)
     rule <k> buildContextMap(M:Map, className(A:K), S:Set)
-                  => buildContextMap(M (className(A:K) |-> resultSet(Cs)), .K, S) ...</k>
+                  => buildContextMap(M (className(A:K)
+                       |-> resultSet(getCoreClass(Cs)
+                             getContextsMethods(FM, .K, Tv))), .K, S) ...</k>
          <currModule> Mod:K </currModule>
          <class>...
                 <classModule> Mod </classModule>
                 <className> className(A:K) </className>
                 <classContext> Cs:Set </classContext>
+                <classMethods> FM:Map </classMethods>
+                <classTypeVar> Tv:K </classTypeVar>
          ...</class>
 
    //third, start kind infer on each class
    //then goes to check contexts. 
+   //assume that all contexts for a class on the class type-var
+   //are not circular.
+   //also assume that for all contexts for a method in a class,
+   // their bounded type-vars must appear in the type annotation body of the method.
    rule <k> kindClass(N:Int, S:Set, Rs:Set, .K, .Map,
                   KM:Map, Is:Set, PM:Map) => .K ...</k>
          <currModule> Mod:K </currModule>

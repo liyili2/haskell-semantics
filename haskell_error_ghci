@@ -1,4 +1,4 @@
-allow: DeriveAnyClass, ConstrainedClassMethods
+allow: DeriveAnyClass, ConstrainedClassMethods AllowAmbiguousTypes ScopedTypeVariables FlexibleContexts
 
 1. Haskell export system problem. Does not check the name of the export module for a type/class-method. in ghci 8.0 version.
 
@@ -94,3 +94,75 @@ this program is valid and compiled in haskell, but
 ; class S a => F a where {f3 :: a -> a -> Int }
 
 This program will be claimed to have a circular contexts
+
+
+16, AllowAmbiguousTypes and ConstrainedClassMethods FlexibleContexts problems:
+These three extensions together give the possibility of having the following type classes:
+;class G f where {f1:: G f => Int -> Int;f1 1 = 1; f1 2 = 2}
+;instance G (R a) where {f1 1 = 1; f1 n = 2}
+; g (A 1) = f1 1
+
+You can have defined a type class without type-var in f1. In using the type-class, it will give error message saying that it cannot solve the type-var f. This is odd, and I think type-class is better to be required to having type variable appeared in at least one of the type-variable. 
+
+17, FlexibleContexts and ConstrainedClassMethods can actually allow circular type-class but Haskell does not check it. Like:
+
+data R a = A Int | B Int | C a 
+;class Q f where {f2:: G f => f a -> Int;
+                  f3:: f b -> Int}
+
+;class Q f => G f where {f1:: f a -> Int}
+
+;instance Q R where {f2 (A 1) = 1; f2 (C x) = 3; f3 (A 1) = 2; f3 (C x) = 3}
+;instance G R where {f1 x = 4}
+
+This code is valid in haskell, which should not since in order to have Q R, we need to have instance of G R but in order to have G R we also need to have implementation of Q R which is circular. 
+
+18, we have the following code:
+
+;f4:: G f => f a -> Int
+;f4 x = 4
+
+;g (C x) = f4 (C x)
+
+This code will have a warning saying that no instance for G R
+
+however, if we have the following code:
+
+;class Q f where {f2:: G f => f a -> Int;
+                  f3:: f b -> Int}
+
+;class G f where {f1:: f a -> Int}
+
+;instance Q R where {f2 x = 1; f3 (A 1) = 2; f3 (C x) = 3}
+
+data R a = A Int | B Int | C a 
+;class Q f where {f2:: G f => f a -> Int;
+                  f3:: f b -> Int}
+
+;class Q f => G f where {f1:: f a -> Int}
+
+;instance Q R where {f2 (C x) = 1; f3 (A 1) = 2; f3 (C x) = 3}
+
+;g x = f2 x
+
+this code can actually be compiled. This is due to no circular check. 
+
+19. Haskell allows ConstrainedClassMethods like f :: G a => a -> Int
+
+However, a coder can do the following:
+
+    data R a = A Int | B Int | C a 
+    data S a = E Int | F Int | G a
+    data F f a = D (f a)
+
+     class G f where {f1:: f a -> Int}
+    instance G (F f) where {f1 x = 1}
+
+     f :: G (q R) => (R Int) -> q t a -> Int
+    f x y = 1
+
+    g x = f (A 1) (D (G 1))
+
+the definition of method f is a valid code. You can define constraint like G (q R), the R is a type name. The meaning of having constraint like G (q R) is very weird. The R here is a type name but it only serves kind information here. Since R has kind * -> *, it means that q having a kind (* -> *) -> *. Since class G requires its type var to have * -> *, so the kind for q is actually (* -> *) -> * -> *. 
+ If we have G (q a), then Haskell will only assume that it has kind * -> * -> *. The only purpose of R is serving the kind indicator. It does not restrict anything about q. People are free to put anything they want for q without mention type R at all. 
+ 

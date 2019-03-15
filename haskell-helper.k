@@ -213,6 +213,17 @@ module HASKELL-HELPER
    rule hasNoConflictAllVars(A:K) => size(getFreeVarsInPat(A) getBoundVarsInPat(A))
                                        ==K size(getFreeVarsInPatList(A) getBoundVarsInPatList(A))
 
+   //a check to make sure class/instance context is scontext
+   syntax Bool ::= isSContext(K) [function]
+   rule isSContext('emptyContext(.KList)) => true
+   rule isSContext(C:Context =>) => isSContext(C)
+   rule isSContext(C:SimpleClass) => true
+   rule isSContext('multiClass(A:K,, B:K,, C:K)) => false
+   rule isSContext('contextClass(Cs:Classes)) => isSContext(Cs)
+   rule isSContext(.Classes) => true
+   rule isSContext('classesCon(C:Class,, Cs:Classes))
+            => isSContext(C) andBool isSContext(Cs)
+
    //check if a module contains the same class name before
    syntax Bool ::= hasClassName(K, K, K, Map) [function]
    rule hasClassName(A:K, C:K, .K, (A:K |-> B:K) M:Map)
