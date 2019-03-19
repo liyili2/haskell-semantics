@@ -24,8 +24,11 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "typeConKindNumError"
     syntax KItem ::= "typeVarKindBad"
     syntax KItem ::= "typeVarKindNumError"
+    syntax KItem ::= "multipleTypeVar"
     syntax KItem ::= "kindUnifierFail"
     syntax KItem ::= "classKindNotEqual"
+    syntax KItem ::= "classKindNotEqualForTypeVar"
+    syntax KItem ::= "allBoundClassVarsMustInScope"
     syntax KItem ::= "ambiguousTypeVar"
     syntax KItem ::= "classVarCollipse"
     syntax KItem ::= "classVarNotInScope"
@@ -96,15 +99,16 @@ module HASKELL-ABSTRACT-SYNTAX
               //not having an implementation for the method
               //, or it will be duplicated because of an instance for that data.        
     syntax KItem ::= "kindInferClass"
-    syntax KItem ::= kindInferClassNext(K)
+    syntax KItem ::= genInitKindMapClass(Set)
     syntax KItem ::= buildContextMap(Map, K, Set)
-    syntax KItem ::= kindClass(Int, Set, Set, K, Map, Map, Set, Map)
+    syntax KItem ::= kindClass(Int, Set, Set, K, Map, Set, Map, Set, Map)
                 //counter, var-set, done-class-set, curr-class/error, 
-               //class-father-map, kind-map, imports, import-map
-    syntax KItem ::= kindClassAux(Int, Set, Set, K, K, Map, Map, Set, Map)
-                //counter, var-set, done-class-set, classname, execute,
-                // class-father-map, kind-map, imports, import-map
-    syntax KItem ::= kindClassNext(K, Int, Set, Set, K, Map, Map, Set, Map)
+               //class-father-map, tuples, kind-map, imports, import-map
+    syntax KItem ::= kindClassAux(Set, K, K, Map, Set, Map, Set, Map)
+                //done-class-set, classname, execute,
+                // class-father-map, tuples, kind-map, imports, import-map
+    syntax KItem ::= kindClassCheck(K, Map)
+    syntax KItem ::= kindClassFinal(Map, Set)
 
     syntax KItem ::= "collectInstances"
     syntax KItem ::= getInstances(K)
@@ -218,6 +222,9 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KResult ::= resultDefaultTypes(K, K)
     syntax KResult ::= resultTyVarKindMap(Int, Set, Map)
                          //new-count, new-kind-vars, new-kind-map
+    syntax KResult ::= resultKindTupleMap(Int, Set, Set, Map)
+                         //new-count, new-kind-vars, tuples, new-kind-map
+
     syntax KResult ::= resultTyVarKindList(Int, Set, List)
                          //new-count, new-kind-vars, new-kind-in-list
     syntax KResult ::= resultIntMap(Int, Map) //counter, map
@@ -227,6 +234,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KResult ::= resultTransSetMap(Int, Set, Map) //int, fun-sets, map
     syntax KResult ::= resultTransMapMap(Int, Map, Map) //int, fun-map, map
     syntax KResult ::= resultTransSetTerm(Int, Set, K) //int, fun-sets, map
+    syntax KResult ::= resultTransSetTerm2(Int, Set, K, K) //int, fun-sets, map
 
     //abstract syntax for type constrs
     syntax KItem ::= aType(Bool, K) //isStrict?, type

@@ -136,6 +136,35 @@ module HASKELL-KINDINFER
    rule getFreeTypeVars('baTypeCon(A1:AType,, A2:BType))
         => getFreeTypeVars(A1) getFreeTypeVars(A2)
 
+   syntax Set ::= getFreeTypeVarsList(List) [function]
+   rule getFreeTypeVarsList(.List) => .Set
+   rule getFreeTypeVarsList(ListItem(A:K) L:List)
+          => getFreeTypeVars(A) getFreeTypeVarsList(L)
+
+   syntax Set ::= getFreeTypeVarsContexts(K, Set) [function]
+   rule getFreeTypeVarsContexts(.K, .Set) => .Set
+   rule getFreeTypeVarsContexts(.K, SetItem(A:K) S:Set)
+         => getFreeTypeVarsContexts(A, S)
+   rule getFreeTypeVarsContexts(classTitle(A:K, L:List), S:Set)
+            => getFreeTypeVarsList(L) getFreeTypeVarsContexts(.K, S)
+
+   syntax Set ::= getRealTypeVarsContexts(K, Set) [function]
+   rule getRealTypeVarsContexts(.K, .Set) => .Set
+   rule getRealTypeVarsContexts(.K, SetItem(A:K) S:Set)
+         => getRealTypeVarsContexts(A, S)
+   rule getRealTypeVarsContexts(classTitle(A:K, ListItem(X) L:List), S:Set)
+            => SetItem(X) getRealTypeVarsContexts(.K, S)
+
+   syntax Bool ::= isSingleTypeVarInClass(Set, K) [function]
+                | isSingleTypeVarInClassAux(Set, K) [function]
+                | isSingleTypeVarInClassNext(K, K) [function]
+   rule isSingleTypeVarInClass(Cs:Set, A:K)
+          => isSingleTypeVarInClassAux(getFreeTypeVarsContexts(.K, Cs), A)
+   rule isSingleTypeVarInClassAux(SetItem(A:K), B:K)
+            => isSingleTypeVarInClassNext(A, B)
+   rule isSingleTypeVarInClassNext(A:K, A:K) => true
+   rule isSingleTypeVarInClassNext(A:K, B:K) => false [owise]
+
    syntax Map ::= addEdges(Set, Set) [function]
    rule addEdges(SetItem(A:K), SetItem(B:K) S:Set)
           => (A |-> names(SetItem(B) S))
@@ -196,6 +225,17 @@ module HASKELL-KINDINFER
    rule genKindMap(N:Int, S:Set, SetItem(A:K) Cs:Set, M:Map) 
           => genKindMap(N +Int 1, S SetItem(kindVar(N)), Cs, (A |-> kindVar(N)) M)
 
+   syntax KItem ::= genKindMapCheck(Int, Set, K, Set, Map) [function]
+   rule genKindMapCheck(N:Int, S:Set, .K, .Set, M:Map) => resultTransSetMap(N, S, M)
+   rule genKindMapCheck(N:Int, S:Set, .K, SetItem(A:K) Cs:Set, M:Map)
+            => genKindMapCheck(N, S, A, Cs, M)
+   rule genKindMapCheck(N:Int, S:Set, A:K, Cs:Set, M:Map) 
+          => genKindMapCheck(N +Int 1, S SetItem(kindVar(N)), .K, Cs, (A |-> kindVar(N)) M)
+        requires notBool A in keys(M)
+   rule genKindMapCheck(N:Int, S:Set, A:K, Cs:Set, M:Map) 
+          => genKindMapCheck(N, S, .K, Cs, M)
+        requires A in keys(M)
+
    //collect a map for knowing the type name and its partial kind (not proved)
    syntax KItem ::= parKindEntry(Int, Set, K, SimpleType) [function]
            //counter, kind-var-set, curr-mod, simple-type
@@ -210,6 +250,11 @@ module HASKELL-KINDINFER
    syntax KItem ::= listToKind(List) [function]
    rule listToKind(.List) => star
    rule listToKind(ListItem(A:K) L:List) => kindArrow(A, listToKind(L))
+
+   syntax KItem ::= listToKindVar(List) [function]
+   rule listToKindVar(ListItem(A:K)) => A
+   rule listToKindVar(ListItem(A:K) ListItem(B:K) L:List)
+               => kindArrow(A, listToKindVar(ListItem(B:K) L))
 
    syntax KItem ::= resolveKindEntry(Int, Set, TyVars, List) [function]
            //counter, kind-var-set, tyVars, result
@@ -1357,6 +1402,15 @@ module HASKELL-KINDINFER
                  I -Int 1, L ListItem(kindVar(N)))
         requires I >Int 0
 
+   syntax KItem ::= genArrowKindsVar(Int, Set, Int, List) [function]
+   rule genArrowKindsVar(N:Int, S:Set, 0, L:List)
+           => resultTransSetTerm2(N +Int 1, S SetItem(kindVar(N)),
+                       listToKindVar(L ListItem(kindVar(N))), kindVar(N))
+   rule genArrowKindsVar(N:Int, S:Set, I:Int, L:List)
+           => genArrowKindsVar(N +Int 1, S SetItem(kindVar(N)),
+                 I -Int 1, L ListItem(kindVar(N)))
+        requires I >Int 0
+
    syntax KItem ::= genInitKindMap(Int, Set, K, K, Map, Map) [function]
                   | genInitKindMapAux(K, K, Map, Map) [function]
 
@@ -1372,14 +1426,6 @@ module HASKELL-KINDINFER
 
    rule genInitKindMapAux(A:K, resultTransSetTerm(N:Int, S:Set, T:K), M:Map, TM:Map)
           => genInitKindMap(N, S, .K, .K, M, (A |-> T) TM)
-
-
-   syntax KItem ::= genInitKindMapClass(Int, Set, Set, Map) [function]
-   rule genInitKindMapClass(N:Int, S:Set, .Set, T:Map)
-            => resultTyVarKindMap(N, S, T)
-   rule genInitKindMapClass(N:Int, S:Set, SetItem(A:K) As:Set, T:Map)
-            => genInitKindMapClass(N +Int 1, S SetItem(kindVar(N)),
-             As, (A |-> kindArrow(kindVar(N), star)) T)
 
    syntax Set ::= getContextsMethods(Map, K, K)    [function]
                 | getContextsMethodsAux(Set, K, K) [function]
@@ -1399,9 +1445,9 @@ module HASKELL-KINDINFER
         requires C =/=K B
 
    syntax Set ::= getCoreClass(Set) [function]
-          KItem ::= getCoreClassAux(K) [function]
+   syntax KItem ::= getCoreClassAux(K) [function]
    rule getCoreClass(.Set) => .Set
-   rule getCoreClass(SetItem(A:K) S:Set))
+   rule getCoreClass(SetItem(A:K) S:Set)
          => SetItem(getCoreClassAux(A)) getCoreClass(S)
    rule getCoreClassAux(classTitle(A:K, L:List)) => A
 
@@ -1416,7 +1462,6 @@ module HASKELL-KINDINFER
    rule searchNoFatherClass(className(A:K), resultSet(S:Set), M:Map, Cs:Set, PM:Map)
             => searchNoFatherClass(.K, .K, M, Cs, PM)
         requires notBool (S <=Set Cs keys(PM))
-
 
    syntax KItem ::= kindInfer(Int, Set,K, K, K, Map, Map, Set, Set, Map) [function]
          //counter, kind-var-set, name, entry, beta, kind env, gen-kind-tuples
@@ -1509,6 +1554,61 @@ module HASKELL-KINDINFER
               L:List, Body:Map, M:Map, Tus:Set, Is:Set, PM:Map)
           => kindNextList(N1, S1,Mod:K, .K, L, Body, M, Tus Tu1, Is, PM)
 
+   //a function to kind inference a set of contexts which refering the same type-var
+   syntax KItem ::= kindInferTypeVars(Int, Set, K, K, Set, Set, Map, Set, Map) [function]
+                  | kindInferTypeVarsNext(Int, Set, K, K, Set, Set, Map, Set, Map) [function]
+                  | kindInferTypeVarsAux(K, K, K, Set, Set, Map, Set, Map) [function]
+                  | kindInferTypeVarsAux1(Int, Set, K, K, K,
+                                    List, Set, Set, Map, Set, Map) [function]
+                  | kindInferTypeVarsAux2(Int, Set, K,
+                              K, List, K, Set, Set, Map, Set, Map) [function]
+
+   rule kindInferTypeVars(N:Int, S:Set, Mod:K, .K, As:Set, Tu:Set, KM:Map, Is:Set, PM:Map)
+          => kindInferTypeVars(N, S, Mod, genKindMapCheck(
+                N, S, .K, getFreeTypeVarsContexts(.K, As), KM), As, Tu, KM, Is, PM)
+   rule kindInferTypeVars(N:Int, S:Set, Mod:K,
+          resultTransSetMap(N':Int, S':Set, KM':Map), As:Set, Tu:Set, KM:Map, Is:Set, PM:Map)
+          => kindInferTypeVarsNext(N', S', Mod, .K, As, Tu, KM', Is, PM)
+
+   rule kindInferTypeVarsNext(N:Int, S:Set, Mod:K, .K, .Set, Tu:Set, M:Map, Is:Set, PM:Map)
+         => resultKindTupleMap(N, S, Tu, M)
+   rule kindInferTypeVarsNext(N:Int, S:Set, Mod:K, .K, SetItem(A:K)
+                As:Set, Tu:Set, M:Map, Is:Set, PM:Map)
+         => kindInferTypeVarsNext(N, S, Mod, A, As, Tu, M, Is, PM)
+   rule kindInferTypeVarsNext(N:Int, S:Set, Mod:K, classTitle(A:K, L:List),
+             As:Set, Tu:Set, M:Map, Is:Set, PM:Map)
+          => kindInferTypeVarsAux(Mod, genArrowKindsVar(N, S, size(L) -Int 1, .List),
+                classTitle(A:K, L:List), As, Tu, M, Is, PM)
+
+   rule kindInferTypeVarsAux(Mod:K, resultTransSetTerm2(N:Int, S:Set, VK:K, V:K),
+             classTitle(fullName(Mod, A:K), ListItem(X:K) L:List),
+                As:Set, Tu:Set, (A |-> kindArrow(C:K, star)) M:Map, Is:Set, PM:Map)
+         => kindInferTypeVarsAux1(N, S, Mod, X, VK, L, Tu SetItem(kindTuple(C, V)), As, 
+                ((A |-> kindArrow(C:K, star)) M:Map), Is, PM)
+        requires notBool X in getFreeTypeVarsList(L)
+   rule kindInferTypeVarsAux(Mod:K, resultTransSetTerm2(N:Int, S:Set, VK:K, V:K),
+             classTitle(fullName(Mod, A:K), ListItem(X:K) L:List),
+                As:Set, Tu:Set, (A |-> kindArrow(C:K, star)) M:Map, Is:Set, PM:Map)
+         => error(classKindNotEqualForTypeVar)
+        requires X in getFreeTypeVarsList(L)
+
+   rule kindInferTypeVarsAux1(N:Int, S:Set, Mod:K, X:K, V:K, L:List, Tu:Set, As:Set,
+               (X |-> C:K) KM:Map, Is:Set, PM:Map)
+         => kindInferTypeVarsAux2(N, S, Mod, V, L, .K,
+                    Tu SetItem(kindTuple(C, V)), As, (X |-> V) KM, Is, PM)
+   rule kindInferTypeVarsAux2(N:Int, S:Set, Mod:K,
+                kindVar(X:K), .List, .K, Tu:Set, As:Set, KM:Map, Is:Set, PM:Map)
+         => kindInferTypeVarsNext(N, S, Mod, .K, As, Tu, KM, Is, PM)
+   rule kindInferTypeVarsAux2(N:Int, S:Set, Mod:K, kindArrow(X:K, Y:K),
+            ListItem(D:K) L:List, .K, Tu:Set, As:Set, KM:Map, Is:Set, PM:Map)
+         => kindInferTypeVarsAux2(N, S, Mod, Y, L, 
+             kindInference(N, S, Mod, D, X, KM, Is, PM), Tu, As, KM, Is, PM)
+   rule kindInferTypeVarsAux2(N:Int, S:Set, Mod:K, X:K, L:List, error(A:K),
+                Tu:Set, As:Set, KM:Map, Is:Set, PM:Map) => error(A)
+   rule kindInferTypeVarsAux2(N:Int, S:Set, Mod:K, X:K, L:List,
+       returnKind(N':Int, S':Set, Ts:Set), Tu:Set, As:Set, KM:Map, Is:Set, PM:Map)
+           => kindInferTypeVarsAux2(N', S', Mod, X, L, .K, Ts Tu, As, KM, Is, PM)
+
    //a function to kind inference every function in a class
    syntax Bool ::= isSameInMap(K, K, Map) [function]
    rule isSameInMap(A:K, B:K, (A |-> B:K) M:Map) => true
@@ -1517,82 +1617,62 @@ module HASKELL-KINDINFER
    syntax KItem ::= kindInferClass(Int, Set, K, K, K, Map, Set, Map, Set, Map) [function]
                //counter, kind-var-set, mod, type-var, execute, method-map,
                // contexts, kind env, imports, import-map
-                  | kindInferClassAux(K, K, K, K, Map, Map, Set, Map) [function]
-                  | kindInferClassCheck(Int, Set, K, K, K, Map, Map, Set, Map) [function]
-                  | kindInferClassCheckAux(Int, Set, K, K, K, Map, Map, Set, Map) [function]
-                  | kindInferClassCheckAux1(K, K, K, K, Map,Map, Set, Map) [function]
-                  | kindInferClassCheckAux2(K, K, K, K, Map,Map, Map, Set, Map) [function]
-                  | kindInferClassCheckAux3(Int, Set, K, K, K, Map, Map, Map, Set, Map) [function]
+                  | kindInferClassNext(Int, Set, K, K, K, Map, Map, Set, Set, Map) [function]
+                  | kindInferClassNext1(K, K, Set, K, K, Map, Map, Set, Map) [function]
+                  | kindInferClassAux(K, K, K, K, Set, Map, Map, Set, Map) [function]
 
    rule kindInferClass(N:Int, S:Set, Mod:K, A:K,
-               .K, .Map, Cs:Set, (A |-> B:K) KM:Map, Is:Set, PM:Map)
-              => resultTuple(A, star)
-        requires Cs <=Set .Set
+               .K, .Map, .Set, (A |-> B:K) KM:Map, Is:Set, PM:Map)
+              => returnKind(N, S, SetItem(kindTuple(A, star)))
    rule kindInferClass(N:Int, S:Set, Mod:K, A:K,
-               .K, .Map, Cs:Set, (A |-> B:K) KM:Map, Is:Set, PM:Map)
-              => sameAsContextClass
-        requires notBool (Cs <=Set .Set)
-   rule kindInferClass(N:Int, S:Set, Mod:K, A:K, .K, (X:K |-> Y:K) MM:Map,
-                  Cs:Set, KM:Map, Is:Set, PM:Map)
-           => kindInferClass(N, S, Mod, A:K, Y, MM, Cs, KM, Is, PM)
-   rule kindInferClass(N:Int, S:Set, Mod:K, A:K, methodDef(
-             Cs:Set, Fs:Map, T:K, Bin:List), MM:Map, Ccs:Set, KM:Map, Is:Set, PM:Map)
-           => kindInferClassAux(Mod:K, A:K, T,
-                 genKindMap(N, S, keys(Fs), KM), MM, KM, Is, PM)
+               .K, M:Map, Cs:Set, (A |-> B:K) KM:Map, Is:Set, PM:Map)
+              => kindInferClass(N, S, Mod, A,
+                    kindInferTypeVars(N, S, Mod, .K, Cs, .Set, (A |-> B:K) KM:Map, Is, PM),
+                    M, Cs, (A |-> B:K) KM:Map, Is:Set, PM:Map)
+        requires notBool (Cs <=Set .Set) andBool isSingleTypeVarInClass(Cs, A)
+   rule kindInferClass(N:Int, S:Set, Mod:K, A:K,
+               .K, M:Map, Cs:Set, (A |-> B:K) KM:Map, Is:Set, PM:Map)
+              => error(multipleTypeVar)
+        requires notBool (Cs <=Set .Set) andBool notBool isSingleTypeVarInClass(Cs, A)
+
+   rule kindInferClass(N:Int, S:Set, Mod:K, A:K, error(B:K),
+         M:Map, Cs:Set, KM:Map, Is:Set, PM:Map) => error(B)
+   rule kindInferClass(N:Int, S:Set, Mod:K, A:K, resultKindTupleMap(
+          N':Int, S':Set, Tu':Set, KM':Map),
+           M:Map, Cs:Set, KM:Map, Is:Set, PM:Map)
+           => kindInferClassNext(N', S', Mod, A, .K, M, KM', Tu', Is, PM)
+
+   rule kindInferClassNext(N:Int, S:Set, Mod:K, A:K, .K, .Map,
+           KM:Map, Tu:Set, Is:Set, PM:Map) => returnKind(N, S, Tu)
+   rule kindInferClassNext(N:Int, S:Set, Mod:K, A:K, .K, (X:K |-> Y:K) MM:Map,
+           KM:Map, Tu:Set, Is:Set, PM:Map)
+          => kindInferClassNext(N, S, Mod, A, Y, MM, KM, Tu, Is, PM)
+   rule kindInferClassNext(N:Int, S:Set, Mod:K, A:K, methodDef(
+             Cs:Set, Fs:Map, T:K, Bin:List), MM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
+          => kindInferClassNext1(Mod, A, keys(Fs), T, kindInferTypeVars(
+                N, S, Mod, .K, Cs, Tu, KM:Map, Is, PM), MM, KM, Is, PM)
+        requires getRealTypeVarsContexts(.K, Cs) <=Set keys(Fs)
+   rule kindInferClassNext(N:Int, S:Set, Mod:K, A:K, methodDef(
+             Cs:Set, Fs:Map, T:K, Bin:List), MM:Map, KM:Map, Tu:Set, Is:Set, PM:Map)
+          => error(allBoundClassVarsMustInScope)
+        requires notBool (getRealTypeVarsContexts(.K, Cs) <=Set keys(Fs))
+
+   rule kindInferClassNext1(Mod:K, A:K, Ks:Set, T:K, error(B:K),
+             MM:Map, Old:Map, Is:Set, PM:Map) => error(B)
+   rule kindInferClassNext1(Mod:K, A:K, Ks:Set, T:K,
+         resultKindTupleMap(N:Int, S:Set, Tu:Set, KM:Map), MM:Map, Old:Map, Is:Set, PM:Map)
+         => kindInferClassAux(Mod, A, T,
+               genKindMapCheck(N, S, .K, Ks, KM), Tu, MM, Old, Is, PM)
 
    rule kindInferClassAux(Mod:K, A:K, T:K, resultTransSetMap(
-              N:Int, S:Set, KM:Map), MM:Map, Old:Map, Is:Set, PM:Map)
+              N:Int, S:Set, KM:Map), Tu:Set, MM:Map, Old:Map, Is:Set, PM:Map)
            => kindInferClassAux(Mod, A, T, kindInference(
-                      N, S, Mod, T, star, KM, Is, PM), MM, Old, Is, PM)
-   rule kindInferClassAux(Mod:K, A:K, T:K, error(X:K), MM:Map,
+                      N, S, Mod, T, star, KM, Is, PM), Tu, MM, Old, Is, PM)
+   rule kindInferClassAux(Mod:K, A:K, T:K, error(X:K), Tu:Set, MM:Map,
             Old:Map,Is:Set, PM:Map) => error(X)
    rule kindInferClassAux(Mod:K, A:K, T:K, returnKind(
-                N:Int, S:Set, Ts:Set), MM:Map, Old:Map,Is:Set, PM:Map)
-            => kindInferClassCheck(N, S, Mod, A,
-                   unifInKind(.K, .Set, Ts, .Map), MM, Old, Is, PM)
-   rule kindInferClassCheck(N:Int, S:Set, Mod:K, A:K, error(B:K),
-              MM:Map, KM:Map, Is:Set, PM:Map) => error(B)
-   rule kindInferClassCheck(N:Int, S:Set, Mod:K, A:K, resultMap(M:Map),
-              MM:Map,  (A |-> T:K) KM:Map, Is:Set, PM:Map)
-         => kindInferClassCheckAux(N, S, Mod, A, .K, MM,
-                    (A |-> replaceAllKindsInTerm(T:K, M)) KM:Map, Is, PM)
-   //a mutural recursive function to check all fuction decls in a class
-   //having the same kind for the class typevar for the first one
-   rule kindInferClassCheckAux(N:Int, S:Set, Mod:K, A:K, .K, .Map,
-                 (A |-> B:K) KM:Map, Is:Set, PM:Map)
-          => resultTuple(A, B)
-   rule kindInferClassCheckAux(N:Int, S:Set, Mod:K, A:K, .K, (X:K |-> Y:K) MM:Map,
-                 KM:Map, Is:Set, PM:Map)
-          => kindInferClassCheckAux(N, S, Mod, A, Y, MM, KM, Is, PM)
-   rule kindInferClassCheckAux(N:Int, S:Set, Mod:K, A:K, methodDef(
-             Cs:Set, Fs:Map, T:K, Bin:List), MM:Map, KM:Map, Is:Set, PM:Map)
-          => kindInferClassCheckAux1(Mod:K, A:K, T,
-                 genKindMap(N, S, keys(Fs), KM), MM, KM, Is, PM)
-   rule kindInferClassCheckAux(N:Int, S:Set, Mod:K, A:K, error(X:K),
-            MM:Map, KM:Map, Is:Set, PM:Map) => error(X)
-
-   rule kindInferClassCheckAux1(Mod:K, A:K, T:K, resultTransSetMap(
-              N:Int, S:Set, KM:Map), MM:Map, Old:Map, Is:Set, PM:Map)
-          => kindInferClassCheckAux2(Mod, A, T, kindInference(
-                      N, S, Mod, T, star, KM, Is, PM), MM, KM, Old, Is, PM)
-   rule kindInferClassCheckAux2(Mod:K, A:K, T:K, error(X:K),
-              MM:Map, KM:Map, Old:Map, Is:Set, PM:Map) => error(X)
-   rule kindInferClassCheckAux2(Mod:K, A:K, T:K, returnKind(
-                N:Int, S:Set, Ts:Set), MM:Map, KM:Map, Old:Map, Is:Set, PM:Map)
-         => kindInferClassCheckAux3(N, S, Mod, A, unifInKind(.K, .Set, Ts, .Map),
-                  MM, KM, Old, Is, PM)
-
-   rule kindInferClassCheckAux3(N:Int, S:Set, Mod:K, A:K, error(X:K),
-            MM:Map, KM:Map, Old:Map, Is:Set, PM:Map) => error(X)
-   rule kindInferClassCheckAux3(N:Int, S:Set, Mod:K, A:K,
-             resultMap(M:Map), MM:Map, (A |-> B:K) KM:Map, Old:Map, Is:Set, PM:Map)
-           => kindInferClassCheckAux(N, S, Mod, A, .K, MM, Old, Is, PM)
-        requires isSameInMap(A, replaceAllKindsInTerm(B, M), Old)
-   rule kindInferClassCheckAux3(N:Int, S:Set, Mod:K, A:K,
-             resultMap(M:Map (A |-> B:K)),
-            MM:Map, KM:Map, Old:Map, Is:Set, PM:Map) => error(classKindNotEqual)
-        requires notBool isSameInMap(A, replaceAllKindsInTerm(B, M), Old)
-
+                N:Int, S:Set, Ts:Set), Tu:Set, MM:Map, Old:Map,Is:Set, PM:Map)
+            => kindInferClassNext(N, S, Mod, A, .K, MM, Old, Tu, Is, PM)
 
    //kind inference rule -- generate kind unifiers
    syntax KItem ::= kindInference(Int, Set, K, K, K, Map, Set, Map) [function]

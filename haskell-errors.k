@@ -74,11 +74,20 @@ module HASKELL-ERRORS
     rule <k> error(typeVarKindNumError) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type delcaration having a type variable that has wrong number of arguments.")) </output>
 
+    rule <k> error(multipleTypeVar) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a class having more than one type var binding.")) </output>
+
+    rule <k> error(allBoundClassVarsMustInScope) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module has a method in a class or in the module having a bounded type constraint variable not showing in its type annotation.")) </output>
+
     rule <k> error(kindUnifierFail) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type declaration that uses a type variable or type con in the wrong position causing kind inference failure.")) </output>
 
     rule <k> error(classKindNotEqual) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a typeclass having functions do not have the same class type var kind.")) </output>
+
+    rule <k> error(classKindNotEqualForTypeVar) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a typeclass having the type-var defined in a kind-constraint not equal in different instances of the type-var.")) </output>
 
     rule <k> error(ambiguousTypeVar) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type class whose method does not define the type var for the type class, so it is an ambiguous type variable.")) </output>

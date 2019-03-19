@@ -165,4 +165,31 @@ However, a coder can do the following:
 
 the definition of method f is a valid code. You can define constraint like G (q R), the R is a type name. The meaning of having constraint like G (q R) is very weird. The R here is a type name but it only serves kind information here. Since R has kind * -> *, it means that q having a kind (* -> *) -> *. Since class G requires its type var to have * -> *, so the kind for q is actually (* -> *) -> * -> *. 
  If we have G (q a), then Haskell will only assume that it has kind * -> * -> *. The only purpose of R is serving the kind indicator. It does not restrict anything about q. People are free to put anything they want for q without mention type R at all. 
- 
+
+20. strange example:
+
+first, 
+
+    data R a = A Int | B Int | C a 
+    ;data F f x y a = D (f a) | E (x a) | F (y a)
+    ;class T a where {f3 :: a -> Int}
+      ;class G f where {f1:: f a -> Int; f2 :: T (f a) => f a -> Int}
+    ;instance G R where {f1 x = 1; f2 (A x) = 2; f2 (B y) = 3; f2 (C x) = 4}
+     ;f :: G f => f a -> a -> Int
+     ;f x y = 1
+     ;g x = f2 (C x)
+
+This example will not give us error message that the instance of f2 in g does not have T (R a) instance. However, the following code:
+
+    data R a = A Int | B Int | C a 
+    ;data F f x y a = D (f a) | E (x a) | F (y a)
+    ;class T a where {f3 :: a -> Int}
+      ;class G f where {f1:: f a -> Int; f2 :: T (f a) => f a -> Int}
+    ;instance G R where {f1 x = 1; f2 (A x) = 2; f2 (B y) = 3; f2 (C x) = 4}
+     ;f :: G f => f a -> a -> Int
+     ;f x y = 1
+     ;g x = f2 (A x)
+
+will give us error message that the use of f2 in g needs a instance of T (R a), which is bad. It means that Haskell does not check the usage of a type-var in a class once the kind of type-var is shifted used in an extended type-class-constraint. 
+
+

@@ -38,6 +38,8 @@ module HASKELL-CONFIGURATION
                     <imports> .Set </imports>
                     <importKindMap> .Map </importKindMap>
                       //a kind map for all imports
+                    <classContextMap> .Map </classContextMap>
+                      //a map talking about context relationship in this module
                     <defaultInt> Integer </defaultInt>
                     <defaultDouble> Double </defaultDouble>
                     <moduleMethods> .Map </moduleMethods>
