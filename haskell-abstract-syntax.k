@@ -50,6 +50,8 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "funNameDeclNotDef"
     syntax KItem ::= "funNameDefNotDeclInClass"
     syntax KItem ::= "funNameConflicting"
+    syntax KItem ::= "derivingClassHasNoDefault"
+    syntax KItem ::= "derivingClassNoKindMatching"
 
     //checking steps
     syntax KItem ::= "startChecks"
@@ -90,7 +92,6 @@ module HASKELL-ABSTRACT-SYNTAX
               // class name, class type-var, putClassMapSet
 
     //dealing with kind inference for classes in a module
-    syntax KItem ::= "derivingClassChecks"
               //two checks
               //first the number of tyvars for each data/newtype is
               //greater-equal than the number of deriving classes of that data
@@ -98,6 +99,17 @@ module HASKELL-ABSTRACT-SYNTAX
               //should have a default def, otherwise, the deriving class is either
               //not having an implementation for the method
               //, or it will be duplicated because of an instance for that data.        
+    syntax KItem ::= "derivingClassChecks"
+    syntax KItem ::= "allDerivingClassHasDefault"
+    syntax KItem ::= classHasDefault(Map, K) [function]
+    syntax KItem ::= classHasDefaultAux(Map, Set, K)
+    syntax KItem ::= "derivingKindMakeSense"
+    syntax KItem ::= derivingKindMakeSense(Map, K, K)
+               //temp beta map, key, target
+    syntax KItem ::= derivingKindMakeSenseAux(Map, List, K, K)
+               //temp beta map, kind-to-list-of-type, key, target
+
+    //kind inference ast here.
     syntax KItem ::= "kindInferClass"
     syntax KItem ::= genInitKindMapClass(Set)
     syntax KItem ::= buildContextMap(Map, K, Set)

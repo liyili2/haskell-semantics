@@ -222,3 +222,8 @@ haskell will definitely have polymorphism
 but the type variables for polymorphism in alpha does not mean anything
 for example a A = b B
 it does not mean that a = b in all cases, it will only mean that a = b in this expression, you will just need a field to take care of this."
+
+
+TODO: Liyi Li
+
+For kind-infer on class and types, it needs to consider the situation when a type-var is not used in the datatype or classes. Then, in that case, it will be assumed to have * .

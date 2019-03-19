@@ -137,6 +137,12 @@ module HASKELL-ERRORS
     rule <k> error(importFromNoSource) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The module have an import a construct/type/function that is not in the original module.")) </output>
 
+    rule <k> error(derivingClassHasNoDefault) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("One of the module's type's deriving class lacks at least one of the default method implementations, so that the deriving does not make sense.")) </output>
+
+    rule <k> error(derivingClassNoKindMatching) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("One of the module's type's deriving class does not make sense because its kind can never fit with the kind of the type in any kind.")) </output>
+
     rule exnExp(S:String) => error(S)
 
 endmodule

@@ -247,6 +247,12 @@ module HASKELL-KINDINFER
    rule parKindEntryAux(Curr:K, T:K, resultTyVarKindList(N:Int, S:Set, L:List))
             => resultTyVarKindMap(N, S, (typeName(T) |-> listToKind(L)))
 
+
+   //translation from a list of kind to kindArrow or the opposite
+   syntax List ::= kindToList(K) [function]
+   rule kindToList(kindArrow(A:K, B:K)) => ListItem(A) kindToList(B)
+   rule kindToList(A:K) => ListItem(A) [owise]
+
    syntax KItem ::= listToKind(List) [function]
    rule listToKind(.List) => star
    rule listToKind(ListItem(A:K) L:List) => kindArrow(A, listToKind(L))
@@ -1313,7 +1319,7 @@ module HASKELL-KINDINFER
    rule makePreBetaFunAux(S:K, 'data(
               'simpleTypeCon(N:K,, Vs:K),, Cons:K,, Od:K),
                  As:K, M:Map, Ts:Set, Is:Set)
-          =>  makePreBetaFunAux1(S, As, buildVar(N),toTypeList(Ts),
+          =>  makePreBetaFunAux1(S, As, buildVar(N),toTypeList(Vs),
                   makeMultiPreBeta(S, buildVar(N), Cons, toTypeSet(Vs), Ts, Is),
                derivingToSet(S, Od, Ts, Is), M, Ts, Is)
         requires size(toTypeList(Vs)) ==K size(toTypeSet(Vs))
@@ -1324,7 +1330,7 @@ module HASKELL-KINDINFER
         requires size(toTypeList(Vs)) =/=K size(toTypeSet(Vs))
    rule makePreBetaFunAux(S:K, 'newtype('simpleTypeCon(N:K,, Vs:K),,
                Cons:NewConstr,, Od:K), As:K, M:Map, Ts:Set, Is:Set)
-          =>  makePreBetaFunAux1(S, As, buildVar(N),toTypeList(Ts),
+          =>  makePreBetaFunAux1(S, As, buildVar(N),toTypeList(Vs),
                   makeMultiPreBeta(S, buildVar(N), Cons, toTypeSet(Vs), Ts, Is),
                derivingToSet(S, Od, Ts, Is), M, Ts, Is)
         requires size(toTypeList(Vs)) ==K size(toTypeSet(Vs))
@@ -1463,6 +1469,40 @@ module HASKELL-KINDINFER
             => searchNoFatherClass(.K, .K, M, Cs, PM)
         requires notBool (S <=Set Cs keys(PM))
 
+   //a function to check if a deriving class makes sense. 
+   //two things need to be checked. First, the type has an kind instance by
+   //deleting the last element to be the same as the kind of the deriving class.
+   //Second, every deriving class must have default method implementations.
+   //instance of a class is not allowed for a deriving class. 
+   syntax Bool ::= notEmptyMethodDecl(Map, K) [function]
+   rule notEmptyMethodDecl(.Map, .K) => true
+   rule notEmptyMethodDecl((A:K |-> B:K) M:Map, .K)
+            => notEmptyMethodDecl(M, B)
+   rule notEmptyMethodDecl(M:Map, methodDef(X:Set, Y:Map, Z:K, L:List))
+           => notEmptyMethodDecl(M, .K)
+        requires size(L) =/=K 0
+   rule notEmptyMethodDecl(M:Map, methodDef(X:Set, Y:Map, Z:K, .List)) => false
+
+   syntax Bool ::= SingleListKindMatching(List, List) [function]
+             //kind-to-list in target type,
+              //increment starting with star, kind-to-list-of-type-var
+                 | listKindMatching(List, List, List) [function]
+   rule SingleListKindMatching(L:List, L) => true
+   rule SingleListKindMatching(L1:List, L2:List) => false [owise]
+   rule listKindMatching(.List, L1:List, L2:List)
+             => SingleListKindMatching(L1, L2)
+   rule listKindMatching(L1:List ListItem(A:K), L2:List, L3:List) => true
+        requires SingleListKindMatching(L1, L2)
+   rule listKindMatching(L1:List ListItem(A:K), L2:List, L3:List)
+            => listKindMatching(L1, ListItem(A) L2, L3)
+        requires SingleListKindMatching(L1, L2)
+
+   syntax Bool ::= derivingKindMatching(List, K) [function]
+   rule derivingKindMatching(L:List ListItem(star), B:K)
+           => listKindMatching(L, ListItem(star), kindToList(B))
+   rule derivingKindMatching(L:List, B:K) => false [owise]
+
+   //belows are functions to kind inference on types or classes.
    syntax KItem ::= kindInfer(Int, Set,K, K, K, Map, Map, Set, Set, Map) [function]
          //counter, kind-var-set, name, entry, beta, kind env, gen-kind-tuples
           //set of imports, import kind map-map(mod to kind-map)

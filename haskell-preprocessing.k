@@ -488,12 +488,77 @@ module HASKELL-PREPROCESSING
 
 
     //check all contexts having correct kinds
-    rule <k> derivingClassChecks => .K ...</k>
+    rule derivingClassChecks
+                => (allDerivingClassHasDefault
+                     ~> derivingKindMakeSense)
+    rule <k> allDerivingClassHasDefault
+              => classHasDefault(TM, .K) ...</k>
+         <tempBetaMap> TM:Map </tempBetaMap>
+
+    //checking every class involving in deriving class has an default
+    rule classHasDefault(.Map, .K) => .K
+    rule classHasDefault((A:K |-> B:K) M:Map, .K)
+              => classHasDefault(M, B)
+    rule classHasDefault(M:Map, preBetaEntry(L:List, X:Map, S:Set))
+              => classHasDefaultAux(M:Map, S, .K)
+
+    rule classHasDefaultAux(M:Map, .Set, .K) => classHasDefault(M, .K)
+    rule classHasDefaultAux(M:Map, SetItem(A:K) S:Set, .K)
+              => classHasDefaultAux(M, S, A)
+    rule <k> classHasDefaultAux(M:Map, S:Set, fullName(Mod:K, A:K))
+                => classHasDefaultAux(M, S, .K) ...</k>
+         <class>...
+                <classModule> Mod </classModule>
+                <className> A:K </className>
+                <classMethods> MM:Map </classMethods>
+         ...</class>
+         requires notEmptyMethodDecl(MM, .K)
+
+    rule <k> classHasDefaultAux(M:Map, S:Set, fullName(Mod:K, A:K))
+                => error(derivingClassHasNoDefault) ...</k>
+         <class>...
+                <classModule> Mod </classModule>
+                <className> A:K </className>
+                <classMethods> MM:Map </classMethods>
+         ...</class>
+         requires notBool notEmptyMethodDecl(MM, .K)
+
+    //checking every class involving in deriving class has kind instance
+    rule <k> derivingKindMakeSense
+              => derivingKindMakeSense(TM, .K, .K) ...</k>
+         <tempBetaMap> TM:Map </tempBetaMap>
+
+    rule derivingKindMakeSense(.Map, .K, .K) => .K
+    rule derivingKindMakeSense((A:K |-> B:K) M:Map, .K, .K)
+              => derivingKindMakeSense(M, A, B)
+    rule <k> derivingKindMakeSense(M:Map, A:K, preBetaEntry(L:List, X:Map, S:Set))
+              => derivingKindMakeSenseAux(M:Map, kindToList(C), S, .K) ...</k>
          <currModule> Mod:K </currModule>
          <moduleName> Mod:K </moduleName>
-         <kindMap> .Map </kindMap>
-         <imports> .Set </imports>
-         <importKindMap> .Map </importKindMap>
+         <kindMap>... A |-> C:K ...</kindMap>
+
+    rule derivingKindMakeSenseAux(M:Map, A:List, .Set, .K)
+           => derivingKindMakeSense(M, .K, .K)
+    rule derivingKindMakeSenseAux(M:Map, X:List, SetItem(A:K) S:Set, .K)
+              => derivingKindMakeSenseAux(M, X, S, A)
+    rule <k> derivingKindMakeSenseAux(M:Map, X:List, S:Set, fullName(Mod:K, A:K))
+                => derivingKindMakeSenseAux(M, X, S, .K) ...</k>
+         <class>...
+                <classModule> Mod </classModule>
+                <className> A:K </className>
+                <classKind> B:K </classKind>
+         ...</class>
+         requires derivingKindMatching(X, B)
+
+    rule <k> derivingKindMakeSenseAux(M:Map, X:List, S:Set, fullName(Mod:K, A:K))
+                => error(derivingClassNoKindMatching) ...</k>
+         <class>...
+                <classModule> Mod </classModule>
+                <className> A:K </className>
+                <classKind> B:K </classKind>
+         ...</class>
+         requires notBool derivingKindMatching(X, B)
+
 /*
    //functions to compile type class instances to ast form
     rule <k> collectInstances => getInstances(TM) ...</k>
