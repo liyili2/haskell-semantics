@@ -143,6 +143,9 @@ module HASKELL-ERRORS
     rule <k> error(derivingClassNoKindMatching) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("One of the module's type's deriving class does not make sense because its kind can never fit with the kind of the type in any kind.")) </output>
 
+    rule <k> error(boundTypeVarNotShowing) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("One of the module's expressions has a type-var bounded by its" +String "context constraint and not showing in the type annotation of the expression. This makes the expression cannot be used in other expressions.")) </output>
+
     rule exnExp(S:String) => error(S)
 
 endmodule

@@ -135,6 +135,14 @@ module HASKELL-KINDINFER
         => getFreeTypeVars(A1) getFreeTypeVars(A2)
    rule getFreeTypeVars('baTypeCon(A1:AType,, A2:BType))
         => getFreeTypeVars(A1) getFreeTypeVars(A2)
+   rule getFreeTypeVars(typeConst(A:K, L:List))
+            => getFreeTypeVars(A) getFreeTypeVarsList(L)
+   rule getFreeTypeVars(aType(X:Bool, Y:K)) => getFreeTypeVars(Y)
+   rule getFreeTypeVars(curryTypes(X:List, Y:K))
+             => getFreeTypeVarsList(X) getFreeTypeVars(Y)
+   rule getFreeTypeVars(forall(X:Set, Y:K))
+             => getFreeTypeVarsList(Y) -Set X
+   rule getFreeTypeVars(A:K) => .Set [owise]
 
    syntax Set ::= getFreeTypeVarsList(List) [function]
    rule getFreeTypeVarsList(.List) => .Set
@@ -1469,6 +1477,18 @@ module HASKELL-KINDINFER
             => searchNoFatherClass(.K, .K, M, Cs, PM)
         requires notBool (S <=Set Cs keys(PM))
 
+   //a function to check if all contexts are making sense for expressions in a module
+   syntax KItem ::= isContextsMakeSense(Map, K) [function]
+   rule isContextsMakeSense(.Map, .K) => .K
+   rule isContextsMakeSense((A:K |-> B:K) M:Map, .K)
+           => isContextsMakeSense(M, B)
+   rule isContextsMakeSense(M:Map, methodDef(S:Set, As:Map, T:K, L:List))
+              => isContextsMakeSense(M, .K)
+        requires getRealTypeVarsContexts(.K, S) <=Set keys(As)
+   rule isContextsMakeSense(M:Map, methodDef(S:Set, As:Map, T:K, L:List))
+              => error(boundTypeVarNotShowing)
+        requires notBool (getRealTypeVarsContexts(.K, S) <=Set keys(As))
+
    //a function to check if a deriving class makes sense. 
    //two things need to be checked. First, the type has an kind instance by
    //deleting the last element to be the same as the kind of the deriving class.
@@ -1654,6 +1674,44 @@ module HASKELL-KINDINFER
    rule isSameInMap(A:K, B:K, (A |-> B:K) M:Map) => true
    rule isSameInMap(A:K, B:K, M:Map) => false [owise]
 
+   //a function to check the kind inference for every expression
+   //every expression in a module has an assumption of star kind
+   syntax KItem ::= kindInferExp(Int, Set, K, K, Map, Map, Set, Map) [function]
+                 //counter, kind-var-set, mod, execute, method-map,
+               // kind env, imports, import-map
+                  | kindInferExpAux(K, K, Set, K, Map, Map, Set, Map) [function]
+                  | kindInferExpNext(K, K, K, Set, Map, Map, Set, Map) [function]
+                  | kindInferExpCheck(Int, Set, K, K, Map, Map, Set, Map) [function]
+
+   rule kindInferExp(N:Int, S:Set, Mod:K, .K, .Map, KM:Map, Is:Set, PM:Map) => .K
+   rule kindInferExp(N:Int, S:Set, Mod:K, .K, (A:K |-> B:K) M:Map, KM:Map, Is:Set, PM:Map)
+           => kindInferExp(N, S, Mod, B, M, KM, Is, M)
+   rule kindInferExp(N:Int, S:Set, Mod:K, methodDef(Cs:Set,
+                 CM:Map, T:K, L:List), M:Map, KM:Map, Is:Set, PM:Map)
+           => kindInferExpAux(Mod, kindInferTypeVars(N, S, Mod,
+                .K, Cs, .Set, KM, Is, PM), keys(CM), T, M, KM, Is, PM)
+   rule kindInferExpAux(Mod:K, error(A:K), As:Set, T:K,
+              M:Map, KM:Map, Is:Set, PM:Map) => error(A)
+   rule kindInferExpAux(Mod:K, resultKindTupleMap(N:Int, S:Set,
+              Tu:Set, KM:Map), As:Set, T:K, M:Map, Old:Map, Is:Set, PM:Map)
+           => kindInferExpNext(Mod, genKindMapCheck(N, S, .K, As, KM), T, Tu, M, Old, Is, PM)
+   rule kindInferExpNext(Mod:K, resultTransSetMap(N:Int, S:Set, KM:Map),
+                T:K, Tu:Set, M:Map, Old:Map, Is:Set, PM:Map)
+           => kindInferExpNext(Mod, kindInference(
+                      N, S, Mod, T, star, KM, Is, PM), T, Tu, M, Old, Is, PM)
+   rule kindInferExpNext(Mod:K, error(A:K), T:K, Tu:Set, M:Map,
+            Old:Map, Is:Set, PM:Map) => error(A)
+   rule kindInferExpNext(Mod:K, returnKind(N:Int, S:Set, Ts:Set), T:K, Tu:Set, M:Map,
+            Old:Map, Is:Set, PM:Map)
+          => kindInferExpCheck(N, S, Mod, unifInKind(.K, .Set, Ts Tu, .Map), M, Old, Is, PM)
+   rule kindInferExpCheck(N:Int, S:Set, Mod:K, error(B:K),
+             M:Map, Old:Map, Is:Set, PM:Map) => error(B)
+   rule kindInferExpCheck(N:Int, S:Set, Mod:K, resultMap(XM:Map),
+             M:Map, Old:Map, Is:Set, PM:Map)
+          => kindInferExp(N, S, Mod, .K, M, Old, Is, PM)
+
+
+   //a function to deal with the kind inference in a class
    syntax KItem ::= kindInferClass(Int, Set, K, K, K, Map, Set, Map, Set, Map) [function]
                //counter, kind-var-set, mod, type-var, execute, method-map,
                // contexts, kind env, imports, import-map

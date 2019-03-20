@@ -52,6 +52,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "funNameConflicting"
     syntax KItem ::= "derivingClassHasNoDefault"
     syntax KItem ::= "derivingClassNoKindMatching"
+    syntax KItem ::= "boundTypeVarNotShowing"
 
     //checking steps
     syntax KItem ::= "startChecks"
@@ -128,6 +129,8 @@ module HASKELL-ABSTRACT-SYNTAX
 
     syntax KItem ::= "collectExpressions"
     syntax KItem ::= getExpressions(K)
+    syntax KItem ::= "allContextsMakeSense"
+    syntax KItem ::= "checkKindInExpressions"
 
     //preprocessing of beta map
     syntax KItem ::= "makePreBetaMap"

@@ -1101,7 +1101,7 @@ module HASKELL-TRANSFORMATION
                   T:TopDecls), Ts:Set, Is:Set, M:Map, RM:Map)
            => transDeclFun(N, Mod, T, Ts, Is, M, RM)
     rule transDeclFun(N:Int, Mod:K,'bodyimpdecls(_:ImpDecls),
-                Ts:Set, Is:Set, M:Map, RM:Map) => .K
+                Ts:Set, Is:Set, M:Map, RM:Map) => resultTransMapMap(N, M, RM)
     rule transDeclFun(N:Int, Mod:K, 'bodytopdecls(T:TopDecls),
                 Ts:Set, Is:Set, M:Map, RM:Map)
              => transDeclFun(N, Mod, T, Ts, Is, M, RM)

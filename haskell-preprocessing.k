@@ -618,8 +618,16 @@ module HASKELL-PREPROCESSING
                   ...</instance>)
 */
    //transformation of expressions in a module
+   //also check the kind information of each decl with the contexts.
+   //two checks. First, every bounded vars in the contexts must be
+   //a type-var in the type annotation,
+   // otherwise, the function cannot be used in a reasonable way,
+   //because the type constraint cannot be satisfied. 
+   //Second, check kind for each method
    rule <k> collectExpressions
-               => getExpressions(transDeclFun(N, Mod, TM, Ts, Is, .Map, .Map)) ...</k>
+               => getExpressions(transDeclFun(N, Mod, TM, Ts, Is, .Map, .Map))
+                  ~> (allContextsMakeSense
+                    ~> checkKindInExpressions) ...</k>
         <tempModule> TM:K </tempModule>
         <genVarCounter> N:Int </genVarCounter>
         <currModule> Mod:K </currModule>
@@ -636,5 +644,22 @@ module HASKELL-PREPROCESSING
         <moduleName> Mod </moduleName>
         <moduleMethods> _:Map => M </moduleMethods>
         <moduleRefs> _:Map => RM </moduleRefs>
+
+   rule <k> allContextsMakeSense => isContextsMakeSense(M, .K) ...</k>
+        <currModule> Mod:K </currModule>
+        <moduleName> Mod </moduleName>
+        <moduleMethods> M:Map </moduleMethods>
+
+   rule <k> checkKindInExpressions
+            => kindInferExp(N, S, Mod, .K, M, KM, Is, PM) ...</k>
+        <currModule> Mod:K </currModule>
+        <moduleName> Mod </moduleName>
+        <moduleMethods> M:Map </moduleMethods>
+        <importKindMap> PM:Map </importKindMap>
+        <imports> Is:Set </imports>
+        <kindMap> KM:Map </kindMap>
+        <kindVarCounter> N:Int </kindVarCounter>
+        <kindVarSet> S:Set </kindVarSet>
+
 
 endmodule
