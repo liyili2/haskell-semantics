@@ -192,4 +192,27 @@ This example will not give us error message that the instance of f2 in g does no
 
 will give us error message that the use of f2 in g needs a instance of T (R a), which is bad. It means that Haskell does not check the usage of a type-var in a class once the kind of type-var is shifted used in an extended type-class-constraint. 
 
+21, kind inference not listing implication.
+
+First, Haskell type-inferencing algorithm requires kind inference check. For example, if we have the following function:
+
+f :: x a b -> Int
+
+then, Haskell will assume that a and b having kind *, and x having kind * -> * -> *. 
+
+So, in this case:
+
+When we have the following datatype:
+
+data A x y = A x | B y, 
+
+the constrcts from the datatype can be put into the function f. 
+
+However, if we have the following datatype:
+
+data A x y = A (x y)
+
+the datatype cannot be plugged into the function f because the kind checking indicate that the datatype A having kind (* -> *) -> * -> *. 
+
+The property in Haskell provides an additional and unnecessary restriction on the items that can be plugged into function f.
 

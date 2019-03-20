@@ -146,6 +146,9 @@ module HASKELL-ERRORS
     rule <k> error(boundTypeVarNotShowing) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("One of the module's expressions has a type-var bounded by its" +String "context constraint and not showing in the type annotation of the expression. This makes the expression cannot be used in other expressions.")) </output>
 
+    rule <k> error(noEnoughInformationForKindVar) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("One of the module's expressions has a type-var that cannot be determined to have an exact kind due to no enough information.")) </output>
+
     rule exnExp(S:String) => error(S)
 
 endmodule

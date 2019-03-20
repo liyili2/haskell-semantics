@@ -55,11 +55,35 @@ module HASKELL-TRANSFORMATION
               => methodDecl(F, C, makeVarContextMap(A), T)
    rule makeMethodDecl(F:K, C:Set, T:K) => methodDecl(F, C, .Map, T) [owise]
 
+   //a function to set up contexts for type-vars in a method
+   syntax KItem ::= updateSingleContextAux(K, K) [function]
+   rule updateSingleContextAux(contextKind(X:Set, Y:K), B:K)
+             => contextKind(X SetItem(B), Y)
+
+   syntax Map ::= updateSingleContext(Map, K, K) [function]
+   rule updateSingleContext((X |-> C:K) M:Map, X, Y:K)
+           => (X |-> updateSingleContextAux(C, Y)) M
+
+   syntax Map ::= setUpContextMethod(Map, K, K) [function]
+                | setUpContextMethodAux(Map, K, Set) [function]
+   rule setUpContextMethod(.Map, .K, .K) => .Map
+   rule setUpContextMethod((A:K |-> B:K) M:Map, .K, .K)
+            => setUpContextMethod(M, A, B)
+   rule setUpContextMethod(M:Map, A:K, methodDef(Cs:Set, M:Map, T:K, L:List))
+           => setUpContextMethod(M, .K, .K)
+                 (A |-> methodDef(Cs, setUpContextMethodAux(M, .K, Cs), T, L))
+
+   rule setUpContextMethodAux(M:Map, .K, .Set) => M
+   rule setUpContextMethodAux(M:Map, .K, SetItem(A:K) S:Set)
+          => setUpContextMethodAux(M, A, S)
+   rule setUpContextMethodAux(M:Map, classTitle(A:K, ListItem(X:K) L:List), S:Set)
+           => setUpContextMethodAux(updateSingleContext(M, X, A), .K, S)
+
    //make a method def by context and forall types
    syntax Map ::= makeVarContextMap(Set) [function]
    rule makeVarContextMap(.Set) => .Map
    rule makeVarContextMap(SetItem(A:K) S:Set)
-            => (A |-> resultSet(.Set)) makeVarContextMap(S)
+            => (A |-> contextKind(.Set, .K)) makeVarContextMap(S)
 
    syntax KItem ::= makeMethodDef(Set, K) [function]
    rule makeMethodDef(C:Set, forall(A:Set, T:K))

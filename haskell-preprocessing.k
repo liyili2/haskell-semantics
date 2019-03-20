@@ -627,7 +627,8 @@ module HASKELL-PREPROCESSING
    rule <k> collectExpressions
                => getExpressions(transDeclFun(N, Mod, TM, Ts, Is, .Map, .Map))
                   ~> (allContextsMakeSense
-                    ~> checkKindInExpressions) ...</k>
+                   ~> (setUpContextsForVars
+                    ~> checkKindInExpressions)) ...</k>
         <tempModule> TM:K </tempModule>
         <genVarCounter> N:Int </genVarCounter>
         <currModule> Mod:K </currModule>
@@ -650,8 +651,13 @@ module HASKELL-PREPROCESSING
         <moduleName> Mod </moduleName>
         <moduleMethods> M:Map </moduleMethods>
 
+   rule <k> setUpContextsForVars => .K ...</k>
+        <currModule> Mod:K </currModule>
+        <moduleName> Mod </moduleName>
+        <moduleMethods> M:Map => setUpContextMethod(M, .K, .K) </moduleMethods>
+
    rule <k> checkKindInExpressions
-            => kindInferExp(N, S, Mod, .K, M, KM, Is, PM) ...</k>
+            => checkKindInExpFinal(kindInferExp(N, S, Mod, .Map, .K, .K, M, KM, Is, PM)) ...</k>
         <currModule> Mod:K </currModule>
         <moduleName> Mod </moduleName>
         <moduleMethods> M:Map </moduleMethods>
@@ -661,5 +667,11 @@ module HASKELL-PREPROCESSING
         <kindVarCounter> N:Int </kindVarCounter>
         <kindVarSet> S:Set </kindVarSet>
 
+   rule checkKindInExpFinal(error(A:K)) => error(A)
+
+   rule <k> checkKindInExpFinal(resultMap(AM:Map)) => .K ...</k>
+        <currModule> Mod:K </currModule>
+        <moduleName> Mod </moduleName>
+        <moduleMethods> M:Map => AM </moduleMethods>
 
 endmodule

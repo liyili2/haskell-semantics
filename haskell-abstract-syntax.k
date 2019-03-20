@@ -53,6 +53,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "derivingClassHasNoDefault"
     syntax KItem ::= "derivingClassNoKindMatching"
     syntax KItem ::= "boundTypeVarNotShowing"
+    syntax KItem ::= "noEnoughInformationForKindVar"
 
     //checking steps
     syntax KItem ::= "startChecks"
@@ -130,7 +131,9 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "collectExpressions"
     syntax KItem ::= getExpressions(K)
     syntax KItem ::= "allContextsMakeSense"
+    syntax KItem ::= "setUpContextsForVars"
     syntax KItem ::= "checkKindInExpressions"
+    syntax KItem ::= checkKindInExpFinal(K)
 
     //preprocessing of beta map
     syntax KItem ::= "makePreBetaMap"
@@ -227,8 +230,8 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax ElemList ::= List{Element, ","} [strict]
     rule val(K:KResult) => valValue(K) [structural]
 
-    syntax KResult ::= "sameAsContextClass"
-    syntax KResult ::= resultTuple(K, K)
+    syntax KResult ::= contextKind(Set, K)
+    syntax KResult ::= resultTupleMap(Map, Map)
     syntax KResult ::= resultTupleSet(K, Set) 
     syntax KResult ::= resultSet(Set)
     syntax KResult ::= resultSetMap(Set, Map)

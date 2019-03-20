@@ -1676,39 +1676,110 @@ module HASKELL-KINDINFER
 
    //a function to check the kind inference for every expression
    //every expression in a module has an assumption of star kind
-   syntax KItem ::= kindInferExp(Int, Set, K, K, Map, Map, Set, Map) [function]
+   syntax Map ::= updateKindInTypeVarMap(Map, Map) [function]
+   syntax KItem ::= updateKindInTypeVarMapAux(K, K, Map) [function]
+   rule updateKindInTypeVarMap(.Map, M:Map) => .Map
+   rule updateKindInTypeVarMap((A:K |-> B:K) AM:Map, M:Map)
+          => (A |-> (updateKindInTypeVarMapAux(A, B, M)))
+                 updateKindInTypeVarMap(AM, M)
+
+   rule updateKindInTypeVarMapAux(A:K, contextKind(Cs:Set, B:K), (A |-> C:K) M:Map)
+            => contextKind(Cs, C)
+
+   //helper function to get rid of all kind vars to be star.
+   //all type-vars that cannot be determined in a type-var position
+   //in a type annotation will be claimed as star kind in Haskell.
+   //for example, if we have f x y -> y, then x is not known in kind-inferencing
+   //and x is claimed to have star kind in Haskell.
+   syntax KItem ::= staringAllNonCheckedVars(Map, K, K, Map, Map) [function]
+   rule staringAllNonCheckedVars(.Map, .K, .K, CM:Map, XM:Map)
+              => resultTupleMap(CM, XM)
+   rule staringAllNonCheckedVars((A:K |-> B:K) M:Map, .K, .K, CM:Map, XM:Map)
+           => staringAllNonCheckedVars(M, A, B, CM, XM)
+   rule staringAllNonCheckedVars(M:Map, A:K,
+                contextKind(Cs:Set, kindVar(N:Int)), CM:Map, XM:Map)
+         => staringAllNonCheckedVars(M, .K, .K,
+                    (A |-> contextKind(Cs, star)) CM, (kindVar(N) |-> star) XM)
+      rule staringAllNonCheckedVars(M:Map, A:K,
+                contextKind(Cs:Set, X:K), CM:Map, XM:Map)
+         => staringAllNonCheckedVars(M, .K, .K,
+                        (A |-> contextKind(Cs:Set, X:K)) CM, XM) [owise]
+
+   syntax Bool ::= hasNoKindVarsInMap(Map, K, K) [function]
+                 | hasNoKindVarsInTerm(K) [function]
+   rule hasNoKindVarsInMap(.Map, .K, .K) => true
+   rule hasNoKindVarsInMap((A:K |-> B:K) M:Map, .K, .K)
+           => hasNoKindVarsInMap(M, A, B)
+   rule hasNoKindVarsInMap(M:Map, A:K, contextKind(Cs:Set, X:K))
+          => hasNoKindVarsInMap(M, .K, .K)
+        requires hasNoKindVarsInTerm(X)
+   rule hasNoKindVarsInMap(M:Map, A:K, contextKind(Cs:Set, X:K)) => false
+        requires notBool hasNoKindVarsInTerm(X)
+   rule hasNoKindVarsInTerm(kindVar(N:Int)) => false
+   rule hasNoKindVarsInTerm(kindArrow(X:K, Y:K))
+               => hasNoKindVarsInTerm(X) andBool hasNoKindVarsInTerm(Y)
+   rule hasNoKindVarsInTerm(X:K) => true [owise]
+
+   syntax KItem ::= checkNoFreeKindVar(Map) [function]
+                  | checkNoFreeKindVarAux(K) [function]
+                  | checkNoFreeKindVarNext(Map) [function]
+   rule checkNoFreeKindVar(M:Map) => checkNoFreeKindVarAux(
+                     staringAllNonCheckedVars(M, .K, .K, .Map, .Map))
+   rule checkNoFreeKindVarAux(resultTupleMap(CM:Map, XM:Map))
+             => checkNoFreeKindVarNext(replaceAllKindInMap(XM, CM))
+   rule checkNoFreeKindVarNext(X:Map) => resultMap(X)
+        requires hasNoKindVarsInMap(X, .K, .K)
+   rule checkNoFreeKindVarNext(X:Map) => error(noEnoughInformationForKindVar) [owise]
+
+   //main function of kind inference for expression
+   syntax KItem ::= kindInferExp(Int, Set, K, Map, K, K, Map, Map, Set, Map) [function]
                  //counter, kind-var-set, mod, execute, method-map,
                // kind env, imports, import-map
-                  | kindInferExpAux(K, K, Set, K, Map, Map, Set, Map) [function]
-                  | kindInferExpNext(K, K, K, Set, Map, Map, Set, Map) [function]
-                  | kindInferExpCheck(Int, Set, K, K, Map, Map, Set, Map) [function]
+                  | kindInferExpAux(K, Map, K, K, K, Map, Map, Set, Map) [function]
+                  | kindInferExpNext(K, Map, K, K, K, Set, Map, Map, Set, Map) [function]
+                  | kindInferExpCheck(Int, Set, K, Map, K, K, K, Map, Map, Set, Map) [function]
+                  | kindInferExpCheck1(Int, Set, K, Map, K, K, K, Map, Map, Set, Map) [function]
 
-   rule kindInferExp(N:Int, S:Set, Mod:K, .K, .Map, KM:Map, Is:Set, PM:Map) => .K
-   rule kindInferExp(N:Int, S:Set, Mod:K, .K, (A:K |-> B:K) M:Map, KM:Map, Is:Set, PM:Map)
-           => kindInferExp(N, S, Mod, B, M, KM, Is, M)
-   rule kindInferExp(N:Int, S:Set, Mod:K, methodDef(Cs:Set,
+   rule kindInferExp(N:Int, S:Set, Mod:K, AM:Map, .K,
+           .K, .Map, KM:Map, Is:Set, PM:Map) => resultMap(AM)
+   rule kindInferExp(N:Int, S:Set, Mod:K, AM:Map, .K, .K,
+                      (A:K |-> B:K) M:Map, KM:Map, Is:Set, PM:Map)
+           => kindInferExp(N, S, Mod, AM, A, B, M, KM, Is, M)
+   rule kindInferExp(N:Int, S:Set, Mod:K, AM:Map, A:K, methodDef(Cs:Set,
                  CM:Map, T:K, L:List), M:Map, KM:Map, Is:Set, PM:Map)
-           => kindInferExpAux(Mod, kindInferTypeVars(N, S, Mod,
-                .K, Cs, .Set, KM, Is, PM), keys(CM), T, M, KM, Is, PM)
-   rule kindInferExpAux(Mod:K, error(A:K), As:Set, T:K,
-              M:Map, KM:Map, Is:Set, PM:Map) => error(A)
-   rule kindInferExpAux(Mod:K, resultKindTupleMap(N:Int, S:Set,
-              Tu:Set, KM:Map), As:Set, T:K, M:Map, Old:Map, Is:Set, PM:Map)
-           => kindInferExpNext(Mod, genKindMapCheck(N, S, .K, As, KM), T, Tu, M, Old, Is, PM)
-   rule kindInferExpNext(Mod:K, resultTransSetMap(N:Int, S:Set, KM:Map),
-                T:K, Tu:Set, M:Map, Old:Map, Is:Set, PM:Map)
-           => kindInferExpNext(Mod, kindInference(
-                      N, S, Mod, T, star, KM, Is, PM), T, Tu, M, Old, Is, PM)
-   rule kindInferExpNext(Mod:K, error(A:K), T:K, Tu:Set, M:Map,
-            Old:Map, Is:Set, PM:Map) => error(A)
-   rule kindInferExpNext(Mod:K, returnKind(N:Int, S:Set, Ts:Set), T:K, Tu:Set, M:Map,
-            Old:Map, Is:Set, PM:Map)
-          => kindInferExpCheck(N, S, Mod, unifInKind(.K, .Set, Ts Tu, .Map), M, Old, Is, PM)
-   rule kindInferExpCheck(N:Int, S:Set, Mod:K, error(B:K),
-             M:Map, Old:Map, Is:Set, PM:Map) => error(B)
-   rule kindInferExpCheck(N:Int, S:Set, Mod:K, resultMap(XM:Map),
+           => kindInferExpAux(Mod, AM, A, methodDef(Cs:Set,
+                 CM:Map, T:K, L:List), kindInferTypeVars(N, S, Mod,
+                .K, Cs, .Set, KM, Is, PM), M, KM, Is, PM)
+   rule kindInferExpAux(Mod:K, AM:Map, A:K, B:K, error(C:K),
+              M:Map, KM:Map, Is:Set, PM:Map) => error(C)
+   rule kindInferExpAux(Mod:K, AM:Map, A:K, methodDef(Cs:Set, CM:Map, T:K, L:List),
+             resultKindTupleMap(N:Int, S:Set, Tu:Set, KM:Map), M:Map, Old:Map, Is:Set, PM:Map)
+           => kindInferExpNext(Mod, AM:Map, A:K, methodDef(Cs:Set, CM:Map, T:K, L:List),
+                      genKindMapCheck(N, S, .K, keys(CM), KM), Tu, M, Old, Is, PM)
+   rule kindInferExpNext(Mod:K, AM:Map, A:K, methodDef(Cs:Set, CM:Map, T:K, L:List),
+              resultTransSetMap(N:Int, S:Set, KM:Map), Tu:Set, M:Map, Old:Map, Is:Set, PM:Map)
+           => kindInferExpNext(Mod, AM, A,
+                methodDef(Cs:Set, updateKindInTypeVarMap(CM:Map, KM), T:K, L:List),
+               kindInference(N, S, Mod, T, star, KM, Is, PM), Tu, M, Old, Is, PM)
+   rule kindInferExpNext(Mod:K, AM:Map, A:K, B:K, error(C:K), Tu:Set, M:Map,
+            Old:Map, Is:Set, PM:Map) => error(C)
+   rule kindInferExpNext(Mod:K, AM:Map, A:K, B:K,returnKind(N:Int, S:Set, Ts:Set),
+           Tu:Set, M:Map, Old:Map, Is:Set, PM:Map)
+          => kindInferExpCheck(N, S, Mod, AM:Map, A:K, B:K,
+                    unifInKind(.K, .Set, Ts Tu, .Map), M, Old, Is, PM)
+   rule kindInferExpCheck(N:Int, S:Set, Mod:K, AM:Map, A:K, B:K, error(C:K),
+             M:Map, Old:Map, Is:Set, PM:Map) => error(C)
+   rule kindInferExpCheck(N:Int, S:Set, Mod:K, AM:Map, A:K, 
+              methodDef(Cs:Set, CM:Map, T:K, L:List), resultMap(XM:Map),
              M:Map, Old:Map, Is:Set, PM:Map)
-          => kindInferExp(N, S, Mod, .K, M, Old, Is, PM)
+         => kindInferExpCheck1(N, S, Mod, AM, A, methodDef(Cs:Set, CM:Map, T:K, L:List),
+                   checkNoFreeKindVar(replaceAllKindInMap(XM, CM)), M, Old, Is, PM)
+   rule kindInferExpCheck1(N:Int, S:Set, Mod:K, AM:Map, A:K, B:K, error(C:K),
+             M:Map, Old:Map, Is:Set, PM:Map) => error(C)
+    rule kindInferExpCheck1(N:Int, S:Set, Mod:K, AM:Map, A:K,
+                methodDef(Cs:Set, CM:Map, T:K, L:List), resultMap(CM':Map),
+             M:Map, Old:Map, Is:Set, PM:Map)
+           => kindInferExp(N, S, Mod, (A |-> methodDef(Cs, CM', T, L)) AM, .K, .K, M, Old, Is, PM)
 
 
    //a function to deal with the kind inference in a class
@@ -1867,6 +1938,8 @@ module HASKELL-KINDINFER
    rule replaceKindInTerm(A:K, B:K, A:K) => B
    rule replaceKindInTerm(A:K, B:K, kindArrow(X:K, Y:K))
           => kindArrow(replaceKindInTerm(A, B, X), replaceKindInTerm(A, B, Y))
+   rule replaceKindInTerm(A:K, B:K, contextKind(Cs:Set, C:K))
+          => contextKind(Cs, replaceKindInTerm(A, B, C))
    rule replaceKindInTerm(A:K, B:K, X:K) => X [owise]
 
    syntax Set ::= replaceKindInSet(K, K, K, Set) [function]
