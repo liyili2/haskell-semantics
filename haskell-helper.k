@@ -631,4 +631,9 @@ module HASKELL-HELPER
          => SetItem(B) getValues(M, .K, S)
    rule getValues(M:Map, A:KItem, S:Set) => getValues(M, .K, S) [owise]
 
+   syntax Set ::= toKindTuples(Map) [function]
+   rule toKindTuples(.Map) => .Set
+   rule toKindTuples((A:K |-> C:K) M:Map)
+           => SetItem(kindTuple(A, C)) toKindTuples(M)
+
 endmodule

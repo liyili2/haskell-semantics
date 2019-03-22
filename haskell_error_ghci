@@ -216,3 +216,21 @@ the datatype cannot be plugged into the function f because the kind checking ind
 
 The property in Haskell provides an additional and unnecessary restriction on the items that can be plugged into function f.
 
+22, unspecified restriction on Haskell. type in Haskell is just a type synonym. data is a way to define actually datatype. In dealing with the type variables. If we have:
+
+    ;data R f b = A Int | B b | C b
+    ;type X f g = R Int Int
+    ;data T f x = D (f x) | E x
+    ;data Q f = F (T (R f) Int)
+
+One can define the Q f to be F (T (R f) Int), but we cannot replace the X with R here like:
+    ;data Q f = F (T (X f) Int)
+
+Haskell requires type to have complete arguments in a data type decl, but it does not require a use of actually data type to have the restriction? Why? This behavior is strange, and it is not listed in any Haskell documentation and is not coherent with the basic idea of Haskell.
+
+Howeve, the kind of type-vars in a data/type can be affected due to multually recursive data-types, like:
+
+    ;data A a f = A (B a f)
+    ;data B a f = B (A (f a) f)
+
+The f vars in datatypes A and B are now * -> *, but if we have only data A a f = A (X a f), the kind of f is *. 

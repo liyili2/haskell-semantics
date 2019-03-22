@@ -122,7 +122,10 @@ module HASKELL-ABSTRACT-SYNTAX
                 //done-class-set, classname, execute,
                 // class-father-map, tuples, kind-map, imports, import-map
     syntax KItem ::= kindClassCheck(K, Map)
-    syntax KItem ::= kindClassFinal(Map, Set)
+    syntax KItem ::= kindClassCheck2(K, Map, Map)
+    syntax KItem ::= kindClassCheck3(Map, Map)
+    syntax KItem ::= kindClassFinal(Map, Map)
+    syntax KItem ::= kindClassNoKindVar(Map, Map, Set, K, K, Set, Map)
 
     syntax KItem ::= "collectInstances"
     syntax KItem ::= getInstances(K)

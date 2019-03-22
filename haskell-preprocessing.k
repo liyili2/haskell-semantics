@@ -439,24 +439,67 @@ module HASKELL-PREPROCESSING
           => kindClassCheck(unifInKind(.K, .Set, Ts, .Map), KM)
 
    rule <k> kindClassCheck(resultMap(M:Map), KM:Map)
-          => kindClassFinal(replaceAllKindInMap(M, KM), getRidWrapper(C)) ...</k>
+          => kindClassNoKindVar(M, replaceAllKindInMap(
+                M, KM), getRidWrapper(C), .K, .K, .Set, .Map) ...</k>
         <currModule> Mod:K </currModule>
         <classNames>... Mod |-> C:K  ...</classNames>
 
-   rule <k> kindClassFinal(KM:Map, .Set) => .K ...</k>
+   rule kindClassNoKindVar(RM:Map, KM:Map, .Set, .K, .K, Tu:Set, XM:Map)
+           => kindClassCheck2(checkAndRemoveNoVarTerms(
+                 .K, toKindTuples(RM) Tu, .Set), KM, XM)
+   rule <k> kindClassNoKindVar(RM:Map, KM:Map,
+               SetItem(A:K) S:Set, .K, .K, Tu:Set, XM:Map)
+               => kindClassNoKindVar(RM, KM, S, A,
+                  staringAllNonCheckedVarsInMethod(
+                       replaceAllKindInMethodMap(RM, .K, .K, MM),
+                         .K, .K, .K, .Set, .Map), Tu:Set, XM:Map) ...</k>
         <currModule> Mod:K </currModule>
-        <moduleName> Mod </moduleName>
-         <kindMap> _:Map => KM </kindMap>
+         <class>...
+                <classModule> Mod </classModule>
+                <className> A </className>
+                <classMethods> MM:Map </classMethods>
+         ...</class>
 
-   rule <k> kindClassFinal((A |-> kindArrow(X:K, star)) KM:Map, SetItem(A:K) Cs:Set)
-               => kindClassFinal((A |-> kindArrow(X:K, star)) KM:Map, Cs) ...</k>
+   rule kindClassNoKindVar(RM:Map, KM:Map, S:Set, A:K,
+                 resultSetMap(Tu':Set, MM:Map), Tu:Set, XM:Map)
+           => kindClassNoKindVar(RM, KM, S, .K, .K, Tu' Tu, (A |-> resultMap(MM)) XM)
+
+   rule kindClassCheck2(error(A:K), KM:Map, XM:Map) => error(classKindNotEqual)
+   rule kindClassCheck2(resultSet(Ts:Set), KM:Map, XM:Map)
+          => kindClassCheck2(unifInKind(.K, .Set, Ts, .Map), KM, XM)
+   rule kindClassCheck2(resultMap(M:Map), KM:Map, XM:Map)
+          => kindClassCheck3(replaceAllKindInMap(
+                M, KM), replaceAllKindInClassMap(M,.K, .K, XM))
+
+   rule kindClassCheck3(KM:Map, XM:Map) => error(noEnoughInformationForKindVar)
+        requires notBool hasNoKindVarsInKindMap(KM, .K)
+                  orBool notBool hasNoKindVarsInClassMap(XM, .K)
+   rule kindClassCheck3(KM:Map, XM:Map) => kindClassFinal(KM:Map, XM:Map)
+        requires hasNoKindVarsInKindMap(KM, .K)
+                  andBool hasNoKindVarsInClassMap(XM, .K)
+
+   rule <k> kindClassCheck2(resultMap(M:Map), KM:Map, XM:Map)
+          => kindClassCheck3(replaceAllKindInMap(
+                M, KM), replaceAllKindInClassMap(M,.K, .K, XM)) ...</k>
+        <currModule> Mod:K </currModule>
+        <classNames>... Mod |-> C:K  ...</classNames>
+
+   rule <k> kindClassFinal(KM:Map, .Map) => .K ...</k>
+        <currModule> Mod:K </currModule>
+        <moduleName> Mod:K </moduleName>
+        <kindMap> M:Map => KM </kindMap>
+
+   rule <k> kindClassFinal((A |-> kindArrow(X:K, star)) KM:Map,
+               (A |-> resultMap(MM':Map)) XM:Map)
+               => kindClassFinal((A |-> kindArrow(X:K, star)) KM:Map, XM) ...</k>
         <currModule> Mod:K </currModule>
          <class>...
                 <classModule> Mod </classModule>
                 <className> A </className>
                 <classKind> _:K => X </classKind>
+                <classMethods> MM:Map => MM' </classMethods>
          ...</class>
-
+ 
    rule kindClass(N:Int, S:Set, Rs:Set, .K, CM:Map, Tu:Set, KM:Map, Is:Set, PM:Map)
                => kindClass(N, S, Rs, searchNoFatherClass(
                                .K, .K, CM, Rs, PM), CM, Tu, KM, Is, PM)
@@ -481,10 +524,15 @@ module HASKELL-PREPROCESSING
 
     rule kindClassAux(Rs:Set, CName:K, error(A:K),
              CM:Map, Tu:Set, KM:Map, Is:Set, PM:Map) => error(A)
-    rule kindClassAux(Rs:Set, CName:K, returnKind(N:Int, S:Set, Tu:Set),
+    rule <k> kindClassAux(Rs:Set, CName:K, resultKindTupleMap(N:Int, S:Set, Tu:Set, AM:Map),
              CM:Map, Tu':Set, KM:Map, Is:Set, PM:Map)
-                => kindClass(N, S, Rs, .K, CM, Tu Tu', KM, Is, PM)
-
+                => kindClass(N, S, Rs, .K, CM, Tu Tu', KM, Is, PM) ...</k>
+         <currModule> Mod:K </currModule>
+         <class>...
+                <classModule> Mod </classModule>
+                <className> CName </className>
+                <classMethods> _:Map => AM </classMethods>
+         ...</class>
 
 
     //check all contexts having correct kinds

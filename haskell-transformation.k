@@ -11,12 +11,16 @@ module HASKELL-TRANSFORMATION
     imports HASKELL-KINDINFER
 
    //only deal with method decl, method pattern will be in separate functions
-   syntax Set ::= getTypeVarsInClass(K, Set) [function]
-   rule getTypeVarsInClass(.K, .Set) => .Set
-   rule getTypeVarsInClass(.K, SetItem(A:K) S:Set)
-            => getTypeVarsInClass(A, S)
-   rule getTypeVarsInClass(classTitle(A:K, ListItem(C:K) B:List), S:Set)
-            => SetItem(C) getTypeVarsInClass(.K, S)
+   syntax Set ::= getTypeVarsInClassAux(K, Set) [function]
+   rule getTypeVarsInClassAux(.K, .Set) => .Set
+   rule getTypeVarsInClassAux(.K, SetItem(A:K) S:Set)
+            => getTypeVarsInClassAux(A, S)
+   rule getTypeVarsInClassAux(classTitle(A:K, ListItem(C:K) B:List), S:Set)
+            => SetItem(C) getTypeVarsInClassAux(.K, S)
+
+   syntax Set ::= getTypeVarsInClass(K) [function]
+   rule getTypeVarsInClass(error(A:K)) => .Set
+   rule getTypeVarsInClass(resultSet(S:Set)) => getTypeVarsInClassAux(.K, S)
 
    //forming a cons list from a K list
    syntax KItem ::= formExpList(List) [function]
@@ -949,14 +953,14 @@ module HASKELL-TRANSFORMATION
            => toAstTypeClassList(Mod, V, X,
                   contextToSet(Mod, C, .K, .Set, S, Is), toAbsTypeWithAll(
                  Mod, T, SetItem(V), getFreeTypeVars(T), S, Is), B, M, S, Is)
-        requires V in getFreeTypeVars(T) andBool getTypeVarsInClass(.K,
+        requires V in getFreeTypeVars(T) andBool getTypeVarsInClass(
                     contextToSet(Mod, C, .K, .Set, S, Is))
                                      <=Set getFreeTypeVars(T)
    rule toAstTypeClassAux(Mod:K, V:K, 'genAssignContext(X:Vars,, C:Context,, T:Type),
                 B:CDeclsList, M:Map, S:Set, Is:Set)
            => error(ambiguousTypeVar)
         requires (notBool V in getFreeTypeVars(T))
-                   orBool (notBool getTypeVarsInClass(.K,
+                   orBool (notBool getTypeVarsInClass(
                     contextToSet(Mod, C, .K, .Set, S, Is))  <=Set getFreeTypeVars(T))
    rule toAstTypeClassAux(Mod:K, V:K, X:K, B:CDeclsList, M:Map, S:Set, Is:Set)
             => toAstTypeClass(Mod, V, B, M, S, Is) [owise]
@@ -968,16 +972,25 @@ module HASKELL-TRANSFORMATION
    rule toAstTypeClassList(Mod:K, V:K, X:K, resultSet(Cons:Set), T:K,
              C:CDeclsList, M:Map, Ts:Set, Is:Set)
          => toAstTypeClassList1(Mod, V, X, Cons, T, C, M, Ts, Is) [owise]
-
    rule toAstTypeClassList1(Mod:K, V:K, X:Var,
                        Cons:Set, T:K, C:CDeclsList, M:Map, Ts:Set, Is:Set)
            => toAstTypeClass(Mod, V, C, (fullName(Mod, funName(pillVar(X)))
                         |-> makeMethodDef(Cons, T)) M, Ts, Is)
+        requires isNewDeclClass(M, fullName(Mod, funName(pillVar(X))))
+   rule toAstTypeClassList1(Mod:K, V:K, X:Var,
+                       Cons:Set, T:K, C:CDeclsList, M:Map, Ts:Set, Is:Set)
+           => error(classVarCollipse)
+        requires notBool isNewDeclClass(M, fullName(Mod, funName(pillVar(X))))
    rule toAstTypeClassList1(Mod:K, V:K, 'varCon(X:Var,, Xs:Vars), Cons:Set,
                   T:K, C:CDeclsList, M:Map, Ts:Set, Is:Set)
            => toAstTypeClassList1(Mod, V, Xs, Cons:Set, T, C,
                   (fullName(Mod, funName(pillVar(X)))
                              |-> makeMethodDef(Cons, T)) M, Ts, Is)
+        requires isNewDeclClass(M, fullName(Mod, funName(pillVar(X))))
+   rule toAstTypeClassList1(Mod:K, V:K, 'varCon(X:Var,, Xs:Vars), Cons:Set,
+                  T:K, C:CDeclsList, M:Map, Ts:Set, Is:Set)
+           => error(classVarCollipse)
+        requires notBool isNewDeclClass(M, fullName(Mod, funName(pillVar(X))))
 
    //functions to add possible pattern rules for type classes
    //only for the right hand side.
@@ -998,6 +1011,14 @@ module HASKELL-TRANSFORMATION
            => isNewPats(M, .K, S, .K)
 
    //check if a list of decl variables have been defined before (false) or new (true)
+   syntax Bool ::= isNewDeclClass(Map, K) [function]
+                 | isNewDeclClassAux(K) [function]
+   rule isNewDeclClass((A:K |-> C:K) M:Map, A)
+            => isNewDeclClassAux(C)
+   rule isNewDeclClass(M:Map, A) => true [owise]
+   rule isNewDeclClassAux(methodDef(S:Set, M:Map, .K, B:List)) => true
+   rule isNewDeclClassAux(methodDef(S:Set, M:Map, T:K, B:List)) => false [owise]
+
    syntax Bool ::= isNewDecl(Map, K, K, K) [function]
    rule isNewDecl(M:Map, .K, A:Var, .K) => true
         requires notBool (funName(pillVar(A)) in keys(M))
