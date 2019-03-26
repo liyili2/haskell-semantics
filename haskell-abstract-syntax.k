@@ -33,9 +33,13 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "classVarCollipse"
     syntax KItem ::= "classVarNotInScope"
     syntax KItem ::= "classMethodVarNotInScope"
+    syntax KItem ::= "instanceMethodVarNotInScope"
     syntax KItem ::= "syntaxError"
     syntax KItem ::= "instanceInstNotDistinct"
     syntax KItem ::= "instanceMethodArgsNoMatch"
+    syntax KItem ::= "instanceTypeVarNotInScope"
+    syntax KItem ::= "lackParentInstance"
+    syntax KItem ::= "duplicateParentInstance"
     syntax KItem ::= "moreThanOneDefault"
     syntax KItem ::= "importFromNoSource"
     syntax KItem ::= "ambiguousTypeName"
@@ -47,6 +51,7 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= "declNoInstance"
     syntax KItem ::= "duplicateDeriving"
     syntax KItem ::= "duplicateDecl"
+    syntax KItem ::= "duplicateInstance"
     syntax KItem ::= "funNameDeclNotDef"
     syntax KItem ::= "funNameDefNotDeclInClass"
     syntax KItem ::= "funNameConflicting"
@@ -127,10 +132,22 @@ module HASKELL-ABSTRACT-SYNTAX
     syntax KItem ::= kindClassFinal(Map, Map)
     syntax KItem ::= kindClassNoKindVar(Map, Map, Set, K, K, Set, Map)
 
+    //dealing with instances
+    syntax KItem ::= "genInstanceChecks"
     syntax KItem ::= "collectInstances"
     syntax KItem ::= getInstances(K)
-    syntax KItem ::= getInstancesAux(K, K, Set, K, K)
+    syntax KItem ::= getInstancesAux(K, K, K, K, K)
+    syntax KItem ::= getInstancesNext(K, K)
+    syntax KItem ::= returnInstance(Int, Set, K, Set, K, Map)
+    syntax KItem ::= instanceTuple(K, K) //class, type
+    syntax KItem ::= "initialInstanceInModule"
+    syntax KItem ::= "kindCheckInstance"
+    syntax KItem ::= kindCheckInstance(Set, Int, Set, K, Map, Set, Map)
+    syntax KItem ::= kindCheckInstanceAux(Set, K, K, K, K, Map, Set, Map)
+    syntax KItem ::= "checkInstanceParents"
+    syntax KItem ::= checkInstanceParents(Set, K)
 
+    //dealing with expressions
     syntax KItem ::= "collectExpressions"
     syntax KItem ::= getExpressions(K)
     syntax KItem ::= "allContextsMakeSense"

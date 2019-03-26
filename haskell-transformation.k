@@ -1092,6 +1092,11 @@ module HASKELL-TRANSFORMATION
 
    rule toAstPat(N:Int, Mod:K, 'emptyOptCDecls(.KList), U:K, V:K, M:Map, Ts:Set, Is:Set)
               => resultIntMap(N, M)
+   rule toAstPat(N:Int, Mod:K, 'emptyOptIDecls(.KList), U:K, V:K, M:Map, Ts:Set, Is:Set)
+              => resultIntMap(N, M)
+   rule toAstPat(N:Int, Mod:K, 'ideclWhere('ideclBracket(Cs:IDeclsList)),
+            U:K, V:K, M:Map, Ts:Set, Is:Set)
+         => toAstPat(N, Mod, Cs, U, V, M, Ts, Is)
    rule toAstPat(N:Int, Mod:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)),
             U:K, V:K, M:Map, Ts:Set, Is:Set)
          => toAstPat(N, Mod, Cs, U, V, M, Ts, Is)
@@ -1099,8 +1104,25 @@ module HASKELL-TRANSFORMATION
    rule toAstPat(N:Int, Mod:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)),
             U:K, V:K, M:Map, Ts:Set, Is:Set) => error(funNameDefNotDeclInClass)
         requires notBool (getFreeVarsInDefs(Cs) <=Set getFreeVarsInCDecls(Cs))
+   rule toAstPat(N:Int, Mod:K, .IDeclsList,
+              U:K, V:K, M:Map, Ts:Set, Is:Set) => resultIntMap(N, M)
    rule toAstPat(N:Int, Mod:K, .CDeclsList,
               U:K, V:K, M:Map, Ts:Set, Is:Set) => resultIntMap(N, M)
+
+   rule toAstPat(N:Int, Mod:K, 'ideclsCon(
+            'emptyIDecl(.KList),, B:IDeclsList),.K, .K, M:Map, Ts:Set, Is:Set)
+            => toAstPat(N:Int, Mod:K, B,.K, .K, M:Map, Ts:Set, Is:Set)
+
+   rule toAstPat(N:Int, Mod:K, 'ideclsCon(
+            'ideclVarRhs(X:Var,, Y:Rhs),, B:IDeclsList),.K, .K, M:Map, Ts:Set, Is:Set)
+            => toAstPat(N, Mod, B, fullName(Mod, funName(pillVar(X))), transCDecl(
+              transPosFunLhs(Mod, X, Ts, Is),
+                 transRhs(N, Mod, Y, .Set, Ts, Is)), M, Ts:Set, Is:Set)
+        requires fullName(Mod, X) in keys(M)
+   rule toAstPat(N:Int, Mod:K, 'ideclsCon(
+            'ideclVarRhs(X:Var,, Y:Rhs),, B:IDeclsList),.K, .K, M:Map, Ts:Set, Is:Set)
+            => error(instanceMethodVarNotInScope)
+        requires notBool fullName(Mod, X) in keys(M)
    rule toAstPat(N:Int, Mod:K, 'cdeclCon(
             'cdeclVarRhs(X:Var,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map, Ts:Set, Is:Set)
             => toAstPat(N, Mod, B, fullName(Mod, funName(pillVar(X))), transCDecl(
@@ -1111,6 +1133,17 @@ module HASKELL-TRANSFORMATION
             'cdeclVarRhs(X:Var,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map, Ts:Set, Is:Set)
             => error(classMethodVarNotInScope)
         requires notBool fullName(Mod, X) in keys(M)
+
+   rule toAstPat(N:Int, Mod:K, 'ideclsCon(
+              'ideclFunLhsRhs(X:FunLhs,, Y:Rhs),, B:IDeclsList),.K, .K, M:Map, Ts:Set, Is:Set)
+            => toAstPat(N, Mod, B, fullName(Mod, getCoreVar(X)),
+                    transCDecl(transPosFunLhs(Mod, X, Ts, Is),
+                       transRhs(N, Mod, Y, getBoundVarsInPat(X), Ts, Is)), M, Ts, Is)
+        requires fullName(Mod, getCoreVar(X)) in keys(M)
+   rule toAstPat(N:Int, Mod:K, 'ideclsCon(
+              'ideclFunLhsRhs(X:FunLhs,, Y:Rhs),, B:IDeclsList),.K, .K, M:Map, Ts:Set, Is:Set)
+            => error(instanceMethodVarNotInScope)
+        requires notBool fullName(Mod, getCoreVar(X)) in keys(M)
    rule toAstPat(N:Int, Mod:K, 'cdeclCon(
               'cdeclFunLhsRhs(X:FunLhs,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map, Ts:Set, Is:Set)
             => toAstPat(N, Mod, B, fullName(Mod, getCoreVar(X)),
@@ -1121,6 +1154,7 @@ module HASKELL-TRANSFORMATION
               'cdeclFunLhsRhs(X:FunLhs,, Y:Rhs),, B:CDeclsList),.K, .K, M:Map, Ts:Set, Is:Set)
             => error(classMethodVarNotInScope)
         requires notBool fullName(Mod, getCoreVar(X)) in keys(M)
+
    rule toAstPat(N:Int, Mod:K, A:K, X:K, error(B:K), M:Map, Ts:Set, Is:Set) => error(B)
    rule toAstPat(N:Int, Mod:K, A:K, X:K, resultTrans(N':Int, B:K), M:Map, Ts:Set, Is:Set)
          => toAstPat(N', Mod, A, .K, .K, updatePatMapInExp(M, X, B), Ts:Set, Is:Set)
@@ -1131,6 +1165,66 @@ module HASKELL-TRANSFORMATION
    rule transCDecl(A:K, error(B:K)) => error(B)
    rule transCDecl(funPat(ListItem(X:K) L:List), resultTrans(N:Int, A:K))
             =>  resultTrans(N, funAssign(X, L, A))
+
+   //transformation of instance in a module 
+   syntax Bool ::= isValidInstanceMap(Map, K) [function]
+   rule isValidInstanceMap(.Map, .K) => true
+   rule isValidInstanceMap((A:K |-> B:K) M:Map, .K)
+           => isValidInstanceMap(M, B)
+   rule isValidInstanceMap(M:Map, methodDef(Cs:Set, AM:Map, T:K, L:List))
+           => isValidInstanceMap(M, .K)
+        requires T =/=K .K andBool size(L) =/=K 0
+   rule isValidInstanceMap(M:Map,
+             methodDef(Cs:Set, AM:Map, T:K, L:List))  => false [owise]
+
+   syntax Map ::= genInstanceMapClass(Map, K, K) [function]
+   rule genInstanceMapClass(.Map, .K, .K) => .Map
+   rule genInstanceMapClass((A:K |-> B:K) M:Map, .K, .K)
+         => genInstanceMapClass(M, A, B)
+   rule genInstanceMapClass(M:Map, A:K, methodDef(Cs:Set, XM:Map, T:K, L:List))
+            => (A |-> methodDef(Cs, XM, T, .List)) genInstanceMapClass(M, .K, .K)
+
+   syntax KItem ::= getInstanceType(K) [function]
+   rule getInstanceType(typeConst(A:K, L:List)) => A
+   rule getInstanceType(A:K) => A [owise]
+
+   syntax KItem ::= transInstance(Int, K, OptContext,
+                  K, Inst, OptIDecls, Map, Set, Set) [function]
+                  | transInstanceAux(Int, K, K, K, K, K, Map, Set, Set) [function]
+                  | transInstanceAux1(Set, K, Set, K, K) [function]
+                      //contexts, instance-class-name,
+                     // type-vars, intance-type, instance-exps
+   rule transInstance(N:Int, Mod:K, Cs:OptContext, Q:K,
+              In:Inst, Ds:OptIDecls, M:Map, Ts:Set, Is:Set)
+             => transInstanceAux(N, Mod, contextToSet(Mod, Cs, .K, .Set, Ts, Is),
+                   transExpCon(Mod, Q, Ts, Is), In, Ds, M, Ts, Is)
+        requires hasDistinctVars(In)
+   rule transInstance(N:Int, Mod:K, Cs:OptContext, Q:K,
+              In:Inst, Ds:OptIDecls, M:Map, Ts:Set, Is:Set)
+             => error(instanceInstNotDistinct)
+        requires notBool hasDistinctVars(In)
+   rule transInstanceAux(N:Int, Mod:K, error(A:K), B:K, In:K,
+            Ds:K, M:Map, Ts:Set, Is:Set) => error(A)
+   rule transInstanceAux(N:Int, Mod:K, A:K, error(B:K), In:K,
+            Ds:K, M:Map, Ts:Set, Is:Set) => error(B)
+   rule transInstanceAux(N:Int, Mod:K, resultSet(S:Set),
+             fullName(A:K, B:K), In:K, Ds:K, M:Map, Ts:Set, Is:Set)
+         => transInstanceAux1(S, fullName(A:K, B:K), getFreeTypeVars(In),
+              toAbsType(Mod, In, getFreeTypeVars(In),Ts, Is),
+              toAstPat(N, Mod, Ds, .K, .K, M, Ts, Is))
+        requires getFreeTypeVarsContexts(.K, S) <=Set getFreeTypeVars(In)
+   rule transInstanceAux(N:Int, Mod:K, resultSet(S:Set),
+             fullName(A:K, B:K), In:K, Ds:K, M:Map, Ts:Set, Is:Set)
+         => error(instanceTypeVarNotInScope)
+        requires notBool getFreeTypeVarsContexts(.K, S) <=Set getFreeTypeVars(In)
+   rule transInstanceAux1(S:Set, A:K, As:Set, error(B:K), C:K) => error(B)
+   rule transInstanceAux1(S:Set, A:K, As:Set, B:K, error(C:K)) => error(C)
+   rule transInstanceAux1(S:Set, A:K, As:Set, T:K, resultIntMap(N:Int, M:Map))
+          => returnInstance(N, S, A, As, T, M)
+        requires notBool isError(T) andBool isValidInstanceMap(M, .K)
+   rule transInstanceAux1(S:Set, A:K, As:Set, T:K, resultIntMap(N:Int, M:Map))
+          => error(instanceMethodVarNotInScope)
+        requires notBool isError(T) andBool notBool isValidInstanceMap(M, .K)
 
    //transformation of expressions in a module, bascially an exp is a decl
    //and also check the kind for decl of each function

@@ -65,10 +65,12 @@ module HASKELL-CONFIGURATION
                 <classMethods> .Map </classMethods>
               </class>
               <instances>
+                <instanceNames> .Map </instanceNames>
                 <instance multiplicity="*">
                    <instanceModule> .K </instanceModule>
                    <instanceClass> .K </instanceClass>
                    <instanceType> .K </instanceType>
+                   <instanceVarMap> .Map </instanceVarMap>
                    <instanceContext> .Set </instanceContext>
                    <instanceMethods> .Map </instanceMethods>
                 </instance>

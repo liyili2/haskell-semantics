@@ -233,4 +233,75 @@ Howeve, the kind of type-vars in a data/type can be affected due to multually re
     ;data A a f = A (B a f)
     ;data B a f = B (A (f a) f)
 
-The f vars in datatypes A and B are now * -> *, but if we have only data A a f = A (X a f), the kind of f is *. 
+The f vars in datatypes A and B are now * -> *, but if we have only data A a f = A (X a f), the kind of f is *.
+
+23, FlexibleInstances failure
+
+data S a = A Int | B a
+   ;class A a where {f1 :: a -> b ->  Int}
+   ;class A a => B a where {f2 :: a -> Int}
+  ;instance A (a -> Int) where {f1 x y = 1}
+  ;instance B (a -> Int) where {f2 x = 1}
+  ;g x = f2 (\y -> if x == y then "1" else "2")
+
+if we have the above definition. It is very clear that the function for f2  (\y -> if x == y then "1" else "2") is not a -> Int, so Haskell does not check the type for a lambda term?
+
+Due to the failure, we do not consider FlexibleInstances in our semantics.
+
+
+24. in Haskell documentation, it says that "Instance declarations are not explicitly named in import or export lists. Every module exports all of its instance declarations and every import brings all instance declarations into scope."
+
+However, the following code:
+
+module Euler1 (R(..), A(..), B(..)) where
+{
+   data R a = A Int | B a
+   ;class A a where {f1 :: a -> Int}
+   ;class A a => B a where {f2 :: a -> Int}
+}
+
+module Euler2 () where
+{
+import Euler1;
+instance A (R a) where {f1 x = 1}
+}
+
+module Euler3 () where
+{import Euler1;
+instance A (R a) where {f1 x = 2}
+}
+
+module AStack() where  
+{
+;import Euler2
+;import Euler3
+;g x = f1 x
+} 
+
+The Haskell GHC will give error message saying that the f1 is not in scope. However, if we add Euler1 in the import of AStack. like: 
+
+module AStack() where  
+{
+ import Euler1
+;import Euler2
+;import Euler3
+;g x = f1 x
+} 
+
+Then, Haskell GHC will let the code compile. Why? Because the AStack imports the original class in Euler1? So importing instance or not depends on if a module has imported the original class? This does not specify in the documentation.
+
+25. Another problem following the error #24 is here. If the AStack module has imported the Euler1 module in #24, the code will be compiled successfully. However, there is an problem. Since AStack imports Euler2 and Euler3, they both have instance of A class with type R. However, in this case, the code should have an error, because the AStack cannot determine which f1 the module is calling (from Euler2 or Euler3). 
+
+module AStack() where  
+{
+;import Euler1
+;import Euler2
+;import Euler3
+;g x = f1 x
+} 
+
+According to the Haskell documentation: "for a given type and class, there cannot be more than one instance declaration for that combination of type and class anywhere in the program. "
+
+Then, it means that AStack module should be rejucted because it imports two different instaces for the same type-class with the same type in the line of code g x = f1 x.
+
+

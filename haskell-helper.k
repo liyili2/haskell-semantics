@@ -224,13 +224,6 @@ module HASKELL-HELPER
    rule isSContext('classesCon(C:Class,, Cs:Classes))
             => isSContext(C) andBool isSContext(Cs)
 
-   //check if a module contains the same class name before
-   syntax Bool ::= hasClassName(K, K, K, Map) [function]
-   rule hasClassName(A:K, C:K, .K, (A:K |-> B:K) M:Map)
-          => hasClassName(A,C, B, M)
-   rule hasClassName(A:K, C:K, resultSet(S:Set), M:Map) => C in S
-   rule hasClassName(A:K, B:K, C:K, M:Map) => false [owise]
-
    //get a set of methods defined in a module
    syntax Set ::= getMethodSet(K, K, Map) [function]
    rule getMethodSet(A:K, .K, (A:K |-> B:K) M:Map)
@@ -279,6 +272,16 @@ module HASKELL-HELPER
    syntax Bool ::= isFullName(K) [function]
    rule isFullName(fullName(A:K, B:K)) => true
    rule isFullName(A:K) => false [owise]
+
+   syntax Bool ::= isInMapSet(K, Map, K) [function]
+   rule isInMapSet(A:K, .Map, .K) => false
+   rule isInMapSet(A:K, (B:K |-> C:K) M:Map, .K)
+            => isInMapSet(A, M, C)
+   rule isInMapSet(A:K, M, resultSet(S:Set))
+          => isInMapSet(A, M, .K)
+        requires notBool A in S
+   rule isInMapSet(A:K, M, resultSet(S:Set)) => true
+        requires A in S
 
    syntax Set ::= getIntersect(Set, K, Set) [function]
    rule getIntersect(.Set, .K, S':Set) => .Set
@@ -346,8 +349,8 @@ module HASKELL-HELPER
                  | hasDistinctVarsAux(K, Set) [function]
    rule hasDistinctVars('instAppType(A:K,, B:K)) => hasDistinctVarsAux(B, .Set)
    rule hasDistinctVars('instTupleCover(A:K)) => hasDistinctVarsAux(A, .Set)
-   rule hasDistinctVars('typeVarFun(A:K,, A:K)) => true
-   rule hasDistinctVars('typeVarFun(A:K,, B:K)) => false
+   rule hasDistinctVars('typeVarFun(A:K,, A:K)) => false
+   rule hasDistinctVars('typeVarFun(A:K,, B:K)) => true
         requires A =/=K B
    rule hasDistinctVars(A:K) => true [owise]
 

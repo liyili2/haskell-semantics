@@ -60,7 +60,12 @@ module HASKELL-PREPROCESSING
                 ~> (kindInferClass
                 ~> (derivingClassChecks
                 ~> (collectExpressions
-                ~> genModuleChecks)))
+                ~> genInstanceChecks)))
+
+    rule genInstanceChecks => initialInstanceInModule
+                                  ~> ((collectInstances
+                                    ~> kindCheckInstance)
+                                      ~> checkInstanceParents)
 
     rule genModuleChecks => genAllModuleNames
                          ~> (genExportSet
@@ -607,8 +612,12 @@ module HASKELL-PREPROCESSING
          ...</class>
          requires notBool derivingKindMatching(X, B)
 
-/*
+
    //functions to compile type class instances to ast form
+   rule <k> initialInstanceInModule => .K ...</k>
+        <currModule> Mod:K </currModule>
+        <instanceNames> M:Map => M[Mod <- resultSet(.Set)] </instanceNames>
+
     rule <k> collectInstances => getInstances(TM) ...</k>
          <tempModule> TM:K </tempModule>
 
@@ -620,51 +629,120 @@ module HASKELL-PREPROCESSING
 
     rule getInstances('topdeclslist(A:TopDecl,, As:TopDecls)) => getInstances(As)
          requires notBool isTheInstance(A)
-
     rule <k> getInstances('topdeclslist('instance(Cs:OptContext,,
                   Name:QTyCon,, Tv:Inst,, Ds:OptIDecls),, As:TopDecls))
-                 => error(classVarNotInScope) ...</k>
+           => getInstancesAux(Cs,transExpCon(Mod, Name, Ts, Is), Tv, Ds, As) ...</k>
          <currModule> Mod:K </currModule>
-         <classNames> NM:Map </classNames>
-         requires notBool hasClassName(Mod, transVar(Mod, Name), .K, NM)
+         <moduleName> Mod </moduleName>
+         <moduleDefs> Ts:Set </moduleDefs>
+         <imports> Is:Set </imports>
 
-    rule getInstances('topdeclslist('instance(Cs:OptContext,,
-                  Name:QTyCon,, Tv:Inst,, Ds:OptIDecls),, As:TopDecls))
-                 => error(instanceInstNotDistinct)
-         requires hasDistinctVars(Tv)
-
-    rule <k> getInstances('topdeclslist('instance(Cs:OptContext,,
-                  Name:QTyCon,, Tv:Inst,, Ds:OptIDecls),, As:TopDecls))
-               => getInstancesAux(transVar(Mod, Name), toAbsType(Mod, Tv),
-                    contextToSet(Mod, Cs),
-                    transTopDecls(N, Mod, Ds, keys(Methods)), As) ...</k>
+    rule getInstancesAux(Cs:K, error(A:K), Tv:K, Ds:K, As:K) => error(A)
+    rule <k> getInstancesAux(Cs:K, fullName(Mod':K, Name:K), Tv:K, Ds:K, As:K)
+            => getInstancesNext(transInstance(
+                   N, Mod, Cs, Name, Tv, Ds,
+                   genInstanceMapClass(MM, .K, .K), Ts, Is), As) ...</k>
          <genVarCounter> N:Int </genVarCounter>
          <currModule> Mod:K </currModule>
-         <classMethodNames> CM:Map </classMethodNames>
-         <classNames> NM:Map </classNames>
+         <moduleName> Mod </moduleName>
+         <moduleDefs> Ts:Set </moduleDefs>
+         <imports> Is:Set </imports>
          <class>...
-             <classModule> Mod </classModule>
-             <className> transVar(Mod, QTyCon) </className>
-             <classMethods> Methods:Map </classMethods>
+                <classModule> Mod':K </classModule>
+                <className> Name </className>
+                <classMethods> MM:Map </classMethods>
          ...</class>
-         requires hasClassName(Mod, transVar(Mod, Name), .K, NM)
-                  andBool notBool hasDistinctVars(Tv)
 
-   rule getInstancesAux(Name:K, Tv:K, S:Set, error(A:K), As:K) => error(A)
-   rule <k> getInstancesAux(Name:K, Tv:K, S:Set, resultTransMap(N':Int, M':Map), As:K)
-            => checkMethodPatNumbers(M', .K) ~> getInstances(As) ...</k>
-         <genVarCounter> N:Int => N' </genVarCounter>
+    rule getInstancesNext(error(A:K), As:K) => error(A)
+    rule <k> getInstancesNext(returnInstance(N:Int,
+                Cs:Set, A:K, As:Set, T:K, M:Map), As':K)
+                   => getInstances(As') ...</k>
+         <genVarCounter> _:Int => N </genVarCounter>
          <currModule> Mod:K </currModule>
-         <classMethodNames> CM:Map </classMethodNames>
-         <classNames> NM:Map </classNames>
-         (.Bag => <instance>...
-                     <instanceModule> Mod </instanceModule>
-                     <instanceClass> Name </instanceClass>
-                     <instanceType> Tv </instanceType>
-                     <instanceContext> S </instanceContext>
-                     <instanceMethods> M' </instanceMethods>
-                  ...</instance>)
-*/
+         <instanceNames> M:Map => updateMapItem(M, .K, Mod,
+                    SetItem(instanceTuple(A, getInstanceType(T)))) </instanceNames>
+         (.Bag => <instance>
+                   <instanceModule> Mod </instanceModule>
+                   <instanceClass> A </instanceClass>
+                   <instanceType> getInstanceType(T) </instanceType>
+                   <instanceVarMap> setUpContextMethodAux(
+                               makeVarContextMap(As), .K, Cs) </instanceVarMap>
+                   <instanceContext> Cs </instanceContext>
+                   <instanceMethods> M </instanceMethods>
+                  </instance>)
+         requires notBool isInMapSet(instanceTuple(A, getInstanceType(T)), M, .K)
+
+    rule <k> getInstancesNext(returnInstance(N:Int,
+                Cs:Set, A:K, As:Set, T:K, M:Map), As':K)
+                => error(duplicateInstance) ...</k>
+         <currModule> Mod:K </currModule>
+         <instanceNames> M:Map </instanceNames>
+         requires isInMapSet(instanceTuple(A, getInstanceType(T)), M, .K)
+
+    rule <k> kindCheckInstance
+                 => kindCheckInstance(As, N, S, Mod, KM, Is, PM) ...</k>
+         <currModule> Mod:K </currModule>
+         <moduleName> Mod </moduleName>
+         <kindVarCounter> N:Int </kindVarCounter>
+         <kindVarSet> S:Set </kindVarSet>
+         <kindMap> KM:Map </kindMap>
+         <importKindMap> PM:Map </importKindMap>
+         <imports> Is:Set </imports>
+         <instanceNames>... Mod |-> resultSet(As:Set) ...</instanceNames>
+
+    rule <k> kindCheckInstance(.Set, N:Int, S:Set,
+                       Mod:K, KM:Map, Is:Set, PM:Map) => .K ...</k>
+         <kindVarCounter> _:Int => N </kindVarCounter>
+         <kindVarSet> _:Set => S </kindVarSet>
+
+    rule <k> kindCheckInstance(SetItem(instanceTuple(A:K, T:K)) As:Set,
+               N:Int, S:Set, Mod:K, KM:Map, Is:Set, PM:Map) =>
+               kindCheckInstanceAux(As, kindSingleInstance(N, S, Mod,
+                     A, Cs, Fs, T, KM,Is, PM),
+                       A, T, Mod, KM, Is, PM) ...</k>
+         <instance>...
+             <instanceModule> Mod </instanceModule>
+             <instanceClass> A </instanceClass>
+             <instanceType> T </instanceType>
+             <instanceVarMap> Fs:Map </instanceVarMap>
+             <instanceContext> Cs:Set </instanceContext>
+         ...</instance>
+
+    rule kindCheckInstanceAux(As:Set, error(A:K),
+              A:K, T:K, Mod:K, KM:Map, Is:Set, PM:Map) => error(A)
+    rule <k> kindCheckInstanceAux(As:Set, resultTransSetMap(N:Int, S:Set, Fs:Map),
+               A:K, T:K, Mod:K, KM:Map, Is:Set, PM:Map)
+              => kindCheckInstance(As, N, S, Mod, KM, Is, PM) ...</k>
+         <instance>...
+             <instanceModule> Mod </instanceModule>
+             <instanceClass> A </instanceClass>
+             <instanceType> T </instanceType>
+             <instanceVarMap> _:Map => Fs </instanceVarMap>
+         ...</instance>
+
+   //check if an instance's parrent classes
+   // have all properly instantiated by the same type
+   rule <k> checkInstanceParents => checkInstanceParents(As, .K) ...</k>
+         <currModule> Mod:K </currModule>
+         <instanceNames>... Mod |-> resultSet(As:Set) ...</instanceNames>
+
+   rule checkInstanceParents(.Set, .K) => .K
+   rule checkInstanceParents(SetItem(A:K) S:Set, .K)
+                    => checkInstanceParents(S, A)
+   rule <k> checkInstanceParents(S:Set,
+              instanceTuple(fullName(Mod:K, A:K), T:K))
+                => checkInstanceParent(Cs, .K, T, Ts, Is)
+                 ~> checkInstanceParents(combineClassType(Cs, .K, T) S, .K) ...</k>
+         <currModule> Mod':K </currModule>
+         <moduleName> Mod' </moduleName>
+         <moduleDefs> Ts:Set </moduleDefs>
+         <imports> Is:Set </imports>
+        <class>...
+          <classModule> Mod </classModule>
+          <className> A:K </className>
+          <classContext> Cs:Set </classContext>
+        ...</class>
+
    //transformation of expressions in a module
    //also check the kind information of each decl with the contexts.
    //two checks. First, every bounded vars in the contexts must be

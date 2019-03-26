@@ -23,6 +23,9 @@ module HASKELL-ERRORS
     rule <k> error(declNoInstance) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type/data-type whose name is repeated once in the module.")) </output>
 
+    rule <k> error(lackParentInstance) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a instance decl whose type missing a parent type class instance.")) </output>
+
     rule <k> error(cycleAlpha) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type signature lacking an accompanying binding.")) </output>
 
@@ -40,6 +43,12 @@ module HASKELL-ERRORS
 
     rule <k> error(duplicateDecl) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The module declares a same function twice.")) </output>
+
+    rule <k> error(duplicateInstance) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module declares two instances with the same type-classes and types.")) </output>
+
+    rule <k> error(duplicateParentInstance) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The module has an instance whose parent instances coming from two different sources")) </output>
 
     rule <k> error(typeNotInScope) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type delcaration whose type cons might not be properly imported or created.")) </output>
@@ -119,8 +128,14 @@ module HASKELL-ERRORS
     rule <k> error(classVarNotInScope) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type instance whose name does not show in the original type class.")) </output>
 
+    rule <k> error(instanceTypeVarNotInScope) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type instance whose contexts have a type-var not in the inst definition of the instance.")) </output>
+
     rule <k> error(classMethodVarNotInScope) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a type class one of whose method name for a method definition does not show in the original type class.")) </output>
+
+    rule <k> error(instanceMethodVarNotInScope) ~> K:K => .K </k>
+         <output> L:List (.List => ListItem("The modules have a type class instance, one of whose method name for a method definition does not show in the original type class.")) </output>
 
     rule <k> error(syntaxError) ~> K:K => .K </k>
          <output> L:List (.List => ListItem("The modules have a expression that has syntactic error.")) </output>

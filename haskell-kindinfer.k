@@ -17,28 +17,6 @@ module HASKELL-KINDINFER
    rule dealWithTuple('tupleFun(A:GConCommas)) => tupleType(countOnCommas(A))
    rule dealWithTuple(A:K) => A [owise]
 
-   syntax Map ::= classContentToList(K, K, K, Map, Map, Map) [function]
-                   //module, class, decls, type-map, constr-map, import-map
-                | singleContentToList(K,K, CDecl, Map, Map, Map) [function]
-                | varAssignToList(K,K, Vars, Type, Map, Map, Map) [function]
-
-/*          //mod, cdecls, global type map
-   rule classContentToList(Mod:K, C:K, 'emptyOptCDecls(.KList), TM:Map, CM:Map, IM:Map) => .Map
-   rule classContentToList(Mod:K,C:K, 'cdeclWhere('cdeclBracket(Cs:CDeclsList)), TM:Map, CM:Map, IM:Map)
-            => classContentToList(Mod,C, Cs, TM, CM, IM)
-   rule classContentToList(Mod:K,C:K, .CDeclsList, TM:Map, CM:Map, IM:Map) => .Map
-   rule classContentToList(Mod:K,D:K, 'cdeclCon(C:CDecl,, Cs:CDeclsList), TM:Map, CM:Map, IM:Map)
-           => singleContentToList(Mod,D, C, TM, CM, IM) classContentToList(Mod,D, Cs, TM, CM,IM)
-   rule singleContentToList(Mod:K, C:K, 'emptyGenDecl(.KList), TM:Map, CM:Map, IM:Map) => .Map
-   rule singleContentToList(Mod:K,C:K, 'varAssign(As:Vars,, T:Type), TM:Map, CM:Map, IM:Map)
-              => varAssignToList(Mod,C, As, T, TM, CM,IM)
-
-   rule varAssignToList(Mod:K, V:Var, T:Type, TM:Map, CM:Map, IM:Map)
-                  => V |-> T
-   rule varAssignToList(Mod:K, 'varCon(V:Var,, Vs:Vars), T:Type, TM:Map)
-                => (V |-> T) varAssignToList(Mod, Vs, T, TM)
-
-*/
    syntax KItem ::= getImports(Body) [function]
    rule getImports('bodyimpandtop(A:ImpDecls,, B:TopDecls)) => A
    rule getImports('bodyimpdecls(A:ImpDecls)) => A
@@ -142,6 +120,14 @@ module HASKELL-KINDINFER
              => getFreeTypeVarsList(X) getFreeTypeVars(Y)
    rule getFreeTypeVars(forall(X:Set, Y:K))
              => getFreeTypeVarsList(Y) -Set X
+   rule getFreeTypeVars('instAppType(A:K,, B:K)) => getFreeTypeVars(B)
+   rule getFreeTypeVars('instTupleCover(A:K)) => getFreeTypeVars(A)
+   rule getFreeTypeVars('tyVarList(A:TyVar)) => SetItem(A)
+   rule getFreeTypeVars('typeVarFun(A:TyVar,, B:TyVar)) => SetItem(A) SetItem(B)
+   rule getFreeTypeVars(.TyVars) => .Set
+   rule getFreeTypeVars('typeVars(A:K,, B:K)) => SetItem(A) getFreeTypeVars(B)
+   rule getFreeTypeVars('twoTypeVarTuple(A:K,, B:K)) => SetItem(A) SetItem(B)
+   rule getFreeTypeVars('typeVarTupleCon(A:K,, B:K)) => SetItem(A) getFreeTypeVars(B)
    rule getFreeTypeVars(A:K) => .Set [owise]
 
    syntax Set ::= getFreeTypeVarsList(List) [function]
@@ -803,15 +789,16 @@ module HASKELL-KINDINFER
             => findGoodNameWithMod(A,B, .K, S)
         requires Mb =/=K B andBool Mb =/=K .K
 
-   syntax KItem ::= countGoodName(K, K, Set) [function]
-   rule countGoodName(A:K, .K, .Set) => 0
-   rule countGoodName(A:K, .K, SetItem(B:K) S:Set)
-           => countGoodName(A, B, S)
-   rule countGoodName(A:K, importElem(Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
-            => 1 +Int countGoodName(A, .K, S)
+   syntax KItem ::= countGoodName(Set, K, K, Set) [function]
+                     //store, input, execution, imports
+   rule countGoodName(S:Set, A:K, .K, .Set) => size(S)
+   rule countGoodName(As:Set, A:K, .K, SetItem(B:K) S:Set)
+           => countGoodName(As, A, B, S)
+   rule countGoodName(As:Set, A:K, importElem(Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => countGoodName(As SetItem(fullName(Ma, A)), A, .K, S)
         requires A in Es
-   rule countGoodName(A:K, importElem(Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
-            => countGoodName(A, .K, S)
+   rule countGoodName(As:Set, A:K, importElem(Ma:K, Mb:K, T:Bool, Es:Set, M:Map), S:Set)
+            => countGoodName(As, A, .K, S)
         requires notBool A in Es
 
    syntax KItem ::= countGoodNameWithoutAs(K, K, Set) [function]
@@ -1277,7 +1264,7 @@ module HASKELL-KINDINFER
             => contextToSet(Mod, A, .K, SetItem(classTitle(X, Y)) S, Ts, Is)
    rule contextToSet(Mod:K, 'emptyContext(.KList),
                .K, S:Set, Ts:Set, Is:Set) => resultSet(S)
-   rule contextToSet(Mod:K, C:Class =>, X:K, S:Set, Ts:Set, Is:Set)
+   rule contextToSet(Mod:K, C:Class =>, .K, S:Set, Ts:Set, Is:Set)
              => contextToSet(Mod, .K, toAbsClass(Mod, C, Ts, Is), S, Ts, Is)
    rule contextToSet(Mod:K, 'contextClass(Cs:Classes) =>, .K, S:Set, Ts:Set, Is:Set)
              => contextToSet(Mod, Cs, .K, S, Ts, Is)
@@ -1427,7 +1414,6 @@ module HASKELL-KINDINFER
 
    syntax KItem ::= genInitKindMap(Int, Set, K, K, Map, Map) [function]
                   | genInitKindMapAux(K, K, Map, Map) [function]
-
    rule genInitKindMap(N:Int, S:Set, .K, .K, .Map, M:Map)
               => resultTyVarKindMap(N, S, M)
    rule genInitKindMap(N:Int, S:Set, .K, .K, (A:K |-> B:K) M:Map, TM:Map)
@@ -1614,6 +1600,99 @@ module HASKELL-KINDINFER
               L:List, Body:Map, M:Map, Tus:Set, Is:Set, PM:Map)
           => kindNextList(N1, S1,Mod:K, .K, L, Body, M, Tus Tu1, Is, PM)
 
+   //a function to combine a list of context with the type
+   syntax Set ::= combineClassType(Set, K, K) [function]
+   rule combineClassType(.Set, .K, T:K) => .Set
+   rule combineClassType(SetItem(A:K) S:Set, .K, T:K) => combineClassType(S, A, T)
+   rule combineClassType(S:Set,classTitle(A:K, L:List), T:K)
+             => SetItem(instanceTuple(A, T)) combineClassType(S,.K, T)
+
+   //a function to check if all parent instances are uniquely existed.
+   syntax KItem ::= checkInstanceParent(Set, K, K, Set, Set) [function]
+                       //contexts, execution, type, curr-instances, imports
+   rule checkInstanceParent(.Set, .K, T:K, Ts:Set, Is:Set) => .K
+   rule checkInstanceParent(SetItem(A:K) S:Set, .K, T:K, Ts:Set, Is:Set)
+           => checkInstanceParent(S, A, T, Ts, Is)
+   rule checkInstanceParent(S:Set, classTitle(A:K, L:List), T:K, Ts:Set, Is:Set)
+           => checkInstanceParent(S, .K, T, Ts, Is)
+        requires instanceTuple(A, T) in Ts
+                   andBool countGoodName(.Set, instanceTuple(A, T), .K, Is) ==K 0
+   rule checkInstanceParent(S:Set, classTitle(A:K, L:List), T:K, Ts:Set, Is:Set)
+           => checkInstanceParent(S, .K, T, Ts, Is)
+        requires notBool instanceTuple(A, T) in Ts
+                   andBool countGoodName(.Set, instanceTuple(A, T), .K, Is) ==K 1
+   rule checkInstanceParent(S:Set, classTitle(A:K, L:List), T:K, Ts:Set, Is:Set)
+           => error(lackParentInstance)
+        requires notBool instanceTuple(A, T) in Ts
+                   andBool countGoodName(.Set, instanceTuple(A, T), .K, Is) ==K 0
+   rule checkInstanceParent(S:Set, classTitle(A:K, L:List), T:K, Ts:Set, Is:Set)
+           => error(duplicateParentInstance)
+        requires instanceTuple(A, T) in Ts
+                   andBool countGoodName(.Set, instanceTuple(A, T), .K, Is) >Int 0
+                   andBool countGoodName(.Set, instanceTuple(A, T), .K, Is) ==K 0
+   rule checkInstanceParent(S:Set, classTitle(A:K, L:List), T:K, Ts:Set, Is:Set)
+           => error(duplicateParentInstance)
+        requires countGoodName(.Set, instanceTuple(A, T), .K, Is) >Int 1
+
+   //a functino to check kind in the context and title of a instance
+   syntax KItem ::= kindSingleInstance(Int, Set, K, K, Set, Map, K, Map, Set, Map) [function]
+             //counter, kindvar-set, curr-mod, class-name, contexts, vars-in-type,
+              //type, kind-map, import-set, import-map
+                  | kindSingleInstanceAux(K, K, K, Map, K, Map) [function]
+                  | kindSingleInstanceAux1(K, K, K, Set, Map, K, Map) [function]
+                  | kindSingleInstanceNext(Int, Set, K, K, K, List, Set, Map, Map, Map) [function]
+                  | kindSingleInstanceNext1(Int, Set, K, K, K, List, Set, Map, Map) [function]
+                  | kindSingleInstanceCheck(Int, Set, K, Map, Map) [function]
+
+   rule kindSingleInstance(N:Int, S:Set, Mod:K, A:K, As:Set,
+                  Fs:Map, T:K, KM:Map, Is:Set, PM:Map)
+           => kindSingleInstanceAux(Mod, A, kindInferTypeVars(
+                  N, S, Mod, .K, As, .Set, KM, Is, PM), Fs, T, PM)
+   rule kindSingleInstanceAux(Mod:K, X:K, error(A:K),
+                  Fs:Map, T:K, PM:Map) => error(A)
+   rule kindSingleInstanceAux(Mod:K, X:K, resultKindTupleMap(N:Int,
+            S:Set, Tu:Set, KM:Map), Fs:Map, T:K, PM:Map)
+          => kindSingleInstanceAux1(Mod, X, genKindMapCheck(
+                    N, S, .K, keys(Fs), KM), Tu, Fs, T, PM)
+   rule kindSingleInstanceAux1(Mod:K, fullName(Mod:K, A:K), resultTransSetMap(
+                  N:Int, S:Set, (A |-> kindArrow(X:K, star)) KM:Map),
+             Tu:Set, Fs:Map, typeConst(T:K, TL:List), PM:Map)
+          => kindSingleInstanceNext(N, S, Mod, T, X, TL, Tu, Fs,
+                 (A |-> kindArrow(X:K, star)) KM:Map, PM)
+   rule kindSingleInstanceAux1(Mod:K, fullName(Mod':K, A:K), resultTransSetMap(
+                  N:Int, S:Set, KM:Map), Tu:Set, Fs:Map, typeConst(T:K, TL:List),
+              (fullName(Mod':K, A:K) |-> kindArrow(X:K, star)) PM:Map)
+          => kindSingleInstanceNext(N, S, Mod, T, X, TL, Tu, Fs, KM,
+                 (fullName(Mod':K, A:K) |-> kindArrow(X:K, star)) PM:Map)
+        requires Mod =/=K Mod'
+   rule kindSingleInstanceAux1(Mod:K, A:K, X:K, Tu:Set, Fs:Map,
+              T:K, PM:Map) => error(classNotInScope) [owise]
+   rule kindSingleInstanceNext(N:Int, S:Set, Mod:K, fullName(Mod:K, T:K), X:K,
+               L:List, Tu:Set, Fs:Map, (T |-> X':K) KM:Map, PM:Map)
+            => kindSingleInstanceNext1(N, S, Mod, X', X, L, Tu, Fs,
+               (T |-> X':K) KM:Map)
+   rule kindSingleInstanceNext(N:Int, S:Set, Mod:K, fullName(Mod':K, T:K), X:K,
+               L:List, Tu:Set, Fs:Map, KM:Map, (fullName(Mod':K, T:K) |-> X':K) PM:Map)
+            => kindSingleInstanceNext1(N, S, Mod, X', X, L, Tu, Fs, KM:Map)
+        requires Mod =/=K Mod'
+   rule kindSingleInstanceNext(N:Int, S:Set, Mod:K, T:K, X:K,
+               L:List, Tu:Set, Fs:Map, KM:Map, PM:Map) => error(typeNotInScope) [owise]
+
+   rule kindSingleInstanceNext1(N, S, Mod, X':K, X:K, .List,
+           Tu:Set, Fs:Map, KM:Map)
+            => kindSingleInstanceCheck(N, S,
+                 unifInKind(.K, .Set, checkAndRemoveNoVarTerms(.K, 
+                        Tu SetItem(kindTuple(X', X)), .Set), .Map), Fs, KM)
+   rule kindSingleInstanceNext1(N:Int, S:Set, Mod:K, kindArrow(X':K, Y:K), X:K,
+           ListItem(A:K) L:List, Tu:Set, Fs:Map, (A |-> NewX:K) KM:Map)
+              => kindSingleInstanceNext1(N, S, Mod, Y, X, L, Tu
+                   SetItem(kindTuple(X', NewX)), Fs, (A |-> NewX:K) KM:Map)
+
+   rule kindSingleInstanceCheck(N:Int, S:Set, error(A:K), Fs:Map, KM:Map) => error(A)
+   rule kindSingleInstanceCheck(N:Int, S:Set, resultMap(M:Map), Fs:Map, KM:Map)
+            => resultTransSetMap(N, S,
+                      updateKindInTypeVarMap(Fs, replaceAllKindInMap(M, KM)))
+
    //a function to kind inference a set of contexts which refering the same type-var
    syntax KItem ::= kindInferTypeVars(Int, Set, K, K, Set, Set, Map, Set, Map) [function]
                   | kindInferTypeVarsNext(Int, Set, K, K, Set, Set, Map, Set, Map) [function]
@@ -1670,9 +1749,6 @@ module HASKELL-KINDINFER
            => kindInferTypeVarsAux2(N', S', Mod, X, L, .K, Ts Tu, As, KM, Is, PM)
 
    //a function to kind inference every function in a class
-   syntax Bool ::= isSameInMap(K, K, Map) [function]
-   rule isSameInMap(A:K, B:K, (A |-> B:K) M:Map) => true
-   rule isSameInMap(A:K, B:K, M:Map) => false [owise]
 
    //a function to check the kind inference for every expression
    //every expression in a module has an assumption of star kind
